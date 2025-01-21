@@ -8,7 +8,7 @@
 
 #include <clientserver/initStructs.h>
 #include <clientserver/stringUtils.h>
-#include <clientserver/udaTypes.h>
+#include <clientserver/udaStructs.h>
 #include <server/getServerEnvironment.h>
 
 namespace JSONMapping
@@ -116,7 +116,7 @@ JSONMappingPlugin::extract_indices(const std::deque<std::string>& path_tokens)
 {
     std::vector<int> indices;
     std::deque<std::string> processed_tokens;
-    static std::regex PATH_INDEX_RE{R"(\[\d+\])"};
+    static const std::regex PATH_INDEX_RE{R"(\[\d+\])"};
 
     for (const auto& token : path_tokens) {
         std::sregex_token_iterator iter{ token.begin(), token.end(), PATH_INDEX_RE, 0 };
@@ -126,7 +126,7 @@ JSONMappingPlugin::extract_indices(const std::deque<std::string>& path_tokens)
             std::string num = iter->str().substr(1);
             indices.push_back(std::stoi(num));
         }
-        std::string new_token = std::regex_replace(token, PATH_INDEX_RE, "[#]");
+        const std::string new_token = std::regex_replace(token, PATH_INDEX_RE, "[#]");
         processed_tokens.push_back(new_token);
     }
 
@@ -335,7 +335,7 @@ int JSONMappingPlugin::get(IDAM_PLUGIN_INTERFACE* plugin_interface)
     // Load mappings based off IDS name
     // Returns a reference to IDS map objects and corresponding globals
     // Mapping object lifetime owned by mapping_handler
-    const auto maybe_mappings = m_mapping_handler.read_mappings(machine_string, ids_name);
+    const auto maybe_mappings = m_mapping_handler.read_mappings(machine_string, ids_name, request_data);
 
     if (!maybe_mappings) {
         JSONMapping::JPLog(JSONMapping::JPLogLevel::ERROR,

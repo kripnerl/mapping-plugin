@@ -2,8 +2,16 @@
 
 #include <boost/algorithm/string.hpp>
 #include <inja/inja.hpp>
-#include <logging/logging.h>
 #include <unordered_map>
+#include <optional>
+#include <fstream>
+#include <vector>
+#include <filesystem>
+
+#include <clientserver/udaStructs.h>
+#include <fmt/format.h>
+#include <plugins/udaPlugin.h>
+#include <logging/logging.h>
 
 #include "map_types/custom_mapping.hpp"
 #include "map_types/dim_mapping.hpp"
@@ -25,8 +33,8 @@ int MappingHandler::init()
         return 0;
     }
 
-    char* cache_size_str = getenv("UDA_JSON_MAPPING_CACHE_SIZE");
-    char* enable_caching_str = getenv("UDA_JSON_MAPPING_USE_CACHE");
+    const char* cache_size_str = getenv("UDA_JSON_MAPPING_CACHE_SIZE");
+    const char* enable_caching_str = getenv("UDA_JSON_MAPPING_USE_CACHE");
 
     bool enable_caching = (enable_caching_str == nullptr) or (std::stoi(enable_caching_str) > 0);
 
@@ -42,19 +50,38 @@ int MappingHandler::init()
     return 0;
 }
 
-std::optional<MappingPair> MappingHandler::read_mappings(const MachineName& machine, const std::string& request_ids)
+std::optional<MappingPair> MappingHandler::read_mappings(const MachineName& machine, const std::string& request_ids, const REQUEST_DATA* request_data)
 {
+    int shot = 0;
+    bool const shot_found = findIntValue(&request_data->nameValueList, &shot, "shot");
+
     load_machine(machine);
     if (m_machine_register.count(machine) == 0) {
         return {};
     }
+
     auto& [mappings, attributes] = m_machine_register[machine];
     if (mappings.count(request_ids) == 0 || attributes.count(request_ids) == 0) {
         return {};
     }
+
+    int attr_shot = -1;
+    int map_shot = -1;
+
+    if (shot_found) {
+        attr_shot = select_shot(attributes[request_ids], shot);
+        map_shot = select_shot(attributes[request_ids], shot);
+    }
+
+    if (attributes[request_ids].map.count(attr_shot) == 0 || mappings[request_ids].map.count(attr_shot) == 0) {
+        return {};
+    }
+
+    nlohmann::json& attr = attributes[request_ids].map[attr_shot];
+    IDSMapRegister& map = mappings[request_ids].map[map_shot];
+
     // AJP :: Safety check if ids request not in mapping json (and typo obviously)
-    return std::optional<MappingPair>{
-        std::make_pair(std::ref(attributes[request_ids]), std::ref(mappings[request_ids]))};
+    return {std::make_pair(std::ref(attr), std::ref(map))};
 }
 
 int MappingHandler::set_map_dir(const std::string& mapping_dir)
@@ -63,13 +90,30 @@ int MappingHandler::set_map_dir(const std::string& mapping_dir)
     return 0;
 }
 
-std::string MappingHandler::mapping_path(const MachineName& machine, const IDSName& ids_name,
-                                         const std::string& file_name)
-{
-    if (ids_name.empty()) {
-        return m_mapping_dir + "/" + machine + "/" + file_name;
+std::vector<int> MappingHandler::find_mapping_dirs(const MachineName& machine, const IDSName& ids_name) const {
+    auto path = m_mapping_dir / machine / ids_name;
+    std::vector<int> mapping_dirs;
+
+    for (const auto& entry : std::filesystem::directory_iterator(path)) {
+        if (entry.is_directory()) {
+            mapping_dirs.push_back(std::stoi(entry.path().filename().string()));
+        }
     }
-    return m_mapping_dir + "/" + machine + "/" + ids_name + "/" + file_name;
+
+    return mapping_dirs;
+}
+
+std::filesystem::path MappingHandler::mapping_path(const MachineName& machine, const IDSName& ids_name, const int shot,
+                                                   const std::string& file_name) const {
+    if (ids_name.empty()) {
+        return m_mapping_dir / machine / file_name;
+    }
+
+    if (shot < 0) {
+        return m_mapping_dir / machine / ids_name / file_name;
+    }
+
+    return m_mapping_dir / machine / ids_name / std::to_string(shot) / file_name;
 }
 
 int MappingHandler::load_machine(const MachineName& machine)
@@ -79,7 +123,7 @@ int MappingHandler::load_machine(const MachineName& machine)
         return 0;
     }
 
-    auto file_path = mapping_path(machine, "", "mappings.cfg.json");
+    const auto file_path = mapping_path(machine, "", 0, "mappings.cfg.json");
 
     std::ifstream map_cfg_file(file_path);
     if (map_cfg_file) {
@@ -98,10 +142,8 @@ int MappingHandler::load_machine(const MachineName& machine)
     return 0;
 }
 
-nlohmann::json MappingHandler::load_toplevel(const MachineName& machine)
-{
-
-    auto file_path = mapping_path(machine, "", "globals.json");
+nlohmann::json MappingHandler::load_toplevel(const MachineName& machine) const {
+    auto file_path = mapping_path(machine, "", 0, "globals.json");
 
     nlohmann::json toplevel_globals;
 
@@ -122,10 +164,8 @@ nlohmann::json MappingHandler::load_toplevel(const MachineName& machine)
     return toplevel_globals;
 }
 
-int MappingHandler::load_globals(const MachineName& machine, const IDSName& ids_name)
-{
-
-    auto file_path = mapping_path(machine, ids_name, "globals.json");
+int MappingHandler::load_shot_globals(const MachineName& machine, const IDSName& ids_name, int shot) {
+    auto file_path = mapping_path(machine, ids_name, shot, "globals.json");
 
     std::ifstream globals_file;
     globals_file.open(file_path);
@@ -140,18 +180,31 @@ int MappingHandler::load_globals(const MachineName& machine, const IDSName& ids_
         }
 
         temp_globals.update(load_toplevel(machine));
-        m_machine_register[machine].attributes[ids_name] = temp_globals; // Record globals
+        m_machine_register[machine].attributes[ids_name].map[shot] = temp_globals; // Record globals
 
     } else {
         RAISE_PLUGIN_ERROR("MappingHandler::load_globals - Cannot open JSON globals file")
     }
+
     return 0;
 }
 
-int MappingHandler::load_mappings(const MachineName& machine, const IDSName& ids_name)
+int MappingHandler::load_globals(const MachineName& machine, const IDSName& ids_name)
 {
+    const auto mapping_dirs = find_mapping_dirs(machine, ids_name);
+    if (mapping_dirs.empty()) {
+        return load_shot_globals(machine, ids_name, -1);
+    }
+    for (const int shot : mapping_dirs) {
+        int rc = load_shot_globals(machine, ids_name, shot);
+        if (rc != 0) { return rc; }
+    }
+    return 0;
+}
 
-    auto file_path = mapping_path(machine, ids_name, "mappings.json");
+int MappingHandler::load_shot_mappings(const MachineName& machine, const IDSName& ids_name, int shot)
+{
+    auto file_path = mapping_path(machine, ids_name, shot, "mappings.json");
 
     std::ifstream map_file;
     map_file.open(file_path);
@@ -165,9 +218,24 @@ int MappingHandler::load_mappings(const MachineName& machine, const IDSName& ids
             RAISE_PLUGIN_ERROR(json_error.c_str())
         }
 
-        init_mappings(machine, ids_name, temp_mappings);
+        init_mappings(machine, ids_name, temp_mappings, shot);
     } else {
         RAISE_PLUGIN_ERROR("MappingHandler::load_mappings - Cannot open JSON mapping file")
+    }
+
+    return 0;
+}
+
+
+int MappingHandler::load_mappings(const MachineName& machine, const IDSName& ids_name)
+{
+    const auto mapping_dirs = find_mapping_dirs(machine, ids_name);
+    if (mapping_dirs.empty()) {
+        return load_shot_mappings(machine, ids_name, -1);
+    }
+    for (const int shot : mapping_dirs) {
+        int rc = load_shot_mappings(machine, ids_name, shot);
+        if (rc != 0) { return rc; }
     }
     return 0;
 }
@@ -211,8 +279,8 @@ std::optional<float> get_float_value(const std::string& name, const nlohmann::js
             try {
                 const auto post_inja_str = inja::render(value[name].get<std::string>(), ids_attributes);
                 opt_float = std::stof(post_inja_str);
-            } catch (const std::invalid_argument& e) {
-                std::string message = "\nCannot convert " + name + " string to float\n";
+            } catch (const std::invalid_argument&) {
+                const std::string message = "\nCannot convert " + name + " string to float\n";
                 UDA_LOG(UDA_LOG_DEBUG, "%s", message.c_str());
             }
         }
@@ -267,7 +335,7 @@ int MappingHandler::init_custom_mapping(IDSMapRegister& map_reg, const std::stri
     return 0;
 }
 
-int MappingHandler::init_mappings(const MachineName& machine, const IDSName& ids_name, const nlohmann::json& data)
+int MappingHandler::init_mappings(const MachineName& machine, const IDSName& ids_name, const nlohmann::json& data, int shot)
 {
     const auto& attributes = m_machine_register[machine].attributes;
     IDSMapRegister temp_map_reg;
@@ -278,7 +346,7 @@ int MappingHandler::init_mappings(const MachineName& machine, const IDSName& ids
                 init_value_mapping(temp_map_reg, key, value);
                 break;
             case MappingType::PLUGIN:
-                init_plugin_mapping(temp_map_reg, key, value, attributes.at(ids_name), m_ram_cache);
+                init_plugin_mapping(temp_map_reg, key, value, attributes.at(ids_name).map.at(shot), m_ram_cache);
                 break;
             case MappingType::DIM:
                 init_dim_mapping(temp_map_reg, key, value);
@@ -294,7 +362,7 @@ int MappingHandler::init_mappings(const MachineName& machine, const IDSName& ids
         }
     }
 
-    m_machine_register[machine].mappings.try_emplace(ids_name, std::move(temp_map_reg));
+    m_machine_register[machine].mappings[ids_name].map[shot] = std::move(temp_map_reg);
     UDA_LOG(UDA_LOG_DEBUG, "calling read function \n");
 
     return 0;
