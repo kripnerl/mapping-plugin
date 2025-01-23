@@ -26,11 +26,11 @@ inline std::unordered_map<std::string, UDA_TYPE> uda_type_map()
     return type_map;
 }
 
-int setReturnTimeArray(DATA_BLOCK* data_block);
+int set_return_time_array(DATA_BLOCK* data_block);
 
-template <typename T> int setReturnDataScalarType(DATA_BLOCK* data_block, T value, const char* description = nullptr)
+template <typename T>
+int set_return_data_scalar_type(DATA_BLOCK* data_block, T value, const char* description = nullptr)
 {
-
     initDataBlock(data_block);
 
     auto data = static_cast<T*>(malloc(sizeof(T)));
@@ -50,10 +50,9 @@ template <typename T> int setReturnDataScalarType(DATA_BLOCK* data_block, T valu
 }
 
 template <typename T>
-int setReturnDataArrayType(DATA_BLOCK* data_block, gsl::span<const T> values, gsl::span<const size_t> shape,
+int set_return_data_array_type(DATA_BLOCK* data_block, gsl::span<const T> values, gsl::span<const size_t> shape,
                            const char* description = nullptr)
 {
-
     initDataBlock(data_block);
 
     if (description != nullptr) {
@@ -97,10 +96,9 @@ int setReturnDataArrayType(DATA_BLOCK* data_block, gsl::span<const T> values, gs
 }
 
 template <typename T>
-int setReturnDataArrayType_Vec(DATA_BLOCK* data_block, const std::vector<T>& vec_values,
+int set_return_data_array_vec(DATA_BLOCK* data_block, const std::vector<T>& vec_values,
                                const char* description = nullptr)
 {
-
     initDataBlock(data_block);
 
     if (description != nullptr) {
@@ -137,9 +135,8 @@ int setReturnDataArrayType_Vec(DATA_BLOCK* data_block, const std::vector<T>& vec
 }
 
 template <typename T>
-int setReturnDataValArray(DATA_BLOCK* data_block, const std::valarray<T>& va_values, const char* description = nullptr)
+int set_return_data_val_array(DATA_BLOCK* data_block, const std::valarray<T>& va_values, const char* description = nullptr)
 {
-
     initDataBlock(data_block);
 
     if (description != nullptr) {

@@ -3,7 +3,7 @@
 namespace imas_json_plugin::uda_helpers
 {
 
-int setReturnTimeArray(DATA_BLOCK* data_block)
+int set_return_time_array(DATA_BLOCK* data_block)
 {
 
     // Retrieve index of the time block

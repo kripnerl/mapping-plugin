@@ -121,9 +121,9 @@ template <typename T> int ExprMapping::eval_expr(const MapArguments& arguments) 
     expression.value(); // Evaluate expression
 
     if (vector_expr) {
-        imas_json_plugin::uda_helpers::setReturnDataArrayType_Vec(arguments.m_interface->data_block, result);
+        imas_json_plugin::uda_helpers::set_return_data_array_vec(arguments.m_interface->data_block, result);
     } else {
-        imas_json_plugin::uda_helpers::setReturnDataScalarType(arguments.m_interface->data_block, result.at(0));
+        imas_json_plugin::uda_helpers::set_return_data_scalar_type(arguments.m_interface->data_block, result.at(0));
     }
 
     // Free parameter memory from subsequent data_block requests

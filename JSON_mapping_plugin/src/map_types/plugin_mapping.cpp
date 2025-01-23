@@ -201,7 +201,7 @@ int PluginMapping::call_plugins(const MapArguments& arguments) const
             // Opportunity to handle time differently
             // Return time SignalType early, no need to scale/offset
             if (!cache_hit) {
-                err = imas_json_plugin::uda_helpers::setReturnTimeArray(arguments.m_interface->data_block);
+                err = imas_json_plugin::uda_helpers::set_return_time_array(arguments.m_interface->data_block);
             }
             return err;
         }
