@@ -77,8 +77,8 @@ int type_deduce_array(DATA_BLOCK* data_block, const json& temp_val)
     switch (temp_val.front().type()) {
         case json::value_t::number_float: {
             // Handle array of floats
-            auto temp_vec = temp_val.get<std::vector<float>>();
-            imas_json_plugin::uda_helpers::set_return_data_array_vec<float>(data_block, temp_vec);
+            auto temp_vec = temp_val.get<std::vector<double>>();
+            imas_json_plugin::uda_helpers::set_return_data_array_vec<double>(data_block, temp_vec);
             break;
         }
         case json::value_t::number_integer: {
@@ -110,7 +110,7 @@ int type_deduce_primitive(DATA_BLOCK* data_block, const json& temp_val, const js
     switch (temp_val.type()) {
         case json::value_t::number_float:
             // Handle float
-            imas_json_plugin::uda_helpers::set_return_data_scalar_type<float>(data_block, temp_val.get<float>(), nullptr);
+            imas_json_plugin::uda_helpers::set_return_data_scalar_type<double>(data_block, temp_val.get<double>(), nullptr);
             break;
         case json::value_t::number_integer:
             // Handle int
