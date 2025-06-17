@@ -78,23 +78,21 @@ uda_plugin(
     SOURCES ${SOURCES}
     CONFIG_FILE ${CONFIGS}
     EXTRA_INCLUDE_DIRS
-      ${CMAKE_CURRENT_LIST_DIR}/src
-      ${CMAKE_CURRENT_LIST_DIR}/ext_include
-      ${UDA_CLIENT_INCLUDE_DIRS}
-      ${Boost_INCLUDE_DIRS}
+        ${CMAKE_CURRENT_LIST_DIR}/src
+        ${CMAKE_CURRENT_LIST_DIR}/ext_include
+        ${UDA_CLIENT_INCLUDE_DIRS}
+        ${Boost_INCLUDE_DIRS}
     EXTRA_LINK_DIRS
-      ${UDA_CLIENT_LIBRARY_DIRS}
-      ${Boost_LIBRARY_DIRS}
+        ${UDA_CLIENT_LIBRARY_DIRS}
+        ${Boost_LIBRARY_DIRS}
     EXTRA_LINK_LIBS
-      ${EXTERNAL_DEPS}
+        ${EXTERNAL_DEPS}
 )
 
 # Unit testing setup
-if( ${PROJECT_NAME}_ENABLE_UNIT_TESTING )
-  enable_testing()
-  message( STATUS "Build unit tests for the project." )
-  message( STATUS "Tests should always be found in the test folder" )
-  add_subdirectory( test )
+if( ${PROJECT_NAME}_ENABLE_TESTING )
+    message( STATUS "TESTS: Building tests for the project." )
+    add_subdirectory( test )
 endif()
 
 list( TRANSFORM SOURCES PREPEND ${CMAKE_CURRENT_LIST_DIR}/ )

@@ -1,17 +1,13 @@
 cmake_minimum_required( VERSION 3.15 )
 
-#
 # Project details
-#
 project(
     JSONMappingPlugin
-    VERSION 0.1.0
+    VERSION 0.2.0
     LANGUAGES CXX
 )
 
-#
 # Extra cmake modules to find libraries
-#
 list(
     APPEND CMAKE_MODULE_PATH
     ${CMAKE_SOURCE_DIR}/cmake
@@ -28,27 +24,26 @@ set( CMAKE_EXPORT_COMPILE_COMMANDS ON )
 
 # Set default build type if not specified
 if( NOT CMAKE_BUILD_TYPE)
-  set( CMAKE_BUILD_TYPE "Debug" )
+    set( CMAKE_BUILD_TYPE "Debug" )
 endif()
 
 message( STATUS "Started CMake for ${PROJECT_NAME} v${PROJECT_VERSION}...\n" )
 
-#
 # Prevent building in the source directory
-#
 if (PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR )
-  message( FATAL_ERROR "In-source builds not allowed.
-    Please make a new directory (called a build directory)
-    and run CMake from there.\n" )
+    message( FATAL_ERROR "In-source builds not allowed.
+            Please make a new directory (called a build directory)
+            and run CMake from there.\n" )
 endif()
 
 # Find dependencies using modern approach
+if(POLICY CMP0167)
+    cmake_policy(SET CMP0167 NEW)
+endif()
 find_package( Boost REQUIRED )
 find_package( UDA 2.7.0 REQUIRED )
 
-#
 # Set project options
-#
 include( StandardSettings )
 include( StaticAnalyzers )
 include( Utils )
@@ -59,9 +54,7 @@ add_clang_format_target()
 add_compile_options( -fPIC )
 add_compile_options( -pthread )
 
-#
 # Create module
-#
 configure_file(
     ${CMAKE_SOURCE_DIR}/JSON_mapping_plugin/etc/module.in
     ${CMAKE_BINARY_DIR}/etc/JSON_mapping_plugin/${PROJECT_VERSION}
@@ -83,6 +76,10 @@ install(
     RENAME ${MODULE_NAME}
 )
 
+if( ${PROJECT_NAME}_ENABLE_TESTING )
+    enable_testing()
+endif()
+
 # Add JSON_mapping_plugin subdirectory
 add_subdirectory( JSON_mapping_plugin )
 # add_subdirectory( CUSTOM_MASTU_plugin )
@@ -92,9 +89,7 @@ add_subdirectory( JSON_mapping_plugin )
 set( BUILT_PLUGINS "${PLUGINS}" )
 message( STATUS "PLUGINS: ${PLUGINS}" )
 
-#
 # Generate scripts
-#
 string( REGEX REPLACE ";" " " PLUGINS "${BUILT_PLUGINS}" )
 configure_file(
     ${CMAKE_SOURCE_DIR}/scripts/activate-plugins.sh.in

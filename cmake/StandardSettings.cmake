@@ -1,27 +1,20 @@
-#
 # Compiler options
-#
 option(
     ${PROJECT_NAME}_WARNINGS_AS_ERRORS
-    "Treat compiler warnings as errors." OFF
+    "Treat compiler warnings as errors." ON
 )
 
-#
 # Unit testing
-#
-# Currently supporting: GoogleTest.
 option(
-    ${PROJECT_NAME}_ENABLE_UNIT_TESTING
-    "Enable unit tests for the projects (from the `test` subfolder)." ON
+    ${PROJECT_NAME}_ENABLE_TESTING
+    "Enable unit tests for the projects (from the `test` subfolder)." OFF
 )
 option(
-    ${PROJECT_NAME}_USE_GTEST
-    "Use the GoogleTest project for creating unit tests." ON
+    ${PROJECT_NAME}_ENABLE_CODE_COVERAGE
+    "Enable code coverage for unit tests." OFF
 )
 
-#
 # Static analyzers
-#
 # Currently supporting: Clang-Tidy, Cppcheck.
 option(
     ${PROJECT_NAME}_ENABLE_CLANG_TIDY
@@ -32,11 +25,9 @@ option(
     "Enable static analysis with Cppcheck." OFF
 )
 
-#
 # Miscellaneous options
-#
 # Generate compile_commands.json for clang based tools
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set( CMAKE_EXPORT_COMPILE_COMMANDS ON )
 
 option(
     ${PROJECT_NAME}_VERBOSE_OUTPUT
@@ -49,17 +40,17 @@ option(
     "Enable the usage of Ccache, in order to speed up rebuild times." OFF
 )
 
-find_program(CCACHE_FOUND ccache)
-if(CCACHE_FOUND)
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+find_program( CCACHE_FOUND ccache )
+if( CCACHE_FOUND )
+    set_property( GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache )
+    set_property( GLOBAL PROPERTY RULE_LAUNCH_LINK ccache )
 endif()
 
 option(
     ${PROJECT_NAME}_ENABLE_ASAN
     "Enable Address Sanitize to detect memory error." OFF
 )
-if(${PROJECT_NAME}_ENABLE_ASAN)
+if( ${PROJECT_NAME}_ENABLE_ASAN )
     add_compile_options(-fsanitize=address)
     add_link_options(-fsanitize=address)
 endif()
