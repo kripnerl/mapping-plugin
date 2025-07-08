@@ -5,7 +5,7 @@
 #include <nlohmann/json.hpp>
 #include <plugins/pluginStructs.h>
 #include <plugins/udaPlugin.h>
-// #include <memory>
+#include "map_types/map_arguments.hpp"
 
 // struct PluginInterfaceDeleter {
 //     void operator()(IDAM_PLUGIN_INTERFACE* interface) const {
@@ -17,14 +17,6 @@
 
 class PluginInterfaceFixture {
 public:
-    // using PluginInterfacePtr = std::unique_ptr<IDAM_PLUGIN_INTERFACE, PluginInterfaceDeleter>;
-    //
-    // static PluginInterfacePtr Create(
-    //     const std::string& function = "get",
-    //     const std::string& machine = "test_machine", 
-    //     const std::string& path = "test_ids",
-    //     int shot = 12345
-    // );
     static IDAM_PLUGIN_INTERFACE* Create(
         const std::string& function = "get",
         const std::string& machine = "test_machine", 
@@ -34,9 +26,5 @@ public:
 
 };
 
-// Test-specific JSON mapping files
-extern const nlohmann::json TEST_MAPPINGS_CFG;
-extern const nlohmann::json TEST_GLOBALS;
-extern const nlohmann::json TEST_MAPPINGS;
-extern const nlohmann::json TEST_SHOT_GLOBALS;
-extern const nlohmann::json TEST_SHOT_MAPPINGS;
+MapArguments makeMapArguments(IDAM_PLUGIN_INTERFACE* plugin_interface,
+                              SignalType sig_type = SignalType::DEFAULT);

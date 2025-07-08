@@ -9,6 +9,7 @@ project(
 set( TEST_SOURCES
     src/main_test.cpp
     src/json_plugin_test.cpp
+    src/value_mapping_test.cpp
 )
 
 include( FetchContent)
