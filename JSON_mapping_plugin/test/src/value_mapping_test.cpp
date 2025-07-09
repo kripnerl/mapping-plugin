@@ -44,7 +44,7 @@ TEST_CASE("ValueMapping can be constructed from JSON", "[value_mapping]") {
     }
 }
 
-TEST_CASE("ValueMapping returns expected data for different 0d types", "[value_mapping_0d]") {
+TEST_CASE("ValueMapping returns expected data for different 0D types", "[value_mapping_0D]") {
 
     auto* interface = PluginInterfaceFixture::Create();
     nlohmann::json test_json = {
@@ -138,7 +138,7 @@ TEST_CASE("ValueMapping returns expected data for different 0d types", "[value_m
     }
 }
 
-TEST_CASE("ValueMapping returns expected data for different 1D types", "[value_mapping_1d]") {
+TEST_CASE("ValueMapping returns expected data for different 1D types", "[value_mapping_1D]") {
 
     auto* interface = PluginInterfaceFixture::Create();
     nlohmann::json test_json = {
