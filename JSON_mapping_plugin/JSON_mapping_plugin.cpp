@@ -1,20 +1,45 @@
 #include "JSON_mapping_plugin.h"
 #include "handlers/mapping_handler.hpp"
 #include "map_types/base_mapping.hpp"
+#include "map_types/map_arguments.hpp"
 
+#include <nlohmann/json.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/join.hpp>
+#include <boost/algorithm/string/replace.hpp>
+#include <boost/algorithm/string/case_conv.hpp>
+#include <cstdint>
+#include <cstdlib>
 #include <fstream>
 #include <regex>
+#include <string>
+#include <deque>
+#include <string_view>
+#include <ios>
+#include <iomanip>
+#include <ctime>
+#include <chrono>
+#include <exception>
+#include <vector>
+#include <utility>
 
 #include <clientserver/initStructs.h>
 #include <clientserver/stringUtils.h>
 #include <clientserver/udaStructs.h>
+#include <clientserver/errorLog.h>
 #include <server/getServerEnvironment.h>
+#include <plugins/pluginStructs.h>
+#include <plugins/udaPlugin.h>
+#include <logging/logging.h>
 
-namespace JSONMapping
-{
+namespace {
 
-enum class JPLogLevel { DEBUG, INFO, WARNING, ERROR };
+constexpr int THISPLUGIN_VERSION = 1;
+constexpr int THISPLUGIN_MAX_INTERFACE_VERSION = 1;
+constexpr const char* THISPLUGIN_DEFAULT_METHOD = "help";
+
+enum class JPLogLevel : uint8_t { DEBUG, INFO, WARNING, ERROR };
 
 /**
  * @brief Temporary logging function for JSON_mapping_plugin, outputs
@@ -26,7 +51,6 @@ enum class JPLogLevel { DEBUG, INFO, WARNING, ERROR };
  */
 int JPLog(JPLogLevel log_level, std::string_view log_msg)
 {
-
     const ENVIRONMENT* environment = getServerEnvironment();
 
     std::string const log_file_name = std::string{static_cast<const char*>(environment->logdir)} + "/JSON_plugin.log";
@@ -60,7 +84,7 @@ int JPLog(JPLogLevel log_level, std::string_view log_msg)
     return 0;
 }
 
-} // namespace JSONMapping
+} // anon namespace
 
 /**
  * @class JSONMappingPlugin
@@ -154,7 +178,7 @@ int JSONMappingPlugin::init(IDAM_PLUGIN_INTERFACE* plugin_interface)
     if (!map_dir.empty()) {
         m_mapping_handler.set_map_dir(map_dir);
     } else {
-        JSONMapping::JPLog(JSONMapping::JPLogLevel::ERROR, "JSONMappingPlugin::init: - JSON mapping locations not set");
+        JPLog(JPLogLevel::ERROR, "JSONMappingPlugin::init: - JSON mapping locations not set");
         RAISE_PLUGIN_ERROR("JSONMappingPlugin::init: - JSON mapping locations not set")
     }
     m_mapping_handler.init();
@@ -212,7 +236,6 @@ SignalType JSONMappingPlugin::deduce_signal_type(std::string_view final_path_ele
 int JSONMappingPlugin::add_machine_specific_attributes(IDAM_PLUGIN_INTERFACE* plugin_interface,
                                                        nlohmann::json& attributes)
 {
-
     for (int i = 0; i < plugin_interface->request_data->nameValueList.pairCount; ++i) {
         std::string const name = plugin_interface->request_data->nameValueList.nameValue[i].name;
         std::string const value = plugin_interface->request_data->nameValueList.nameValue[i].value;
@@ -266,7 +289,7 @@ std::string JSONMappingPlugin::generate_map_path(std::deque<std::string>& path_t
     }
 
     std::string map_path = boost::algorithm::join(path_tokens, "/");
-    JSONMapping::JPLog(JSONMapping::JPLogLevel::INFO, map_path);
+    JPLog(JPLogLevel::INFO, map_path);
 
     std::string found_path;
 
@@ -301,7 +324,6 @@ std::string JSONMappingPlugin::generate_map_path(std::deque<std::string>& path_t
  */
 int JSONMappingPlugin::get(IDAM_PLUGIN_INTERFACE* plugin_interface)
 {
-
     DATA_BLOCK* data_block = plugin_interface->data_block;
     REQUEST_DATA* request_data = plugin_interface->request_data;
 
@@ -318,7 +340,7 @@ int JSONMappingPlugin::get(IDAM_PLUGIN_INTERFACE* plugin_interface)
     std::deque<std::string> path_tokens;
     boost::split(path_tokens, path, boost::is_any_of("/"));
     if (path_tokens.empty()) {
-        JSONMapping::JPLog(JSONMapping::JPLogLevel::ERROR, "JSONMappingPlugin::get: - IDS path could not be split");
+        JPLog(JPLogLevel::ERROR, "JSONMappingPlugin::get: - IDS path could not be split");
         RAISE_PLUGIN_ERROR("JSONMappingPlugin::get: - IDS path could not be split")
     }
 
@@ -338,8 +360,7 @@ int JSONMappingPlugin::get(IDAM_PLUGIN_INTERFACE* plugin_interface)
     const auto maybe_mappings = m_mapping_handler.read_mappings(machine_string, ids_name, request_data);
 
     if (!maybe_mappings) {
-        JSONMapping::JPLog(JSONMapping::JPLogLevel::ERROR,
-                           "JSONMappingPlugin::get: - JSON mapping not loaded, no map entries");
+        JPLog(JPLogLevel::ERROR, "JSONMappingPlugin::get: - JSON mapping not loaded, no map entries");
         RAISE_PLUGIN_ERROR("JSONMappingPlugin::get: - JSON mapping not loaded, no map entries")
     }
 
@@ -367,7 +388,6 @@ int JSONMappingPlugin::get(IDAM_PLUGIN_INTERFACE* plugin_interface)
 
 int JSONMappingPlugin::execute(IDAM_PLUGIN_INTERFACE* plugin_interface)
 {
-
     int return_code = 0;
     if (m_request_function == "help") {
         return_code = JSONMappingPlugin::help(plugin_interface);
@@ -397,7 +417,6 @@ int JSONMappingPlugin::execute(IDAM_PLUGIN_INTERFACE* plugin_interface)
  */
 [[maybe_unused]] int jsonMappingPlugin(IDAM_PLUGIN_INTERFACE* plugin_interface)
 {
-
     if (plugin_interface->interfaceVersion > THISPLUGIN_MAX_INTERFACE_VERSION) {
         RAISE_PLUGIN_ERROR("Plugin Interface Version Unknown to this plugin: Unable to execute the request!")
     }

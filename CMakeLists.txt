@@ -9,6 +9,8 @@ project(
     LANGUAGES CXX
 )
 
+set( CMAKE_EXPORT_COMPILE_COMMANDS ON )
+
 #
 # Extra cmake modules to find libraries
 #
@@ -33,7 +35,7 @@ add_clang_format_target()
 message( STATUS "CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}" )
 
 if( NOT CMAKE_BUILD_TYPE )
-  set( CMAKE_BUILD_TYPE "Debug" )
+    set( CMAKE_BUILD_TYPE "Debug" )
 endif()
 message( STATUS "Started CMake for ${PROJECT_NAME} v${PROJECT_VERSION}...\n" )
 
@@ -41,7 +43,7 @@ message( STATUS "Started CMake for ${PROJECT_NAME} v${PROJECT_VERSION}...\n" )
 # Prevent building in the source directory
 #
 if( PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR )
-  message( FATAL_ERROR "In-source builds not allowed.
+    message( FATAL_ERROR "In-source builds not allowed.
     Please make a new directory (called a build directory)
     and run CMake from there.\n" )
 endif()
