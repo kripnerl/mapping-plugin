@@ -6,11 +6,8 @@ TEST_CASE("Dummy test to check CTest integration", "[dummy]") {
     REQUIRE(1 + 1 == 2);
 }
 
-TEST_CASE("PluginInterfaceFixture creates valid interface", "[fixture]") {
+TEST_CASE("DataBlockFixture creates valid data_block", "[fixture]") {
     // auto interface = PluginInterfaceFixture::Create("get", "test_machine", "test_ids", 12345);
-    auto* interface = PluginInterfaceFixture::Create();
-    
-    REQUIRE(interface != nullptr);
-    REQUIRE(interface->request_data != nullptr);
-    REQUIRE(interface->data_block != nullptr);
+    auto* data_block = DataBlockFixture::Create();
+    REQUIRE(data_block != nullptr);
 }

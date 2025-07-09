@@ -2,6 +2,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
+#include <clientserver/udaStructs.h>
 #include <nlohmann/json.hpp>
 #include <plugins/pluginStructs.h>
 #include <plugins/udaPlugin.h>
@@ -15,9 +16,9 @@
 //     }
 // };
 
-class PluginInterfaceFixture {
+class DataBlockFixture {
 public:
-    static IDAM_PLUGIN_INTERFACE* Create(
+    static DATA_BLOCK* Create(
         const std::string& function = "get",
         const std::string& machine = "test_machine", 
         const std::string& path = "test_ids",
@@ -26,5 +27,5 @@ public:
 
 };
 
-MapArguments makeMapArguments(IDAM_PLUGIN_INTERFACE* plugin_interface,
-                              SignalType sig_type = SignalType::DEFAULT);
+MapArguments makeMapArguments(DATA_BLOCK* datablock, UDA_TYPE datatype,
+                              int rank, SignalType sig_type = SignalType::DEFAULT);
