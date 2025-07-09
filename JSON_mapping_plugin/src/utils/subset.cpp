@@ -1,4 +1,5 @@
 #include <clientserver/compressDim.h>
+#include <clientserver/udaStructs.h>
 #include <plugins/pluginStructs.h>
 #include <stdexcept>
 #include <utils/subset.hpp>
@@ -156,17 +157,16 @@ std::vector<T> subset(std::vector<T>& input, std::vector<SubsetInfo>& subset_dim
     return result;
 }
 
-template <typename T> void do_a_subset(IDAM_PLUGIN_INTERFACE* plugin_interface, double scale_factor, double offset)
+template <typename T> void do_subset(DATA_BLOCK* data_block, SUBSET& data_subset, double scale_factor, double offset)
 {
-    log(LogLevel::DEBUG, "Entering do_a_subset method");
-    DATA_BLOCK* data_block = plugin_interface->data_block;
+    log(LogLevel::DEBUG, "Entering do_subset method");
     size_t bytes_size = data_block->data_n * uda_type_utils::size_of_uda_type(data_block->data_type);
     log(LogLevel::DEBUG, "data array bye size is " + std::to_string(bytes_size));
     std::vector<T> data_in((T*)data_block->data, (T*)data_block->data + data_block->data_n);
 
     // TODO: associate subset dimid properly
     log(LogLevel::DEBUG, "creating subset info arrays");
-    auto subset_dims = subset_info_converter(plugin_interface->request_data->datasubset, data_block);
+    auto subset_dims = subset_info_converter(data_subset, data_block);
     log(LogLevel::DEBUG, "carrying out subset operation");
     auto transformed_data = subset(data_in, subset_dims, scale_factor, offset);
 
@@ -207,8 +207,7 @@ void collapse_dims(DATA_BLOCK* data_block, std::vector<SubsetInfo>& subset_dims)
     } else if (n_dims > 0) {
         log(LogLevel::DEBUG, "reallocating dims array");
         DIMS* new_dims = (DIMS*)malloc(n_dims * sizeof(DIMS));
-        for (auto i = 0, j = 0; i < n_dims, j < data_block->rank; ++j) {
-
+        for (auto i = 0U, j = 0U; i < n_dims && j < data_block->rank; ++j) {
             if (subset_dims[j].size() == 1) {
                 log(LogLevel::DEBUG, "removing dim #" + std::to_string(j));
                 freeDimBlockContents(data_block, j);
@@ -309,46 +308,48 @@ void apply_dim_subsetting(DIMS* dim, const SubsetInfo& subset_info, double scale
     }
 }
 
-void apply_subsetting(IDAM_PLUGIN_INTERFACE* plugin_interface, double scale_factor, double offset)
+void apply_subsetting(DATA_BLOCK* data_block, SUBSET& data_subset, double scale_factor, double offset)
 {
     log(LogLevel::DEBUG, "Entering apply subsetting function");
-    if (plugin_interface->data_block->rank == 0)
+    if (data_block->rank == 0) {
         return;
-    switch (plugin_interface->data_block->data_type) {
+    }
+
+    switch (data_block->data_type) {
         case UDA_TYPE_SHORT:
-            do_a_subset<short>(plugin_interface, scale_factor, offset);
+            do_subset<short>(data_block, data_subset, scale_factor, offset);
             break;
         case UDA_TYPE_INT:
-            do_a_subset<int>(plugin_interface, scale_factor, offset);
+            do_subset<int>(data_block, data_subset, scale_factor, offset);
             break;
         case UDA_TYPE_LONG:
-            do_a_subset<long>(plugin_interface, scale_factor, offset);
+            do_subset<long>(data_block, data_subset, scale_factor, offset);
             break;
         case UDA_TYPE_LONG64:
-            do_a_subset<int64_t>(plugin_interface, scale_factor, offset);
+            do_subset<int64_t>(data_block, data_subset, scale_factor, offset);
             break;
         case UDA_TYPE_UNSIGNED_SHORT:
-            do_a_subset<unsigned short>(plugin_interface, scale_factor, offset);
+            do_subset<unsigned short>(data_block, data_subset, scale_factor, offset);
             break;
         case UDA_TYPE_UNSIGNED_INT:
-            do_a_subset<unsigned int>(plugin_interface, scale_factor, offset);
+            do_subset<unsigned int>(data_block, data_subset, scale_factor, offset);
             break;
         case UDA_TYPE_UNSIGNED_LONG:
-            do_a_subset<unsigned long>(plugin_interface, scale_factor, offset);
+            do_subset<unsigned long>(data_block, data_subset, scale_factor, offset);
             break;
         case UDA_TYPE_UNSIGNED_LONG64:
-            do_a_subset<uint64_t>(plugin_interface, scale_factor, offset);
+            do_subset<uint64_t>(data_block, data_subset, scale_factor, offset);
             break;
         case UDA_TYPE_FLOAT:
             log(LogLevel::DEBUG, "uda type is float");
-            do_a_subset<float>(plugin_interface, scale_factor, offset);
+            do_subset<float>(data_block, data_subset, scale_factor, offset);
             break;
         case UDA_TYPE_DOUBLE:
-            do_a_subset<double>(plugin_interface, scale_factor, offset);
+            do_subset<double>(data_block, data_subset, scale_factor, offset);
             break;
         default:
             throw std::runtime_error(std::string("uda type ") +
-                                     std::to_string(plugin_interface->data_block->data_type) +
+                                     std::to_string(data_block->data_type) +
                                      " not implemented for json_imas_mapping cache");
     }
 }

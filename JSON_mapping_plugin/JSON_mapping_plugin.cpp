@@ -77,7 +77,6 @@ int JPLog(JPLogLevel log_level, std::string_view log_msg)
  */
 class JSONMappingPlugin
 {
-
   public:
     int entry_handle(IDAM_PLUGIN_INTERFACE* plugin_interface);
 
@@ -146,7 +145,6 @@ JSONMappingPlugin::extract_indices(const std::deque<std::string>& path_tokens)
  */
 int JSONMappingPlugin::init(IDAM_PLUGIN_INTERFACE* plugin_interface)
 {
-
     if (!m_init || m_request_function == "init" || m_request_function == "initialise") {
         reset(plugin_interface);
     }
@@ -158,7 +156,7 @@ int JSONMappingPlugin::init(IDAM_PLUGIN_INTERFACE* plugin_interface)
         JSONMapping::JPLog(JSONMapping::JPLogLevel::ERROR, "JSONMappingPlugin::init: - JSON mapping locations not set");
         RAISE_PLUGIN_ERROR("JSONMappingPlugin::init: - JSON mapping locations not set")
     }
-    m_mapping_handler.init();
+    m_mapping_handler.init(plugin_interface->pluginList);
     m_init = true;
 
     return 0;
@@ -302,7 +300,6 @@ std::string JSONMappingPlugin::generate_map_path(std::deque<std::string>& path_t
  */
 int JSONMappingPlugin::get(IDAM_PLUGIN_INTERFACE* plugin_interface)
 {
-
     DATA_BLOCK* data_block = plugin_interface->data_block;
     REQUEST_DATA* request_data = plugin_interface->request_data;
 

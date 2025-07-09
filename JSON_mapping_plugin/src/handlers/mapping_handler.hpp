@@ -48,13 +48,12 @@ using MappingPair = std::pair<nlohmann::json&, IDSMapRegister&>;
 
 class MappingHandler
 {
-
   public:
     MappingHandler() : m_init(false), m_dd_version("3.39.0"), m_cache_enabled(false) {};
     explicit MappingHandler(std::string dd_version) : m_init(false), m_dd_version(std::move(dd_version)), m_cache_enabled(false) {};
 
     int reset();
-    int init();
+    int init(const PLUGINLIST* plugin_list);
     int set_map_dir(const std::string& mapping_dir);
     std::optional<MappingPair> read_mappings(const MachineName& machine, const std::string& request_ids, const REQUEST_DATA* request_data);
 
@@ -70,9 +69,9 @@ class MappingHandler
 
     int init_mappings(const MachineName& machine, const IDSName& ids_name, const nlohmann::json& data, int shot);
     static int init_value_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
-    static int init_plugin_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value,
-                                   const nlohmann::json& ids_attributes,
-                                   std::shared_ptr<ram_cache::RamCache>& ram_cache);
+    int init_plugin_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value,
+                            const nlohmann::json& ids_attributes,
+                            std::shared_ptr<ram_cache::RamCache>& ram_cache);
     static int init_dim_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
     // static int init_slice_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
     static int init_expr_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
@@ -86,4 +85,5 @@ class MappingHandler
     nlohmann::json m_mapping_config;
     std::shared_ptr<ram_cache::RamCache> m_ram_cache;
     bool m_cache_enabled;
+    const PLUGINLIST* m_plugin_list = nullptr; // currently need this to be able to call UDA plugins
 };

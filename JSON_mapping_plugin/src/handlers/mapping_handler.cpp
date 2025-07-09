@@ -2,6 +2,7 @@
 
 #include <boost/algorithm/string.hpp>
 #include <inja/inja.hpp>
+#include <plugins/pluginStructs.h>
 #include <unordered_map>
 #include <optional>
 #include <fstream>
@@ -27,8 +28,10 @@ int MappingHandler::reset()
     return 0;
 }
 
-int MappingHandler::init()
+int MappingHandler::init(const PLUGINLIST* plugin_list)
 {
+    m_plugin_list = plugin_list;
+
     if (m_init || !m_machine_register.empty()) {
         return 0;
     }
@@ -310,8 +313,7 @@ int MappingHandler::init_plugin_mapping(IDSMapRegister& map_reg, const std::stri
         apply_config(args, function, plugin_config_map, plugin_name);
     }
 
-    map_reg.try_emplace(key,
-                        std::make_unique<PluginMapping>(plugin_name, args, offset, scale, slice, function, ram_cache));
+    map_reg.try_emplace(key, std::make_unique<PluginMapping>(plugin_name, args, offset, scale, slice, function, ram_cache, m_plugin_list));
     return 0;
 }
 

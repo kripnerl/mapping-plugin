@@ -58,9 +58,9 @@ class SubsetInfo
     }
 };
 
-void apply_subsetting(IDAM_PLUGIN_INTERFACE* plugin_interface, double scale_factor, double offset);
+void apply_subsetting(DATA_BLOCK* data_block, SUBSET& data_subset, double scale_factor, double offset);
 
-template <typename T> void do_a_subset(IDAM_PLUGIN_INTERFACE* plugin_interface, double scale_factor, double offset);
+template <typename T> void do_subset(DATA_BLOCK* data_block, SUBSET& data_subset, double scale_factor, double offset);
 
 template <typename T> void do_dim_subset(DIMS* dim, const SubsetInfo& subset_info, double scale_factor, double offset);
 
