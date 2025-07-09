@@ -3,6 +3,7 @@
 #include "map_types/base_mapping.hpp"
 
 #include <boost/algorithm/string.hpp>
+#include <clientserver/udaTypes.h>
 #include <fstream>
 #include <regex>
 
@@ -311,9 +312,20 @@ int JSONMappingPlugin::get(IDAM_PLUGIN_INTERFACE* plugin_interface)
 
     const char* mapping = nullptr;
     const char* path = nullptr;
+    int datatype = UDA_TYPE_UNKNOWN;
+    int rank = -1;
 
     FIND_REQUIRED_STRING_VALUE(request_data->nameValueList, mapping)
     FIND_REQUIRED_STRING_VALUE(request_data->nameValueList, path)
+    FIND_REQUIRED_INT_VALUE(request_data->nameValueList, datatype);
+    if (datatype < 0 || datatype > UDA_TYPE_CAPNP) {
+        RAISE_PLUGIN_ERROR("Invalid datatype");
+    }
+    FIND_REQUIRED_INT_VALUE(request_data->nameValueList, rank);
+    if (rank < 0) {
+        RAISE_PLUGIN_ERROR("Invalid rank");
+    }
+
 
     std::deque<std::string> path_tokens;
     boost::split(path_tokens, path, boost::is_any_of("/"));
@@ -360,7 +372,7 @@ int JSONMappingPlugin::get(IDAM_PLUGIN_INTERFACE* plugin_interface)
 
     add_machine_specific_attributes(plugin_interface, attributes);
 
-    MapArguments const map_arguments{plugin_interface, mappings, attributes, sig_type};
+    MapArguments const map_arguments{plugin_interface->data_block, mappings, attributes, sig_type, static_cast<UDA_TYPE>(datatype), rank};
 
     return mappings.at(map_path)->map(map_arguments);
 }

@@ -75,7 +75,7 @@ bool PluginMapping::copy_from_cache(const MapArguments& arguments, const std::st
     }
 
     auto signal_type = arguments.m_sig_type;
-    auto* data_block = arguments.m_interface->data_block;
+    auto* data_block = arguments.m_datablock;
 
     switch (signal_type) {
         case SignalType::DATA:
@@ -146,7 +146,7 @@ int PluginMapping::call_plugins(const MapArguments& arguments) const
     if (cache_hit) {
         m_ram_cache->log(ram_cache::LogLevel::INFO, "Adding cached datablock onto plugin_interface");
         m_ram_cache->log(ram_cache::LogLevel::INFO, "data on plugin_interface (data_n): " +
-                                                        std::to_string(arguments.m_interface->data_block->data_n));
+                                                        std::to_string(arguments.m_datablock->data_n));
         err = 0;
     } else {
         err = callPlugin(arguments.m_interface->pluginList, request_str.c_str(), arguments.m_interface);
@@ -163,7 +163,7 @@ int PluginMapping::call_plugins(const MapArguments& arguments) const
         // Add retrieved datablock to cache. data is copied from datablock into a new ram_cache::data_entry. original
         // data remains on block (on plugin_interface structure) for return.
         if (m_cache_enabled) {
-            m_ram_cache->add(request_str, arguments.m_interface->data_block);
+            m_ram_cache->add(request_str, arguments.m_datablock);
         }
     }
 
@@ -201,7 +201,7 @@ int PluginMapping::call_plugins(const MapArguments& arguments) const
             // Opportunity to handle time differently
             // Return time SignalType early, no need to scale/offset
             if (!cache_hit) {
-                err = imas_json_plugin::uda_helpers::set_return_time_array(arguments.m_interface->data_block);
+                err = imas_json_plugin::uda_helpers::set_return_time_array(arguments.m_datablock);
             }
             return err;
         }
@@ -215,10 +215,10 @@ int PluginMapping::call_plugins(const MapArguments& arguments) const
          */
         // scale takes precedence
         if (m_scale.has_value()) {
-            err = JMP::map_transform::transform_scale(arguments.m_interface->data_block, m_scale.value());
+            err = JMP::map_transform::transform_scale(arguments.m_datablock, m_scale.value());
         }
         if (m_offset.has_value()) {
-            err = JMP::map_transform::transform_offset(arguments.m_interface->data_block, m_offset.value());
+            err = JMP::map_transform::transform_offset(arguments.m_datablock, m_offset.value());
         }
     }
 
@@ -230,13 +230,13 @@ int PluginMapping::map(const MapArguments& arguments) const
 
     int err = call_plugins(arguments);
     // temporary solution to the slice functionality returning arrays of 1 element
-    if (arguments.m_interface->data_block->rank == 1 and arguments.m_interface->data_block->data_n == 1) {
-        arguments.m_interface->data_block->rank = 0;
+    if (arguments.m_datablock->rank == 1 and arguments.m_datablock->data_n == 1) {
+        arguments.m_datablock->rank = 0;
 
         // imas won't care about order here, but for testing this
         // avoids a segfault in the client if you try to
         // interrogate the result.time attribute
-        arguments.m_interface->data_block->order = -1;
+        arguments.m_datablock->order = -1;
     }
     return err;
 }

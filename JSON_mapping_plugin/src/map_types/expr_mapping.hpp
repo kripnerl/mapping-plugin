@@ -84,27 +84,27 @@ template <typename T> int ExprMapping::eval_expr(const MapArguments& arguments) 
     symbol_table.add_constants();
     for (const auto& [key, json_name] : m_parameters) {
 
-        initDataBlock(arguments.m_interface->data_block); // Reset datablock per param
+        initDataBlock(arguments.m_datablock); // Reset datablock per param
         arguments.m_entries.at(json_name)->map(arguments);
 
         // No data for expr parameters, cannot evaluate, return 1;
-        if (!arguments.m_interface->data_block->data) {
+        if (!arguments.m_datablock->data) {
             return 1;
         }
 
-        if (arguments.m_interface->data_block->data_n > 0) {
-            symbol_table.add_vector(key, reinterpret_cast<T*>(arguments.m_interface->data_block->data),
-                                    arguments.m_interface->data_block->data_n);
+        if (arguments.m_datablock->data_n > 0) {
+            symbol_table.add_vector(key, reinterpret_cast<T*>(arguments.m_datablock->data),
+                                    arguments.m_datablock->data_n);
             if (first_vec_param) {
-                result_size = arguments.m_interface->data_block->data_n;
+                result_size = arguments.m_datablock->data_n;
                 first_vec_param = false;
             }
             vector_expr = true;
         } else {
-            symbol_table.add_variable(key, *reinterpret_cast<T*>(arguments.m_interface->data_block->data));
+            symbol_table.add_variable(key, *reinterpret_cast<T*>(arguments.m_datablock->data));
         }
         // Collect vectors for deletion later
-        parameters_ptrs.push_back(arguments.m_interface->data_block->data);
+        parameters_ptrs.push_back(arguments.m_datablock->data);
     }
 
     std::vector<T> result(result_size);
@@ -121,9 +121,9 @@ template <typename T> int ExprMapping::eval_expr(const MapArguments& arguments) 
     expression.value(); // Evaluate expression
 
     if (vector_expr) {
-        imas_json_plugin::uda_helpers::set_return_data_array_vec(arguments.m_interface->data_block, result);
+        imas_json_plugin::uda_helpers::set_return_data_array_vec(arguments.m_datablock, result);
     } else {
-        imas_json_plugin::uda_helpers::set_return_data_scalar_type(arguments.m_interface->data_block, result.at(0));
+        imas_json_plugin::uda_helpers::set_return_data_scalar_type(arguments.m_datablock, result.at(0));
     }
 
     // Free parameter memory from subsequent data_block requests

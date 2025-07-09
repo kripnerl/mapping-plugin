@@ -201,11 +201,11 @@ int ValueMapping::map(const MapArguments& arguments) const
 
         // deduce type if true
         if (all_number) {
-            err = type_deduce_array(arguments.m_interface->data_block, temp_val);
+            err = type_deduce_array(arguments.m_datablock, temp_val);
         }
 
     } else if (temp_val.is_primitive()) {
-        err = type_deduce_primitive(arguments.m_interface->data_block, temp_val, arguments.m_global_data, arguments.m_datatype, arguments.m_rank);
+        err = type_deduce_primitive(arguments.m_datablock, temp_val, arguments.m_global_data, arguments.m_datatype, arguments.m_rank);
     } else {
         UDA_LOG(UDA_LOG_DEBUG, "ValueMapping::map not structured or primitive");
     }

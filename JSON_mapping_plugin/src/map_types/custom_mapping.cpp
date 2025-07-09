@@ -18,10 +18,10 @@ int CustomMapping::map(const MapArguments& arguments) const
     int err{1};
     switch (m_custom_type) {
         case CustomMapType_t::MASTU_helloworld:
-            err = MASTU_helloworld(arguments.m_interface->data_block);
+            err = MASTU_helloworld(arguments.m_datablock);
             break;
         case CustomMapType_t::DRAFT_helloworld:
-            err = DRAFT_helloworld(arguments.m_interface->data_block);
+            err = DRAFT_helloworld(arguments.m_datablock);
             break;
         case CustomMapType_t::INVALID:
             break;

@@ -11,13 +11,13 @@ int DimMapping::map(const MapArguments& arguments) const
 
     int err = arguments.m_entries.at(m_dim_probe)->map(arguments);
     if (err == 0) {
-        free((void*)arguments.m_interface->data_block->data); // fix
-        arguments.m_interface->data_block->data = nullptr;
-        if (arguments.m_interface->data_block->data_n == 0) {
+        free((void*)arguments.m_datablock->data); // fix
+        arguments.m_datablock->data = nullptr;
+        if (arguments.m_datablock->data_n == 0) {
             UDA_LOG(UDA_LOG_DEBUG, "\nDimMapping::map: Dim probe could not be used for Shape_of \n");
             return 1;
         }
-        err = setReturnDataIntScalar(arguments.m_interface->data_block, arguments.m_interface->data_block->data_n,
+        err = setReturnDataIntScalar(arguments.m_datablock, arguments.m_datablock->data_n,
                                      nullptr);
     }
     return err;
