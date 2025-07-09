@@ -1,10 +1,7 @@
 #include "map_types/expr_mapping.hpp"
 
-template int ExprMapping::eval_expr<float>(const MapArguments& arguments) const;
-
-// template int ExprMapping::eval_expr<double>(IDAM_PLUGIN_INTERFACE* interface,
-//         const std::unordered_map<std::string,std::unique_ptr<Mapping>>&
-//         entries, const nlohmann::json& global_data) const;
+// template int ExprMapping::eval_expr<float>(const MapArguments& arguments) const;
+template int ExprMapping::eval_expr<double>(const MapArguments& arguments) const;
 
 /**
  * @brief Entry map function, overriden from parent Mapping class
@@ -20,5 +17,5 @@ int ExprMapping::map(const MapArguments& arguments) const
 {
 
     // Float only currently for testing purposes
-    return eval_expr<float>(arguments);
+    return eval_expr<double>(arguments);
 };
