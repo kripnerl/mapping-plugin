@@ -2,6 +2,7 @@
 build*/*
 install/*
 cmake-build-*
+Testing/*
 
 # Machine dependent compile commands
 compile_commands.json

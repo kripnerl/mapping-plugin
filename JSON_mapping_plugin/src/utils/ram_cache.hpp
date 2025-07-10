@@ -1,18 +1,24 @@
 #pragma once
 
-#include "clientserver/udaStructs.h"
-#include <algorithm>
+#include <boost/range/algorithm/find.hpp>
 #include <chrono>
+#include <cstdint>
 #include <cstdlib>
+#include <ctime>
 #include <fstream>
 #include <iomanip>
+#include <ios>
 #include <memory>
-#include <optional>
-#include <server/getServerEnvironment.h>
 #include <string>
+#include <string_view>
 #include <utility>
-#include <utils/print_uda_structs.hpp>
 #include <vector>
+
+// UDA includes
+#include <server/getServerEnvironment.h>
+#include <utils/print_uda_structs.hpp>
+#include <clientserver/udaStructs.h>
+
 /*
  *
  * NOTES:
@@ -33,9 +39,8 @@ enum class LogLevel { DEBUG, INFO, WARNING, ERROR };
  * @param log_msg The message to be logged
  * @return
  */
-inline int log(LogLevel log_level, std::string_view log_msg)
+inline void log(LogLevel log_level, std::string_view log_msg)
 {
-
     const ENVIRONMENT* environment = getServerEnvironment();
 
     std::string const log_file_name = std::string{static_cast<const char*>(environment->logdir)} + "/ramcache.log";
@@ -44,7 +49,7 @@ inline int log(LogLevel log_level, std::string_view log_msg)
     std::time_t const time_now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     const auto timestamp = std::put_time(std::gmtime(&time_now), "%Y-%m-%d:%H:%M:%S"); // NOLINT(concurrency-mt-unsafe)
     if (!log_file) {
-        return 1;
+        return;
     }
 
     switch (log_level) {
@@ -65,11 +70,9 @@ inline int log(LogLevel log_level, std::string_view log_msg)
     }
     log_file << log_msg << "\n";
     log_file.close();
-
-    return 0;
 }
 
-inline void log_datablock_status(DATA_BLOCK* data_block, const std::string message)
+inline void log_datablock_status(DATA_BLOCK* data_block, const std::string& message)
 {
     log(LogLevel::DEBUG, message + "\n" + uda_structs::print_data_block(data_block));
 }
@@ -90,19 +93,19 @@ const static int default_size = 100;
 class RamCache
 {
   public:
-    inline RamCache()
+    RamCache()
     {
         _values.reserve(_max_items);
         set_logging_option();
     }
 
-    explicit inline RamCache(uint32_t max_items) : _max_items(max_items)
+    explicit RamCache(uint32_t max_items) : _max_items(max_items)
     {
         _values.reserve(_max_items);
         set_logging_option();
     }
 
-    inline void add(std::string key, std::unique_ptr<DataEntry> value)
+    void add(std::string key, std::unique_ptr<DataEntry> value)
     {
         if (_values.size() < _max_items) {
             _keys.emplace_back(key);
@@ -117,32 +120,34 @@ class RamCache
         log(LogLevel::INFO, "current position is now: " + std::to_string(_current_position));
     }
 
-    inline void add(std::string key, DATA_BLOCK* data_block)
+    void add(std::string key, DATA_BLOCK* data_block)
     {
         auto new_cache_entry = make_data_entry(data_block);
         add(std::move(key), std::move(new_cache_entry));
     }
 
-    inline bool has_entry(const std::string& key) { return std::find(_keys.begin(), _keys.end(), key) != _keys.end(); }
+    bool has_entry(const std::string& key) { return boost::range::find(_keys, key) != _keys.end(); }
 
     std::unique_ptr<DataEntry> make_data_entry(DATA_BLOCK* data_block);
     bool copy_from_cache(const std::string& key, DATA_BLOCK* data_block);
     bool copy_data_from_cache(const std::string& key, DATA_BLOCK* data_block);
     bool copy_error_high_from_cache(const std::string& key, DATA_BLOCK* data_block);
     bool copy_time_from_cache(const std::string& key, DATA_BLOCK* data_block);
-    bool copy_dim_from_cache(const std::string& key, unsigned int i, DATA_BLOCK* data_block);
+    bool copy_dim_from_cache(const std::string& key, unsigned int index, DATA_BLOCK* data_block);
 
-    inline int log(LogLevel log_level, std::string_view message) const
+    void log(LogLevel log_level, std::string_view message) const
     {
-        if (!_logging_active)
-            return 0;
-        return ram_cache::log(log_level, message);
+        if (!_logging_active) {
+            return;
+        }
+        ram_cache::log(log_level, message);
     }
 
-    inline void log_datablock_status(DATA_BLOCK* data_block, std::string message) const
+    void log_datablock_status(DATA_BLOCK* data_block, const std::string& message) const
     {
-        if (!_logging_active)
+        if (!_logging_active) {
             return;
+        }
         ram_cache::log_datablock_status(data_block, message);
     }
 
@@ -154,7 +159,7 @@ class RamCache
     std::vector<std::string> _keys;
     std::vector<std::unique_ptr<DataEntry>> _values;
 
-    inline void set_logging_option()
+    void set_logging_option()
     {
         const char* log_env_option = getenv("UDA_JSON_MAPPING_CACHE_LOGGING");
         _logging_active = (log_env_option != nullptr) and (std::stoi(log_env_option) > 0);

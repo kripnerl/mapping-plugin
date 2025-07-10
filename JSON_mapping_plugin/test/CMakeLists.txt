@@ -10,9 +10,10 @@ set( TEST_SOURCES
     src/main_test.cpp
     src/json_plugin_test.cpp
     src/value_mapping_test.cpp
+    src/plugin_mapping_test.cpp
 )
 
-include( FetchContent)
+include( FetchContent )
 FetchContent_Declare(
     Catch2
     GIT_REPOSITORY https://github.com/catchorg/Catch2.git
@@ -68,4 +69,5 @@ target_link_libraries( test_helpers PUBLIC
 # CTest integration
 list( APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/extras )
 include( Catch )
-catch_discover_tests( ${CMAKE_PROJECT_NAME}_tests WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} )
+catch_discover_tests( ${CMAKE_PROJECT_NAME}_tests
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} )

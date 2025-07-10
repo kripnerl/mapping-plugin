@@ -1,9 +1,14 @@
 #pragma once
 
+#include <unordered_map>
+#include <memory>
+#include <nlohmann/json.hpp>
+#include <cstdint>
+
 #include <clientserver/udaStructs.h>
 #include <clientserver/udaTypes.h>
 
-enum class SignalType { DEFAULT, DATA, TIME, ERROR, DIM, INVALID };
+enum class SignalType : uint8_t { DEFAULT, DATA, TIME, ERROR, DIM, INVALID };
 
 class Mapping;
 

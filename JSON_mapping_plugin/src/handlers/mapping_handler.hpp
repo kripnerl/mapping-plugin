@@ -6,10 +6,12 @@
 #include <string>
 #include <unordered_map>
 #include <filesystem>
+#include <vector>
+#include <nlohmann/json.hpp>
+#include <plugins/pluginStructs.h>
 
 #include "map_types/base_mapping.hpp"
 #include "utils/ram_cache.hpp"
-#include <nlohmann/json.hpp>
 
 using IDSName = std::string;
 using MachineName = std::string;

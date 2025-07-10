@@ -27,5 +27,5 @@ class Mapping
     Mapping& operator=(Mapping&& other) = default;
     Mapping& operator=(const Mapping& other) = default;
 
-    virtual int map(const MapArguments& arguments) const = 0;
+    [[nodiscard]] virtual int map(const MapArguments& arguments) const = 0;
 };

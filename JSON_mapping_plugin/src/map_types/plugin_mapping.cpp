@@ -17,6 +17,7 @@
 #include <plugins/udaPlugin.h>
 #include <logging/logging.h>
 #include <clientserver/udaStructs.h>
+#include <client/getEnvironment.h>
 
 #include <fmt/core.h>
 #include <inja/inja.hpp>
@@ -117,10 +118,11 @@ int PluginMapping::call_plugins(const MapArguments& arguments) const
      */
 
     REQUEST_DATA request = {0};
-
     strcpy(request.signal, request_str.c_str());
-    ENVIRONMENT environment = {0};
-    makeRequestData(&request, *m_plugin_list, &environment);
+
+    ENVIRONMENT* environment = getIdamClientEnvironment();
+    makeRequestData(&request, *m_plugin_list, environment);
+
     SUBSET data_subset = request.datasubset;
     subset::log_request_status(&request, "request block before interception: ");
 
@@ -128,13 +130,19 @@ int PluginMapping::call_plugins(const MapArguments& arguments) const
     // in sqaure bracktes
     if (request_str.back() == ']' && request_str.rfind('[') != std::string::npos) {
         std::size_t subset_syntax_position = request_str.rfind('[');
-        m_ram_cache->log(ram_cache::LogLevel::INFO, "request before alteration: " + request_str);
+        if (m_cache_enabled) {
+            m_ram_cache->log(ram_cache::LogLevel::INFO, "request before alteration: " + request_str);
+        }
         request_str.erase(subset_syntax_position);
-        m_ram_cache->log(ram_cache::LogLevel::INFO, "request after alteration: " + request_str);
+        if (m_cache_enabled) {
+            m_ram_cache->log(ram_cache::LogLevel::INFO, "request after alteration: " + request_str);
+        }
     }
 
-    std::string key_found = m_cache_enabled && m_ram_cache->has_entry(request_str) ? "True" : "False";
-    m_ram_cache->log(ram_cache::LogLevel::DEBUG, "key, \"" + request_str + "\" in cache? " + key_found);
+    if (m_cache_enabled) {
+        std::string key_found = m_ram_cache->has_entry(request_str) ? "True" : "False";
+        m_ram_cache->log(ram_cache::LogLevel::DEBUG, "key, \"" + request_str + "\" in cache? " + key_found);
+    }
 
     /*
      *
@@ -144,7 +152,7 @@ int PluginMapping::call_plugins(const MapArguments& arguments) const
 
     // check cache for request string and only get data if it's not already there
     // currently copies whole datablock (data, error, and dims)
-    if (!m_cache_enabled) {
+    if (m_cache_enabled) {
         m_ram_cache->log(ram_cache::LogLevel::DEBUG, "caching disbaled");
     }
 
@@ -159,6 +167,7 @@ int PluginMapping::call_plugins(const MapArguments& arguments) const
         interface.request_data = &request;
         interface.pluginList = m_plugin_list;
         interface.data_block = arguments.m_datablock;
+        interface.environment = environment;
         err = callPlugin(m_plugin_list, request_str.c_str(), &interface);
         subset::log_request_status(&request, "request block status:");
 

@@ -1,24 +1,34 @@
 #include "mapping_handler.hpp"
 
 #include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/case_conv.hpp>
 #include <inja/inja.hpp>
-#include <plugins/pluginStructs.h>
 #include <unordered_map>
 #include <optional>
 #include <fstream>
 #include <vector>
 #include <filesystem>
-
-#include <clientserver/udaStructs.h>
+#include <string>
+#include <functional>
+#include <utility>
+#include <memory>
+#include <stdexcept>
+#include <nlohmann/json.hpp>
 #include <fmt/format.h>
+
+// UDA includes
+#include <clientserver/udaStructs.h>
 #include <plugins/udaPlugin.h>
 #include <logging/logging.h>
+#include <plugins/pluginStructs.h>
 
 #include "map_types/custom_mapping.hpp"
 #include "map_types/dim_mapping.hpp"
 #include "map_types/expr_mapping.hpp"
 #include "map_types/plugin_mapping.hpp"
 #include "map_types/value_mapping.hpp"
+#include "map_types/base_mapping.hpp"
+#include "utils/ram_cache.hpp"
 
 int MappingHandler::reset()
 {
