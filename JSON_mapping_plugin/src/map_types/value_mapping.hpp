@@ -1,6 +1,10 @@
 #pragma once
 
+#include <nlohmann/json.hpp>
+#include <utility>
+
 #include "map_types/base_mapping.hpp"
+#include "map_types/map_arguments.hpp"
 
 class ValueMapping : public Mapping
 {

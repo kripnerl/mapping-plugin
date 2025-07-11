@@ -1,6 +1,10 @@
 #include "map_types/custom_mapping.hpp"
+
+// UDA includes
 #include <clientserver/udaStructs.h>
 #include <plugins/udaPlugin.h>
+
+#include "map_types/map_arguments.hpp"
 
 /**
  * @brief Entry map function, overriden from parent Mapping class
@@ -14,14 +18,13 @@
  */
 int CustomMapping::map(const MapArguments& arguments) const
 {
-
     int err{1};
     switch (m_custom_type) {
         case CustomMapType_t::MASTU_helloworld:
-            err = MASTU_helloworld(arguments.m_datablock);
+            err = MASTU_helloworld(arguments.datablock);
             break;
         case CustomMapType_t::DRAFT_helloworld:
-            err = DRAFT_helloworld(arguments.m_datablock);
+            err = DRAFT_helloworld(arguments.datablock);
             break;
         case CustomMapType_t::INVALID:
             break;

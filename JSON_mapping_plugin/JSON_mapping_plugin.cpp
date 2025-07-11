@@ -1,31 +1,50 @@
 #include "JSON_mapping_plugin.h"
-#include "handlers/mapping_handler.hpp"
-#include "map_types/base_mapping.hpp"
 
 #include <boost/algorithm/string.hpp>
-#include <clientserver/udaTypes.h>
+#include <chrono>
+#include <cstdint>
+#include <cstdlib>
+#include <ctime>
+#include <deque>
+#include <exception>
 #include <fstream>
+#include <iomanip>
+#include <ios>
 #include <regex>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
+// UDA includes
+#include <clientserver/errorLog.h>
 #include <clientserver/initStructs.h>
 #include <clientserver/stringUtils.h>
 #include <clientserver/udaStructs.h>
+#include <clientserver/udaTypes.h>
+#include <logging/logging.h>
+#include <plugins/pluginStructs.h>
+#include <plugins/udaPlugin.h>
 #include <server/getServerEnvironment.h>
 
-namespace JSONMapping
+#include "handlers/mapping_handler.hpp"
+#include "map_types/base_mapping.hpp"
+#include "map_types/map_arguments.hpp"
+
+namespace json_mapping
 {
 
-enum class JPLogLevel { DEBUG, INFO, WARNING, ERROR };
+enum class LogLevel : uint8_t { DEBUG, INFO, WARNING, ERROR };
 
 /**
  * @brief Temporary logging function for JSON_mapping_plugin, outputs
  * to UDA_HOME/etc/
  *
- * @param log_level The JPLogLevel (INFO, WARNING, ERROR, DEBUG)
+ * @param log_level The LogLevel (INFO, WARNING, ERROR, DEBUG)
  * @param log_msg The message to be logged
  * @return
  */
-int JPLog(JPLogLevel log_level, std::string_view log_msg)
+int log(LogLevel log_level, std::string_view log_msg)
 {
 
     const ENVIRONMENT* environment = getServerEnvironment();
@@ -40,16 +59,16 @@ int JPLog(JPLogLevel log_level, std::string_view log_msg)
     }
 
     switch (log_level) {
-        case JPLogLevel::DEBUG:
+        case LogLevel::DEBUG:
             jp_log_file << timestamp << ":DEBUG - ";
             break;
-        case JPLogLevel::INFO:
+        case LogLevel::INFO:
             jp_log_file << timestamp << ":INFO - ";
             break;
-        case JPLogLevel::WARNING:
+        case LogLevel::WARNING:
             jp_log_file << timestamp << ":WARNING - ";
             break;
-        case JPLogLevel::ERROR:
+        case LogLevel::ERROR:
             jp_log_file << timestamp << ":ERROR - ";
             break;
         default:
@@ -60,8 +79,6 @@ int JPLog(JPLogLevel log_level, std::string_view log_msg)
 
     return 0;
 }
-
-} // namespace JSONMapping
 
 /**
  * @class JSONMappingPlugin
@@ -153,7 +170,7 @@ int JSONMappingPlugin::init(IDAM_PLUGIN_INTERFACE* plugin_interface)
     if (!map_dir.empty()) {
         m_mapping_handler.set_map_dir(map_dir);
     } else {
-        JSONMapping::JPLog(JSONMapping::JPLogLevel::ERROR, "JSONMappingPlugin::init: - JSON mapping locations not set");
+        log(LogLevel::ERROR, "JSONMappingPlugin::init: - JSON mapping locations not set");
         RAISE_PLUGIN_ERROR("JSONMappingPlugin::init: - JSON mapping locations not set")
     }
     m_mapping_handler.init(plugin_interface->pluginList);
@@ -265,7 +282,7 @@ std::string JSONMappingPlugin::generate_map_path(std::deque<std::string>& path_t
     }
 
     std::string map_path = boost::algorithm::join(path_tokens, "/");
-    JSONMapping::JPLog(JSONMapping::JPLogLevel::INFO, map_path);
+    log(LogLevel::INFO, map_path);
 
     std::string found_path;
 
@@ -327,7 +344,7 @@ int JSONMappingPlugin::get(IDAM_PLUGIN_INTERFACE* plugin_interface)
     std::deque<std::string> path_tokens;
     boost::split(path_tokens, path, boost::is_any_of("/"));
     if (path_tokens.empty()) {
-        JSONMapping::JPLog(JSONMapping::JPLogLevel::ERROR, "JSONMappingPlugin::get: - IDS path could not be split");
+        log(LogLevel::ERROR, "JSONMappingPlugin::get: - IDS path could not be split");
         RAISE_PLUGIN_ERROR("JSONMappingPlugin::get: - IDS path could not be split")
     }
 
@@ -347,7 +364,7 @@ int JSONMappingPlugin::get(IDAM_PLUGIN_INTERFACE* plugin_interface)
     const auto maybe_mappings = m_mapping_handler.read_mappings(machine_string, ids_name, request_data);
 
     if (!maybe_mappings) {
-        JSONMapping::JPLog(JSONMapping::JPLogLevel::ERROR,
+        log(LogLevel::ERROR,
                            "JSONMappingPlugin::get: - JSON mapping not loaded, no map entries");
         RAISE_PLUGIN_ERROR("JSONMappingPlugin::get: - JSON mapping not loaded, no map entries")
     }
@@ -396,29 +413,6 @@ int JSONMappingPlugin::execute(IDAM_PLUGIN_INTERFACE* plugin_interface)
         RAISE_PLUGIN_ERROR("Unknown function requested!")
     }
     return return_code;
-}
-
-/**
- * @brief Plugin entry function
- *
- * @param plugin_interface
- * @return
- */
-[[maybe_unused]] int jsonMappingPlugin(IDAM_PLUGIN_INTERFACE* plugin_interface)
-{
-
-    if (plugin_interface->interfaceVersion > THISPLUGIN_MAX_INTERFACE_VERSION) {
-        RAISE_PLUGIN_ERROR("Plugin Interface Version Unknown to this plugin: Unable to execute the request!")
-    }
-
-    plugin_interface->pluginVersion = THISPLUGIN_VERSION;
-
-    try {
-        static JSONMappingPlugin plugin = {};
-        return plugin.entry_handle(plugin_interface);
-    } catch (const std::exception& ex) {
-        RAISE_PLUGIN_ERROR_EX(ex.what(), { concatUdaError(&plugin_interface->error_stack); })
-    }
 }
 
 /**
@@ -500,4 +494,29 @@ int JSONMappingPlugin::max_interface_version(IDAM_PLUGIN_INTERFACE* plugin_inter
 {
     return setReturnDataIntScalar(plugin_interface->data_block, THISPLUGIN_MAX_INTERFACE_VERSION,
                                   "Maximum Interface Version");
+}
+
+} // namespace json_mapping
+
+/**
+ * @brief Plugin entry function
+ *
+ * @param plugin_interface
+ * @return
+ */
+[[maybe_unused]] int jsonMappingPlugin(IDAM_PLUGIN_INTERFACE* plugin_interface)
+{
+
+    if (plugin_interface->interfaceVersion > THISPLUGIN_MAX_INTERFACE_VERSION) {
+        RAISE_PLUGIN_ERROR("Plugin Interface Version Unknown to this plugin: Unable to execute the request!")
+    }
+
+    plugin_interface->pluginVersion = THISPLUGIN_VERSION;
+
+    try {
+        static json_mapping::JSONMappingPlugin plugin = {};
+        return plugin.entry_handle(plugin_interface);
+    } catch (const std::exception& ex) {
+        RAISE_PLUGIN_ERROR_EX(ex.what(), { concatUdaError(&plugin_interface->error_stack); })
+    }
 }

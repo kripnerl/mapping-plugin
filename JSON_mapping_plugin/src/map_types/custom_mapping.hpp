@@ -1,8 +1,15 @@
 #pragma once
 
-#include "map_types/base_mapping.hpp"
+#include <cstdint>
+#include <nlohmann/json.hpp>
 
-enum class CustomMapType_t { MASTU_helloworld, DRAFT_helloworld, INVALID };
+#include <clientserver/udaStructs.h>
+
+#include "map_types/base_mapping.hpp"
+#include "map_types/map_arguments.hpp"
+
+enum class CustomMapType_t : uint8_t { MASTU_helloworld, DRAFT_helloworld, INVALID };
+
 NLOHMANN_JSON_SERIALIZE_ENUM(CustomMapType_t, {{CustomMapType_t::INVALID, nullptr},
                                                {CustomMapType_t::MASTU_helloworld, "MASTU_helloworld"},
                                                {CustomMapType_t::DRAFT_helloworld, "DRAFT_helloworld"}})
@@ -21,6 +28,11 @@ class CustomMapping : public Mapping
     CustomMapping() = delete;
     ~CustomMapping() override = default;
     explicit CustomMapping(CustomMapType_t custom_type) : m_custom_type(custom_type) {};
+    CustomMapping(CustomMapping&& other) = default;
+    CustomMapping(const CustomMapping& other) = default;
+    CustomMapping& operator=(CustomMapping&& other) = default;
+    CustomMapping& operator=(const CustomMapping& other) = default;
+
     [[nodiscard]] int map(const MapArguments& arguments) const override;
 
   private:

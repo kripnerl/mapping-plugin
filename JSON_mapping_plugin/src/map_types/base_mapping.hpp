@@ -1,6 +1,7 @@
 #pragma once
 
 #include <nlohmann/json.hpp>
+#include <cstdint>
 
 #include <clientserver/udaStructs.h>
 #include <plugins/pluginStructs.h>
@@ -8,7 +9,7 @@
 
 #include "map_arguments.hpp"
 
-enum class MappingType { VALUE, PLUGIN, SLICE, EXPR, CUSTOM, DIM };
+enum class MappingType : uint8_t { VALUE, PLUGIN, SLICE, EXPR, CUSTOM, DIM };
 
 NLOHMANN_JSON_SERIALIZE_ENUM(MappingType, {{MappingType::VALUE, "VALUE"},
                                            {MappingType::PLUGIN, "PLUGIN"},

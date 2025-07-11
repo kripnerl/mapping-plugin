@@ -1,5 +1,7 @@
 #include "map_types/expr_mapping.hpp"
 
+#include "map_types/map_arguments.hpp"
+
 // template int ExprMapping::eval_expr<float>(const MapArguments& arguments) const;
 template int ExprMapping::eval_expr<double>(const MapArguments& arguments) const;
 

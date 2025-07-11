@@ -1,31 +1,27 @@
-/**
- * @file
- * @brief
- */
-
 #include "plugin_mapping.hpp"
 
-#include "map_types/map_arguments.hpp"
-#include "utils/scale_offset.hpp"
-#include "utils/ram_cache.hpp"
-#include "utils/subset.hpp"
-
 // UDA includes
+#include <client/getEnvironment.h>
+#include <clientserver/errorLog.h>
 #include <clientserver/initStructs.h>
 #include <clientserver/makeRequestBlock.h>
+#include <clientserver/parseXML.h>
 #include <clientserver/stringUtils.h>
-#include <plugins/udaPlugin.h>
-#include <logging/logging.h>
 #include <clientserver/udaStructs.h>
-#include <client/getEnvironment.h>
 #include <structures/struct.h>
 
+#include <cstddef>
+#include <cstring>
+#include <exception>
 #include <fmt/core.h>
 #include <inja/inja.hpp>
-
-#include <string>
 #include <sstream>
-#include <exception>
+#include <string>
+
+#include "map_types/map_arguments.hpp"
+#include "utils/ram_cache.hpp"
+#include "utils/scale_offset.hpp"
+#include "utils/subset.hpp"
 
 // TODO:
 //  - handle compressed dims
@@ -55,8 +51,8 @@ std::string PluginMapping::get_request_str(const MapArguments& arguments) const
         if (field.is_string()) {
             // Double inja
             try {
-                auto value = inja::render(inja::render(field.get<std::string>(), arguments.m_global_data),
-                                          arguments.m_global_data);
+                auto value =
+                    inja::render(inja::render(field.get<std::string>(), arguments.global_data), arguments.global_data);
                 string_stream << delim << key << "=" << value;
             } catch (std::exception& e) {
                 UDA_LOG(UDA_LOG_DEBUG, "Inja template error in request : %s\n", e.what());
@@ -71,8 +67,8 @@ std::string PluginMapping::get_request_str(const MapArguments& arguments) const
     }
     string_stream << ")";
 
-    if (m_slice.has_value() && arguments.m_sig_type != SignalType::DIM) {
-        string_stream << inja::render(inja::render(m_slice.value(), arguments.m_global_data), arguments.m_global_data);
+    if (m_slice.has_value() && arguments.sig_type != SignalType::DIM) {
+        string_stream << inja::render(inja::render(m_slice.value(), arguments.global_data), arguments.global_data);
     }
 
     auto request = string_stream.str();
@@ -86,8 +82,8 @@ bool PluginMapping::copy_from_cache(const MapArguments& arguments, const std::st
         return false;
     }
 
-    auto signal_type = arguments.m_sig_type;
-    auto* data_block = arguments.m_datablock;
+    auto signal_type = arguments.sig_type;
+    auto* data_block = arguments.datablock;
 
     switch (signal_type) {
         case SignalType::DATA:
@@ -160,8 +156,8 @@ int PluginMapping::call_plugins(const MapArguments& arguments) const
     bool cache_hit = copy_from_cache(arguments, request_str);
     if (cache_hit) {
         m_ram_cache->log(ram_cache::LogLevel::INFO, "Adding cached datablock onto plugin_interface");
-        m_ram_cache->log(ram_cache::LogLevel::INFO, "data on plugin_interface (data_n): " +
-                                                        std::to_string(arguments.m_datablock->data_n));
+        m_ram_cache->log(ram_cache::LogLevel::INFO,
+                         "data on plugin_interface (data_n): " + std::to_string(arguments.datablock->data_n));
         err = 0;
     } else {
         IDAM_PLUGIN_INTERFACE interface = {0};
@@ -174,7 +170,7 @@ int PluginMapping::call_plugins(const MapArguments& arguments) const
 
         interface.request_data = &request;
         interface.pluginList = m_plugin_list;
-        interface.data_block = arguments.m_datablock;
+        interface.data_block = arguments.datablock;
         interface.environment = environment;
         interface.client_block = &client_block;
         interface.data_source = &data_source;
@@ -195,7 +191,7 @@ int PluginMapping::call_plugins(const MapArguments& arguments) const
         // Add retrieved datablock to cache. data is copied from datablock into a new ram_cache::data_entry. original
         // data remains on block (on plugin_interface structure) for return.
         if (m_cache_enabled) {
-            m_ram_cache->add(request_str, arguments.m_datablock);
+            m_ram_cache->add(request_str, arguments.datablock);
         }
     }
 
@@ -204,14 +200,14 @@ int PluginMapping::call_plugins(const MapArguments& arguments) const
     // set serverside subsetting as default unless new method is specifically requested.
     bool use_plugin_subset = (subset_method != nullptr) && (StringIEquals(subset_method, "PLUGIN_SUBSET"));
     // TODO: handle dim data scaling (hardcoded to disable scaling here)
-    bool dim_data = arguments.m_sig_type == SignalType::DIM || arguments.m_sig_type == SignalType::TIME;
+    bool dim_data = arguments.sig_type == SignalType::DIM || arguments.sig_type == SignalType::TIME;
 
     if (data_subset.nbound > 0) {
         auto scale_value = (!dim_data && m_scale.has_value()) ? m_scale.value() : 1.0;
         subset::log(subset::LogLevel::INFO, "scale factor is: " + std::to_string(scale_value));
         auto offset_value = (!dim_data && m_offset.has_value()) ? m_offset.value() : 0.0;
         subset::log(subset::LogLevel::INFO, "offset factor is: " + std::to_string(offset_value));
-        subset::apply_subsetting(arguments.m_datablock, data_subset, scale_value, offset_value);
+        subset::apply_subsetting(arguments.datablock, data_subset, scale_value, offset_value);
     }
 
     return err;
@@ -222,13 +218,13 @@ int PluginMapping::map(const MapArguments& arguments) const
     int err = call_plugins(arguments);
 
     // temporary solution to the slice functionality returning arrays of 1 element
-    if (arguments.m_datablock->rank == 1 && arguments.m_datablock->data_n == 1) {
-        arguments.m_datablock->rank = 0;
+    if (arguments.datablock->rank == 1 && arguments.datablock->data_n == 1) {
+        arguments.datablock->rank = 0;
 
         // imas won't care about order here, but for testing this
         // avoids a segfault in the client if you try to
         // interrogate the result.time attribute
-        arguments.m_datablock->order = -1;
+        arguments.datablock->order = -1;
     }
     return err;
 }

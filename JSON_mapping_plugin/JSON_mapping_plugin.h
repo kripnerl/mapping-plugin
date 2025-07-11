@@ -2,7 +2,7 @@
 #define UDA_PLUGIN_JSON_MAP_H
 
 #include <clientserver/export.h>
-#include <plugins/udaPlugin.h>
+#include <plugins/pluginStructs.h>
 
 #ifdef __cplusplus
 extern "C" {

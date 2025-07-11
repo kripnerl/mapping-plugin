@@ -1,6 +1,10 @@
 #pragma once
 
+#include <string>
+#include <utility>
+
 #include "map_types/base_mapping.hpp"
+#include "map_types/map_arguments.hpp"
 
 class DimMapping : public Mapping
 {
