@@ -10,10 +10,8 @@
 #include <fstream>
 #include <iomanip>
 #include <ios>
-#include <regex>
 #include <string>
 #include <string_view>
-#include <utility>
 #include <vector>
 
 // UDA includes
@@ -30,6 +28,7 @@
 #include "handlers/mapping_handler.hpp"
 #include "map_types/base_mapping.hpp"
 #include "map_types/map_arguments.hpp"
+#include "utils/indices.hpp"
 
 namespace json_mapping
 {
@@ -46,36 +45,35 @@ enum class LogLevel : uint8_t { DEBUG, INFO, WARNING, ERROR };
  */
 int log(LogLevel log_level, std::string_view log_msg)
 {
-
     const ENVIRONMENT* environment = getServerEnvironment();
 
     std::string const log_file_name = std::string{static_cast<const char*>(environment->logdir)} + "/JSON_plugin.log";
-    std::ofstream jp_log_file;
-    jp_log_file.open(log_file_name, std::ios_base::out | std::ios_base::app);
+    std::ofstream log_file;
+    log_file.open(log_file_name, std::ios_base::out | std::ios_base::app);
     std::time_t const time_now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     const auto timestamp = std::put_time(std::gmtime(&time_now), "%Y-%m-%d:%H:%M:%S"); // NOLINT(concurrency-mt-unsafe)
-    if (!jp_log_file) {
+    if (!log_file) {
         return 1;
     }
 
     switch (log_level) {
         case LogLevel::DEBUG:
-            jp_log_file << timestamp << ":DEBUG - ";
+            log_file << timestamp << ":DEBUG - ";
             break;
         case LogLevel::INFO:
-            jp_log_file << timestamp << ":INFO - ";
+            log_file << timestamp << ":INFO - ";
             break;
         case LogLevel::WARNING:
-            jp_log_file << timestamp << ":WARNING - ";
+            log_file << timestamp << ":WARNING - ";
             break;
         case LogLevel::ERROR:
-            jp_log_file << timestamp << ":ERROR - ";
+            log_file << timestamp << ":ERROR - ";
             break;
         default:
-            jp_log_file << "LOG_LEVEL NOT DEFINED";
+            log_file << "LOG_LEVEL NOT DEFINED";
     }
-    jp_log_file << log_msg << "\n";
-    jp_log_file.close();
+    log_file << log_msg << "\n";
+    log_file.close();
 
     return 0;
 }
@@ -110,8 +108,7 @@ class JSONMappingPlugin
     static int max_interface_version(IDAM_PLUGIN_INTERFACE* plugin_interface);
 
     static SignalType deduce_signal_type(std::string_view final_path_element);
-    static std::pair<std::vector<int>, std::deque<std::string>>
-    extract_indices(const std::deque<std::string>& path_tokens);
+
     static int add_machine_specific_attributes(IDAM_PLUGIN_INTERFACE* plugin_interface, nlohmann::json& attributes);
     static std::string generate_map_path(std::deque<std::string>& path_tokens, const std::vector<int>& indices,
                                          IDSMapRegister& mappings, const std::string& full_path);
@@ -121,34 +118,6 @@ class JSONMappingPlugin
     bool m_init = false;
     std::string m_request_function;
 };
-
-/**
- * @brief Extract current indices and path tokens from IMAS/IDS path
- *
- * @param path_tokens deque of strings containing split IDS path tokens
- * @return {indices, processed_tokens} pair of the indices vector and tokens
- */
-std::pair<std::vector<int>, std::deque<std::string>>
-JSONMappingPlugin::extract_indices(const std::deque<std::string>& path_tokens)
-{
-    std::vector<int> indices;
-    std::deque<std::string> processed_tokens;
-    static const std::regex PATH_INDEX_RE{R"(\[\d+\])"};
-
-    for (const auto& token : path_tokens) {
-        std::sregex_token_iterator iter{ token.begin(), token.end(), PATH_INDEX_RE, 0 };
-        std::sregex_token_iterator end;
-
-        for (; iter != end; ++iter) {
-            std::string num = iter->str().substr(1);
-            indices.push_back(std::stoi(num));
-        }
-        const std::string new_token = std::regex_replace(token, PATH_INDEX_RE, "[#]");
-        processed_tokens.push_back(new_token);
-    }
-
-    return {indices, processed_tokens};
-}
 
 /**
  * @brief Initialise the JSON_mapping_plugin
@@ -349,7 +318,7 @@ int JSONMappingPlugin::get(IDAM_PLUGIN_INTERFACE* plugin_interface)
     }
 
     std::vector<int> indices;
-    std::tie(indices, path_tokens) = extract_indices(path_tokens);
+    std::tie(indices, path_tokens) = json_mapping::extract_indices(path_tokens);
 
     // Use first hash of the IDS path as the IDS name
     std::string const ids_name{path_tokens.front()};

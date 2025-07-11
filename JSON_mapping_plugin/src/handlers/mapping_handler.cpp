@@ -30,6 +30,7 @@
 #include "map_types/plugin_mapping.hpp"
 #include "map_types/value_mapping.hpp"
 #include "utils/ram_cache.hpp"
+#include "utils/syntax_parser.hpp"
 
 int MappingHandler::reset()
 {
@@ -364,22 +365,24 @@ int MappingHandler::init_mappings(const MachineName& machine, const IDSName& ids
     const auto& attributes = m_machine_register[machine].attributes;
     IDSMapRegister temp_map_reg;
     for (const auto& [key, value] : data.items()) {
+        // Parse syntactic sugar
+        auto parsed_value = json_mapping::parse(value);
 
         switch (value["MAP_TYPE"].get<MappingType>()) {
             case MappingType::VALUE:
-                init_value_mapping(temp_map_reg, key, value);
+                init_value_mapping(temp_map_reg, key, parsed_value);
                 break;
             case MappingType::PLUGIN:
-                init_plugin_mapping(temp_map_reg, key, value, attributes.at(ids_name).map.at(shot), m_ram_cache);
+                init_plugin_mapping(temp_map_reg, key, parsed_value, attributes.at(ids_name).map.at(shot), m_ram_cache);
                 break;
             case MappingType::DIM:
-                init_dim_mapping(temp_map_reg, key, value);
+                init_dim_mapping(temp_map_reg, key, parsed_value);
                 break;
             case MappingType::EXPR:
-                init_expr_mapping(temp_map_reg, key, value);
+                init_expr_mapping(temp_map_reg, key, parsed_value);
                 break;
             case MappingType::CUSTOM:
-                init_custom_mapping(temp_map_reg, key, value);
+                init_custom_mapping(temp_map_reg, key, parsed_value);
                 break;
             default:
                 break;

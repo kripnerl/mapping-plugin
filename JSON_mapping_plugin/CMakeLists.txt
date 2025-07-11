@@ -11,6 +11,7 @@ set( UTIL_SOURCES
     src/utils/ram_cache.cpp
     src/utils/subset.cpp
     src/utils/syntax_parser.cpp
+    src/utils/indices.cpp
 )
 
 set( MAP_TYPE_SOURCES

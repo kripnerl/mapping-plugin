@@ -16,15 +16,14 @@ namespace {
 std::string expand_indices(const std::string& input)
 {
     if (auto match = ctre::match<simple_index_re>(input)) {
-        std::string_view index = match.get<1>().to_view();
-        return "indices." + std::string{ index };
+        return "indices." + match.get<1>().to_string();
     }
     if (auto match = ctre::match<array_index_re>(input)) {
-        std::string array = std::string{ match.get<1>().to_view() };
-        std::string index = std::string{ match.get<2>().to_view() };
-        std::string field = std::string{ match.get<3>().to_view() };
+        std::string array = match.get<1>().to_string();
+        std::string index = match.get<2>().to_string();
+        std::string field = match.get<3>().to_string();
         if (auto submatch = ctre::match<subindices_re>(array)) {
-            array = expand_indices(std::string{ submatch.get<1>() });
+            array = expand_indices(submatch.get<1>().to_string());
         }
         if (field.empty()) {
             return "at(" + array + ", indices." + index + ")";
@@ -42,7 +41,7 @@ void walk_json(nlohmann::json& json)
             if (element.value().is_string()) {
                 std::string value = element.value();
                 if (auto match = ctre::match<indices_re>(value)) {
-                    auto expression = std::string{ match.get<1>() };
+                    auto expression = match.get<1>().to_string();
                     element.value() = "{{ " + expand_indices(expression) + " }}";
                 }
             } else if (element.value().is_object()) {
