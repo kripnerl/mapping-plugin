@@ -3,17 +3,16 @@
 #include <clientserver/udaStructs.h>
 #include <clientserver/udaTypes.h>
 #include <string>
-#include <fstream>
 #include <sstream>
-#include <iomanip>
+#include <algorithm>
 
 namespace uda_structs
 {
     template<typename T>
     inline std::string print_typed_buffer(T* data, int max_size)
     {
-        std::stringstream ss;
-        ss << "[";
+        std::stringstream out;
+        out << "[";
         int max_elements = std::min(max_size, 10);
         bool all_data =  max_elements == max_size;
         if (!all_data)
@@ -22,18 +21,18 @@ namespace uda_structs
         }
         for (unsigned int i = 0; i < max_elements; ++i)
         {
-           ss << data[i] << ","; 
+           out << data[i] << ",";
         }
         if (!all_data)
         {
-            ss << " ... ";
+            out << " ... ";
             for (unsigned int i = max_size-max_elements-1; i < max_size; ++i)
             {
-                ss << data[i] << ","; 
-            } 
+                out << data[i] << ",";
+            }
         }
-        ss << "]" << std::endl;
-        return ss.str();
+        out << "]\n";
+        return out.str();
     }
 
     inline std::string print_uda_data_buffer(char* data, int data_type, int max_size)
@@ -81,7 +80,7 @@ namespace uda_structs
         ss << "api_delim   : " << request_data->api_delim << std::endl;
         ss << "subset      : " << request_data->subset << std::endl;
         ss << "subsetCount : " << request_data->datasubset.nbound << std::endl;
-        for (int i = 0; i < request_data->datasubset.nbound; i++) 
+        for (int i = 0; i < request_data->datasubset.nbound; i++)
         {
             ss << "subset dim: " << i << std::endl;
             ss << "\t" << "dimid: " << request_data->datasubset.dimid[i] << std::endl;
@@ -90,7 +89,7 @@ namespace uda_structs
             ss << "\t" << "stride: " << request_data->datasubset.stride[i].value << std::endl;
         }
         ss << "nameValueCount : " << request_data->nameValueList.pairCount << std::endl;
-        for (int i = 0; i < request_data->nameValueList.pairCount; i++) 
+        for (int i = 0; i < request_data->nameValueList.pairCount; i++)
         {
             ss << i << ", " << request_data->nameValueList.nameValue[i].pair << ", " <<
                     request_data->nameValueList.nameValue[i].name << ", " << request_data->nameValueList.nameValue[i].value << std::endl;
@@ -116,7 +115,7 @@ namespace uda_structs
         ss <<  "errlo != nullptr: " << (data_block->errlo != nullptr) << std::endl;
 
         ss <<  "opaque_type : " << data_block->opaque_type << std::endl;
-        ss <<  "opaque_count: " << data_block->opaque_count << std::endl; 
+        ss <<  "opaque_count: " << data_block->opaque_count << std::endl;
 
         ss <<  "error model : " << data_block->error_model << std::endl;
         ss <<  "asymmetry   : " << data_block->errasymmetry << std::endl;
@@ -130,15 +129,15 @@ namespace uda_structs
         {
             ss <<  "data        : " << print_uda_data_buffer(data_block->data,  data_block->data_type, data_block->data_n);
         }
-        else 
+        else
         {
             ss << "data is capnp buffer" << std::endl;
         }
-        
+
         for(unsigned int i=0; i < data_block->rank; ++i)
         {
             DIMS* dim = &data_block->dims[i];
-            
+
             ss << "DIM BLOCK " << i << std::endl;
             ss << "\tdata_number : " << dim->dim_n << std::endl;
             ss << "\tdata_type   : " << dim->data_type << std::endl;

@@ -11,6 +11,7 @@ set( TEST_SOURCES
     src/json_plugin_test.cpp
     src/value_mapping_test.cpp
     src/plugin_mapping_test.cpp
+    src/syntax_parser_test.cpp
 )
 
 include( FetchContent )

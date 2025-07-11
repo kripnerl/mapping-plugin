@@ -2,32 +2,33 @@
 
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/case_conv.hpp>
-#include <inja/inja.hpp>
-#include <unordered_map>
-#include <optional>
-#include <fstream>
-#include <vector>
+#include <cstddef>
 #include <filesystem>
-#include <string>
-#include <functional>
-#include <utility>
-#include <memory>
-#include <stdexcept>
-#include <nlohmann/json.hpp>
 #include <fmt/format.h>
+#include <fstream>
+#include <functional>
+#include <inja/inja.hpp>
+#include <memory>
+#include <nlohmann/json.hpp>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 // UDA includes
 #include <clientserver/udaStructs.h>
-#include <plugins/udaPlugin.h>
 #include <logging/logging.h>
 #include <plugins/pluginStructs.h>
+#include <plugins/udaPlugin.h>
 
+#include "map_types/base_mapping.hpp"
 #include "map_types/custom_mapping.hpp"
 #include "map_types/dim_mapping.hpp"
 #include "map_types/expr_mapping.hpp"
 #include "map_types/plugin_mapping.hpp"
 #include "map_types/value_mapping.hpp"
-#include "map_types/base_mapping.hpp"
 #include "utils/ram_cache.hpp"
 
 int MappingHandler::reset()
@@ -52,7 +53,8 @@ int MappingHandler::init(const PLUGINLIST* plugin_list)
     bool enable_caching = (enable_caching_str == nullptr) or (std::stoi(enable_caching_str) > 0);
 
     if (enable_caching) {
-        const std::size_t cache_size = (cache_size_str != nullptr) ? std::stoi(cache_size_str) : ram_cache::default_size;
+        const std::size_t cache_size =
+            (cache_size_str != nullptr) ? std::stoi(cache_size_str) : ram_cache::default_size;
         m_ram_cache = std::make_shared<ram_cache::RamCache>(cache_size);
     } else {
         m_ram_cache = nullptr;
@@ -63,7 +65,8 @@ int MappingHandler::init(const PLUGINLIST* plugin_list)
     return 0;
 }
 
-std::optional<MappingPair> MappingHandler::read_mappings(const MachineName& machine, const std::string& request_ids, const REQUEST_DATA* request_data)
+std::optional<MappingPair> MappingHandler::read_mappings(const MachineName& machine, const std::string& request_ids,
+                                                         const REQUEST_DATA* request_data)
 {
     int shot = 0;
     bool const shot_found = findIntValue(&request_data->nameValueList, &shot, "shot");
@@ -103,7 +106,8 @@ int MappingHandler::set_map_dir(const std::string& mapping_dir)
     return 0;
 }
 
-std::vector<int> MappingHandler::find_mapping_dirs(const MachineName& machine, const IDSName& ids_name) const {
+std::vector<int> MappingHandler::find_mapping_dirs(const MachineName& machine, const IDSName& ids_name) const
+{
     auto path = m_mapping_dir / machine / ids_name;
     std::vector<int> mapping_dirs;
 
@@ -117,7 +121,8 @@ std::vector<int> MappingHandler::find_mapping_dirs(const MachineName& machine, c
 }
 
 std::filesystem::path MappingHandler::mapping_path(const MachineName& machine, const IDSName& ids_name, const int shot,
-                                                   const std::string& file_name) const {
+                                                   const std::string& file_name) const
+{
     if (ids_name.empty()) {
         return m_mapping_dir / machine / file_name;
     }
@@ -155,7 +160,8 @@ int MappingHandler::load_machine(const MachineName& machine)
     return 0;
 }
 
-nlohmann::json MappingHandler::load_toplevel(const MachineName& machine) const {
+nlohmann::json MappingHandler::load_toplevel(const MachineName& machine) const
+{
     auto file_path = mapping_path(machine, "", 0, "globals.json");
 
     nlohmann::json toplevel_globals;
@@ -177,7 +183,8 @@ nlohmann::json MappingHandler::load_toplevel(const MachineName& machine) const {
     return toplevel_globals;
 }
 
-int MappingHandler::load_shot_globals(const MachineName& machine, const IDSName& ids_name, int shot) {
+int MappingHandler::load_shot_globals(const MachineName& machine, const IDSName& ids_name, int shot)
+{
     auto file_path = mapping_path(machine, ids_name, shot, "globals.json");
 
     std::ifstream globals_file;
@@ -210,7 +217,9 @@ int MappingHandler::load_globals(const MachineName& machine, const IDSName& ids_
     }
     for (const int shot : mapping_dirs) {
         int rc = load_shot_globals(machine, ids_name, shot);
-        if (rc != 0) { return rc; }
+        if (rc != 0) {
+            return rc;
+        }
     }
     return 0;
 }
@@ -239,7 +248,6 @@ int MappingHandler::load_shot_mappings(const MachineName& machine, const IDSName
     return 0;
 }
 
-
 int MappingHandler::load_mappings(const MachineName& machine, const IDSName& ids_name)
 {
     const auto mapping_dirs = find_mapping_dirs(machine, ids_name);
@@ -248,7 +256,9 @@ int MappingHandler::load_mappings(const MachineName& machine, const IDSName& ids
     }
     for (const int shot : mapping_dirs) {
         int rc = load_shot_mappings(machine, ids_name, shot);
-        if (rc != 0) { return rc; }
+        if (rc != 0) {
+            return rc;
+        }
     }
     return 0;
 }
@@ -323,7 +333,8 @@ int MappingHandler::init_plugin_mapping(IDSMapRegister& map_reg, const std::stri
         apply_config(args, function, plugin_config_map, plugin_name);
     }
 
-    map_reg.try_emplace(key, std::make_unique<PluginMapping>(plugin_name, args, offset, scale, slice, function, ram_cache, m_plugin_list));
+    map_reg.try_emplace(key, std::make_unique<PluginMapping>(plugin_name, args, offset, scale, slice, function,
+                                                             ram_cache, m_plugin_list));
     return 0;
 }
 
@@ -347,7 +358,8 @@ int MappingHandler::init_custom_mapping(IDSMapRegister& map_reg, const std::stri
     return 0;
 }
 
-int MappingHandler::init_mappings(const MachineName& machine, const IDSName& ids_name, const nlohmann::json& data, int shot)
+int MappingHandler::init_mappings(const MachineName& machine, const IDSName& ids_name, const nlohmann::json& data,
+                                  int shot)
 {
     const auto& attributes = m_machine_register[machine].attributes;
     IDSMapRegister temp_map_reg;

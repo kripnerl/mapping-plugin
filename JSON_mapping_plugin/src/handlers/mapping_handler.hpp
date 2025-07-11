@@ -1,13 +1,15 @@
 #pragma once
 
 #include <cstddef>
+#include <filesystem>
 #include <memory>
+#include <nlohmann/json.hpp>
 #include <optional>
 #include <string>
 #include <unordered_map>
-#include <filesystem>
+#include <utility>
 #include <vector>
-#include <nlohmann/json.hpp>
+
 #include <plugins/pluginStructs.h>
 
 #include "map_types/base_mapping.hpp"
@@ -17,16 +19,15 @@ using IDSName = std::string;
 using MachineName = std::string;
 using MappingName = std::string;
 
-template <typename T>
-struct MapSelector {
+template <typename T> struct MapSelector {
     std::unordered_map<int, T> map;
 };
 
-template <typename T>
-int select_shot(const MapSelector<T>& selector, int shot) {
+template <typename T> int select_shot(const MapSelector<T>& selector, int shot)
+{
     int selected = -1;
-    for (auto el : selector.map) {
-        int key = el.first;
+    for (auto element : selector.map) {
+        int key = element.first;
         if (shot > selected) {
             selected = key;
         }
@@ -52,16 +53,19 @@ class MappingHandler
 {
   public:
     MappingHandler() : m_init(false), m_dd_version("3.39.0"), m_cache_enabled(false) {};
-    explicit MappingHandler(std::string dd_version) : m_init(false), m_dd_version(std::move(dd_version)), m_cache_enabled(false) {};
+    explicit MappingHandler(std::string dd_version)
+        : m_init(false), m_dd_version(std::move(dd_version)), m_cache_enabled(false) {};
 
     int reset();
     int init(const PLUGINLIST* plugin_list);
     int set_map_dir(const std::string& mapping_dir);
-    std::optional<MappingPair> read_mappings(const MachineName& machine, const std::string& request_ids, const REQUEST_DATA* request_data);
+    std::optional<MappingPair> read_mappings(const MachineName& machine, const std::string& request_ids,
+                                             const REQUEST_DATA* request_data);
 
   private:
     [[nodiscard]] std::vector<int> find_mapping_dirs(const MachineName& machine, const IDSName& ids_name) const;
-    [[nodiscard]] std::filesystem::path mapping_path(const MachineName& machine, const IDSName& ids_name, int shot, const std::string& file_name) const;
+    [[nodiscard]] std::filesystem::path mapping_path(const MachineName& machine, const IDSName& ids_name, int shot,
+                                                     const std::string& file_name) const;
     int load_machine(const MachineName& machine);
     [[nodiscard]] nlohmann::json load_toplevel(const MachineName& machine) const;
     int load_shot_globals(const MachineName& machine, const IDSName& ids_name, int shot);
@@ -72,8 +76,7 @@ class MappingHandler
     int init_mappings(const MachineName& machine, const IDSName& ids_name, const nlohmann::json& data, int shot);
     static int init_value_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
     int init_plugin_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value,
-                            const nlohmann::json& ids_attributes,
-                            std::shared_ptr<ram_cache::RamCache>& ram_cache);
+                            const nlohmann::json& ids_attributes, std::shared_ptr<ram_cache::RamCache>& ram_cache);
     static int init_dim_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
     // static int init_slice_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
     static int init_expr_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);

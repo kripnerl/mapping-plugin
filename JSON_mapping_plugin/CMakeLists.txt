@@ -10,6 +10,7 @@ set( UTIL_SOURCES
     src/utils/uda_plugin_helpers.cpp
     src/utils/ram_cache.cpp
     src/utils/subset.cpp
+    src/utils/syntax_parser.cpp
 )
 
 set( MAP_TYPE_SOURCES
