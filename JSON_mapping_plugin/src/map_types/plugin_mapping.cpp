@@ -18,6 +18,7 @@
 #include <logging/logging.h>
 #include <clientserver/udaStructs.h>
 #include <client/getEnvironment.h>
+#include <structures/struct.h>
 
 #include <fmt/core.h>
 #include <inja/inja.hpp>
@@ -164,10 +165,21 @@ int PluginMapping::call_plugins(const MapArguments& arguments) const
         err = 0;
     } else {
         IDAM_PLUGIN_INTERFACE interface = {0};
+        CLIENT_BLOCK client_block;
+        DATA_SOURCE data_source;
+        SIGNAL_DESC signal_desc;
+        initClientBlock(&client_block, 0, "");
+        initDataSource(&data_source);
+        initSignalDesc(&signal_desc);
+
         interface.request_data = &request;
         interface.pluginList = m_plugin_list;
         interface.data_block = arguments.m_datablock;
         interface.environment = environment;
+        interface.client_block = &client_block;
+        interface.data_source = &data_source;
+        interface.signal_desc = &signal_desc;
+
         err = callPlugin(m_plugin_list, request_str.c_str(), &interface);
         subset::log_request_status(&request, "request block status:");
 
