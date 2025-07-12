@@ -6,6 +6,8 @@
 
 #include "utils/indices.hpp"
 
+using namespace json_mapping;
+
 TEST_CASE("Test extraction of indices", "[indices]") {
 
     SECTION("empty list of tokens") {

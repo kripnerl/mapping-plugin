@@ -6,6 +6,8 @@
 #include "map_types/base_mapping.hpp"
 #include "map_types/map_arguments.hpp"
 
+namespace json_mapping {
+
 class ValueMapping : public Mapping
 {
   public:
@@ -22,3 +24,5 @@ class ValueMapping : public Mapping
   private:
     nlohmann::json m_value;
 };
+
+} // namespace json_mapping

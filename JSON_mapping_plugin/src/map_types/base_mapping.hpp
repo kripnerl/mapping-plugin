@@ -9,6 +9,8 @@
 
 #include "map_arguments.hpp"
 
+namespace json_mapping {
+
 enum class MappingType : uint8_t { VALUE, PLUGIN, SLICE, EXPR, CUSTOM, DIM };
 
 NLOHMANN_JSON_SERIALIZE_ENUM(MappingType, {{MappingType::VALUE, "VALUE"},
@@ -30,3 +32,5 @@ class Mapping
 
     [[nodiscard]] virtual int map(const MapArguments& arguments) const = 0;
 };
+
+} // namespace json_mapping

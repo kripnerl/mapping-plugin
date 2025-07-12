@@ -195,9 +195,9 @@ int type_deduce_primitive(DATA_BLOCK* data_block, const json& temp_val, const js
     return 0;
 }
 
-} // namespace
+} // anon namespace
 
-int ValueMapping::map(const MapArguments& arguments) const
+int json_mapping::ValueMapping::map(const MapArguments& arguments) const
 {
     const auto temp_val = m_value;
     if (temp_val.is_discarded() or temp_val.is_binary() or temp_val.is_null()) {

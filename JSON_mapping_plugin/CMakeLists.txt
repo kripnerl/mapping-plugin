@@ -20,6 +20,7 @@ set( MAP_TYPE_SOURCES
     src/map_types/expr_mapping.cpp
     src/map_types/plugin_mapping.cpp
     src/map_types/value_mapping.cpp
+    src/map_types/map_arguments.cpp
 )
 
 set( HANDLER_SOURCES

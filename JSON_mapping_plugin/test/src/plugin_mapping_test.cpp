@@ -20,6 +20,8 @@
 #include "utils/ram_cache.hpp"
 #include "map_types/map_arguments.hpp"
 
+using namespace json_mapping;
+
 TEST_CASE("Creating new PluginMapping", "[plugin_mapping]") {
 
     SECTION("Constructor works") {

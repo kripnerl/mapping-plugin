@@ -16,6 +16,8 @@
 #include "map_types/map_arguments.hpp"
 #include "utils/uda_plugin_helpers.hpp"
 
+namespace json_mapping {
+
 /**
  * @class ExprMapping
  * @brief ExprMapping class to the hold the EXPR MAP_TYPE after parsing from the
@@ -131,3 +133,5 @@ template <typename T> int ExprMapping::eval_expr(const MapArguments& arguments) 
 
     return 0;
 }
+
+} // namespace json_mapping

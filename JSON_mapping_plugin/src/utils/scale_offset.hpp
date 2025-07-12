@@ -3,7 +3,7 @@
 
 #include "gsl/gsl-lite.hpp"
 
-namespace JMP::map_transform
+namespace json_mapping::map_transform
 {
 
 int transform_offset(DataBlock* data_block, float offset);
@@ -47,4 +47,4 @@ template <typename T> int scale_span(gsl::span<T> span, float scale)
     return 0;
 }
 
-} // namespace JMP::map_transform
+} // namespace json_mapping::map_transform

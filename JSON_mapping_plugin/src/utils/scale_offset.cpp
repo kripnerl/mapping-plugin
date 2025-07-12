@@ -2,10 +2,7 @@
 #include <clientserver/udaTypes.h>
 #include <logging/logging.h>
 
-namespace JMP::map_transform
-{
-
-int transform_offset(DataBlock* data_block, float offset)
+int json_mapping::map_transform::transform_offset(DataBlock* data_block, float offset)
 {
 
     int err{1};
@@ -77,7 +74,7 @@ int transform_offset(DataBlock* data_block, float offset)
     return err;
 }
 
-int transform_scale(DataBlock* data_block, float scale)
+int json_mapping::map_transform::transform_scale(DataBlock* data_block, float scale)
 {
 
     int err{1};
@@ -148,4 +145,3 @@ int transform_scale(DataBlock* data_block, float scale)
 
     return err;
 }
-} // namespace JMP::map_transform

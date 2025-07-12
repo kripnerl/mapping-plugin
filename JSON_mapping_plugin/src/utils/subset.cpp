@@ -6,8 +6,7 @@
 #include <utils/uda_type_sizes.hpp>
 // #include <utils/print_uda_structs.hpp>
 
-namespace subset
-{
+namespace {
 
 void freeDimBlockContents(DATA_BLOCK* data_block, unsigned int idx)
 {
@@ -51,33 +50,6 @@ void freeDimArray(DATA_BLOCK* data_block)
 }
 
 /*
- * comvert SUBSET block from the request_block on the plugin_interface structure
- * into a vector of SubsetInfo classes for use with the current implementation of
- * the multidimensional subset function.
- */
-std::vector<SubsetInfo> subset_info_converter(const SUBSET& datasubset, const DATA_BLOCK* data_block)
-{
-    if (datasubset.nbound != data_block->rank) {
-        throw std::runtime_error("Number of subset dimensions specified must equal dimensions of data: " +
-                                 std::to_string(datasubset.nbound) + " != " + std::to_string(data_block->rank));
-    }
-    std::vector<SubsetInfo> result;
-    for (unsigned int i = 0; i < datasubset.nbound; ++i) {
-        if (datasubset.dimid[i] > data_block->rank) {
-            throw std::runtime_error("Specified subset dimension exceeds dimensions of data");
-        }
-        uint64_t dim_n = data_block->dims[datasubset.dimid[i]].dim_n;
-        uint64_t start = datasubset.lbindex[i].init ? datasubset.lbindex[i].value : 0;
-        uint64_t stop = datasubset.ubindex[i].init ? datasubset.ubindex[i].value : 0;
-        int64_t stride = datasubset.stride[i].init ? datasubset.stride[i].value : 1;
-        stride = (stride == 0) ? 1 : stride;
-        result.emplace_back(start, stop, stride, dim_n);
-        log(LogLevel::DEBUG, "subset info conversion dim: " + std::to_string(i) + "\n" + result[i].print_to_string());
-    }
-    return result;
-}
-
-/*
  * The input_id "factors" of each dim into a flattened buffer of multi-dimensional
  * data is given by the product of the dimension lengths of all higher-frequency
  * dimensions preceding it. These are constants that don't need to be recalculated
@@ -114,13 +86,43 @@ unsigned int get_input_offset(std::vector<unsigned int>& current_indices, std::v
     return result;
 }
 
+} // anon namespace
+
+/*
+ * comvert SUBSET block from the request_block on the plugin_interface structure
+ * into a vector of SubsetInfo classes for use with the current implementation of
+ * the multidimensional subset function.
+ */
+std::vector<json_mapping::subset::SubsetInfo>
+json_mapping::subset::subset_info_converter(const SUBSET& datasubset, const DATA_BLOCK* data_block)
+{
+    if (datasubset.nbound != data_block->rank) {
+        throw std::runtime_error("Number of subset dimensions specified must equal dimensions of data: " +
+                                 std::to_string(datasubset.nbound) + " != " + std::to_string(data_block->rank));
+    }
+    std::vector<SubsetInfo> result;
+    for (unsigned int i = 0; i < datasubset.nbound; ++i) {
+        if (datasubset.dimid[i] > data_block->rank) {
+            throw std::runtime_error("Specified subset dimension exceeds dimensions of data");
+        }
+        uint64_t dim_n = data_block->dims[datasubset.dimid[i]].dim_n;
+        uint64_t start = datasubset.lbindex[i].init ? datasubset.lbindex[i].value : 0;
+        uint64_t stop = datasubset.ubindex[i].init ? datasubset.ubindex[i].value : 0;
+        int64_t stride = datasubset.stride[i].init ? datasubset.stride[i].value : 1;
+        stride = (stride == 0) ? 1 : stride;
+        result.emplace_back(start, stop, stride, dim_n);
+        log(LogLevel::DEBUG, "subset info conversion dim: " + std::to_string(i) + "\n" + result[i].print_to_string());
+    }
+    return result;
+}
+
 /*
  * Subset a flattened buffer of multidimensional data and apply optional scale and offset factors
  *
  * avoids recursion
  */
 template <typename T>
-std::vector<T> subset(std::vector<T>& input, std::vector<SubsetInfo>& subset_dims, double scale_factor, double offset)
+std::vector<T> json_mapping::subset::subset(std::vector<T>& input, std::vector<SubsetInfo>& subset_dims, double scale_factor, double offset)
 {
     log(LogLevel::DEBUG, "input size: " + std::to_string(input.size()));
     log(LogLevel::DEBUG, "input value 1: " + std::to_string(input[0]));
@@ -157,7 +159,7 @@ std::vector<T> subset(std::vector<T>& input, std::vector<SubsetInfo>& subset_dim
     return result;
 }
 
-template <typename T> void do_subset(DATA_BLOCK* data_block, SUBSET& data_subset, double scale_factor, double offset)
+template <typename T> void json_mapping::subset::do_subset(DATA_BLOCK* data_block, SUBSET& data_subset, double scale_factor, double offset)
 {
     log(LogLevel::DEBUG, "Entering do_subset method");
     size_t bytes_size = data_block->data_n * uda_type_utils::size_of_uda_type(data_block->data_type);
@@ -189,7 +191,7 @@ template <typename T> void do_subset(DATA_BLOCK* data_block, SUBSET& data_subset
     collapse_dims(data_block, subset_dims);
 }
 
-void collapse_dims(DATA_BLOCK* data_block, std::vector<SubsetInfo>& subset_dims)
+void json_mapping::subset::collapse_dims(DATA_BLOCK* data_block, std::vector<SubsetInfo>& subset_dims)
 {
     log(LogLevel::DEBUG, "running collapse dims routine");
     auto* dims = data_block->dims;
@@ -241,7 +243,7 @@ void collapse_dims(DATA_BLOCK* data_block, std::vector<SubsetInfo>& subset_dims)
     log(LogLevel::DEBUG, "new rank: " + std::to_string(data_block->rank));
 }
 
-template <typename T> void do_dim_subset(DIMS* dim, const SubsetInfo& subset_info, double scale_factor, double offset)
+template <typename T> void json_mapping::subset::do_dim_subset(DIMS* dim, const SubsetInfo& subset_info, double scale_factor, double offset)
 {
     log(LogLevel::DEBUG, "Entering do_dim_subset method");
     if (dim->compressed) {
@@ -269,7 +271,7 @@ template <typename T> void do_dim_subset(DIMS* dim, const SubsetInfo& subset_inf
     std::copy((char*)transformed_data.data(), (char*)transformed_data.data() + dim->dim_n * sizeof(T), dim->dim);
 }
 
-void apply_dim_subsetting(DIMS* dim, const SubsetInfo& subset_info, double scale_factor, double offset)
+void json_mapping::subset::apply_dim_subsetting(DIMS* dim, const SubsetInfo& subset_info, double scale_factor, double offset)
 {
     switch (dim->data_type) {
         case UDA_TYPE_SHORT:
@@ -308,7 +310,7 @@ void apply_dim_subsetting(DIMS* dim, const SubsetInfo& subset_info, double scale
     }
 }
 
-void apply_subsetting(DATA_BLOCK* data_block, SUBSET& data_subset, double scale_factor, double offset)
+void json_mapping::subset::apply_subsetting(DATA_BLOCK* data_block, SUBSET& data_subset, double scale_factor, double offset)
 {
     log(LogLevel::DEBUG, "Entering apply subsetting function");
     if (data_block->rank == 0) {
@@ -353,5 +355,3 @@ void apply_subsetting(DATA_BLOCK* data_block, SUBSET& data_subset, double scale_
                                      " not implemented for json_imas_mapping cache");
     }
 }
-
-} // namespace subset

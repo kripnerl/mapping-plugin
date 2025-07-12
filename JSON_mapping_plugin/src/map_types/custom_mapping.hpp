@@ -8,6 +8,8 @@
 #include "map_types/base_mapping.hpp"
 #include "map_types/map_arguments.hpp"
 
+namespace json_mapping {
+
 enum class CustomMapType_t : uint8_t { MASTU_helloworld, DRAFT_helloworld, INVALID };
 
 NLOHMANN_JSON_SERIALIZE_ENUM(CustomMapType_t, {{CustomMapType_t::INVALID, nullptr},
@@ -41,3 +43,5 @@ class CustomMapping : public Mapping
     static int MASTU_helloworld(DATA_BLOCK* data_block);
     static int DRAFT_helloworld(DATA_BLOCK* data_block);
 };
+
+} // namespace json_mapping

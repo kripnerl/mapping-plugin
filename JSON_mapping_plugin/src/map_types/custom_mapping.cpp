@@ -16,7 +16,7 @@
  * @param global_data global JSON object used in templating
  * @return int error_code
  */
-int CustomMapping::map(const MapArguments& arguments) const
+int json_mapping::CustomMapping::map(const MapArguments& arguments) const
 {
     int err{1};
     switch (m_custom_type) {
@@ -33,12 +33,12 @@ int CustomMapping::map(const MapArguments& arguments) const
     return err;
 }
 
-int CustomMapping::MASTU_helloworld(DATA_BLOCK* data_block)
+int json_mapping::CustomMapping::MASTU_helloworld(DATA_BLOCK* data_block)
 {
     return setReturnDataString(data_block, "Hello World from MASTU", nullptr);
 }
 
-int CustomMapping::DRAFT_helloworld(DATA_BLOCK* data_block)
+int json_mapping::CustomMapping::DRAFT_helloworld(DATA_BLOCK* data_block)
 {
     return setReturnDataString(data_block, "Hello World from DRAFT", nullptr);
 }

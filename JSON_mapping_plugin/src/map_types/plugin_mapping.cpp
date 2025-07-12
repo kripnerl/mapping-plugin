@@ -38,7 +38,7 @@
  * @param json_globals
  * @return
  */
-std::string PluginMapping::get_request_str(const MapArguments& arguments) const
+std::string json_mapping::PluginMapping::get_request_str(const MapArguments& arguments) const
 {
     std::stringstream string_stream;
     string_stream << m_plugin << "::" << m_function.value_or("get") << "(";
@@ -76,7 +76,7 @@ std::string PluginMapping::get_request_str(const MapArguments& arguments) const
     return request;
 }
 
-bool PluginMapping::copy_from_cache(const MapArguments& arguments, const std::string& request_str) const
+bool json_mapping::PluginMapping::copy_from_cache(const MapArguments& arguments, const std::string& request_str) const
 {
     if (!m_cache_enabled) {
         return false;
@@ -99,7 +99,7 @@ bool PluginMapping::copy_from_cache(const MapArguments& arguments, const std::st
     }
 }
 
-int PluginMapping::call_plugins(const MapArguments& arguments) const
+int json_mapping::PluginMapping::call_plugins(const MapArguments& arguments) const
 {
     int err{1};
     auto request_str = get_request_str(arguments);
@@ -213,7 +213,7 @@ int PluginMapping::call_plugins(const MapArguments& arguments) const
     return err;
 }
 
-int PluginMapping::map(const MapArguments& arguments) const
+int json_mapping::PluginMapping::map(const MapArguments& arguments) const
 {
     int err = call_plugins(arguments);
 

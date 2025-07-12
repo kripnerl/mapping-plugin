@@ -1,18 +1,25 @@
 #include <chrono>
-#include <clientserver/parseXML.h>
-#include <clientserver/udaStructs.h>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
+#include <ctime>
 #include <fstream>
 #include <iomanip>
-#include <plugins/pluginStructs.h>
-#include <server/getServerEnvironment.h>
+#include <ios>
+#include <sstream>
 #include <string>
-#include <utils/print_uda_structs.hpp>
+#include <string_view>
 #include <vector>
 
-namespace subset
+// UDA includes
+#include <clientserver/parseXML.h>
+#include <clientserver/udaStructs.h>
+#include <plugins/pluginStructs.h>
+#include <server/getServerEnvironment.h>
+
+#include "utils/print_uda_structs.hpp"
+
+namespace json_mapping::subset
 {
 
 class SubsetInfo
@@ -24,9 +31,9 @@ class SubsetInfo
     uint64_t _dim_size;
 
   public:
-    inline explicit SubsetInfo(uint64_t size) : _start(0), _stop(size), _dim_size(size) {}
+    explicit SubsetInfo(uint64_t size) : _start(0), _stop(size), _dim_size(size) {}
 
-    inline SubsetInfo(uint64_t start, uint64_t stop, int stride, uint64_t size)
+    SubsetInfo(uint64_t start, uint64_t stop, int stride, uint64_t size)
         : _start(start), _stop(stop), _stride(stride), _dim_size(size)
     {
 
@@ -35,26 +42,26 @@ class SubsetInfo
         };
     }
 
-    [[nodiscard]] inline uint64_t size() const { return std::floor((_stop - _start) / _stride); }
+    [[nodiscard]] uint64_t size() const { return std::floor((_stop - _start) / _stride); }
 
-    [[nodiscard]] inline bool validate() const { return _stop <= _dim_size and _stride < _dim_size; }
+    [[nodiscard]] bool validate() const { return _stop <= _dim_size and _stride < _dim_size; }
 
-    [[nodiscard]] inline uint64_t start() const { return _start; }
+    [[nodiscard]] uint64_t start() const { return _start; }
 
-    [[nodiscard]] inline uint64_t stop() const { return _stop; }
+    [[nodiscard]] uint64_t stop() const { return _stop; }
 
-    [[nodiscard]] inline int64_t stride() const { return _stride; }
+    [[nodiscard]] int64_t stride() const { return _stride; }
 
-    [[nodiscard]] inline uint64_t dim_size() const { return _dim_size; }
+    [[nodiscard]] uint64_t dim_size() const { return _dim_size; }
 
-    [[nodiscard]] inline std::string print_to_string() const
+    [[nodiscard]] std::string print_to_string() const
     {
-        std::stringstream ss;
-        ss << "start: " << _start << std::endl;
-        ss << "stop: " << _stop << std::endl;
-        ss << "stride: " << _stride << std::endl;
-        ss << "dim_size: " << _dim_size << std::endl;
-        return ss.str();
+        std::stringstream out;
+        out << "start: " << _start << "\n";
+        out << "stop: " << _stop << "\n";
+        out << "stride: " << _stride << "\n";
+        out << "dim_size: " << _dim_size << "\n";
+        return out.str();
     }
 };
 
@@ -74,7 +81,7 @@ std::vector<T> subset(std::vector<T>& input, std::vector<SubsetInfo>& subset_dim
 
 void collapse_dims(DATA_BLOCK* data_block, std::vector<SubsetInfo>& subset_dims);
 
-enum class LogLevel { DEBUG, INFO, WARNING, ERROR };
+enum class LogLevel : uint8_t { DEBUG, INFO, WARNING, ERROR };
 
 inline int log(LogLevel log_level, std::string_view log_msg)
 {
@@ -117,8 +124,9 @@ inline int log(LogLevel log_level, std::string_view log_msg)
     return 0;
 }
 
-inline void log_request_status(REQUEST_DATA* request_data, const std::string message)
+inline void log_request_status(REQUEST_DATA* request_data, const std::string& message)
 {
     log(LogLevel::DEBUG, message + "\n" + uda_structs::print_request_data(request_data));
 }
-} // namespace subset
+
+} // namespace json_mapping::subset

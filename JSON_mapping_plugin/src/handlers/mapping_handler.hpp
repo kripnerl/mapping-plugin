@@ -15,6 +15,10 @@
 #include "map_types/base_mapping.hpp"
 #include "utils/ram_cache.hpp"
 
+typedef struct DataBlock DATA_BLOCK;
+
+namespace json_mapping {
+
 using IDSName = std::string;
 using MachineName = std::string;
 using MappingName = std::string;
@@ -66,13 +70,12 @@ class MappingHandler
     int reset();
     int init(const PLUGINLIST* plugin_list);
     int set_map_dir(const std::string& mapping_dir);
-    std::optional<MappingPair> read_mappings(const MachineName& machine, const std::string& request_ids,
-                                             const REQUEST_DATA* request_data);
+    int map(DATA_BLOCK* data_block, const std::string& mapping, const std::string& path, int data_type, int rank, const nlohmann::json& extra_attributes);
 
   private:
+    [[nodiscard]] std::optional<MappingPair> read_mappings(const MachineName& machine, const std::string& request_ids, const nlohmann::json& extra_attributes);
     [[nodiscard]] std::vector<int> find_mapping_dirs(const MachineName& machine, const IDSName& ids_name) const;
-    [[nodiscard]] std::filesystem::path mapping_path(const MachineName& machine, const IDSName& ids_name, int shot,
-                                                     const std::string& file_name) const;
+    [[nodiscard]] std::filesystem::path mapping_path(const MachineName& machine, const IDSName& ids_name, int shot, const std::string& file_name) const;
     int load_machine(const MachineName& machine);
     [[nodiscard]] nlohmann::json load_toplevel(const MachineName& machine) const;
     int load_shot_globals(const MachineName& machine, const IDSName& ids_name, int shot);
@@ -99,3 +102,8 @@ class MappingHandler
     bool m_cache_enabled;
     const PLUGINLIST* m_plugin_list = nullptr; // currently need this to be able to call UDA plugins
 };
+
+std::string generate_map_path(std::deque<std::string>& path_tokens, const std::vector<int>& indices,
+                              IDSMapRegister& mappings, const std::string& full_path);
+
+} // namespace json_mapping

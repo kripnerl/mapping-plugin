@@ -8,5 +8,5 @@
 
 #include "map_types/map_arguments.hpp"
 
-MapArguments makeMapArguments(DATA_BLOCK* datablock, UDA_TYPE datatype,
-                              int rank, SignalType sig_type = SignalType::DEFAULT);
+json_mapping::MapArguments makeMapArguments(DATA_BLOCK* datablock, UDA_TYPE datatype,
+                              int rank, json_mapping::SignalType sig_type = json_mapping::SignalType::DEFAULT);

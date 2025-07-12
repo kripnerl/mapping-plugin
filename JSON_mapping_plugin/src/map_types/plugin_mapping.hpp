@@ -11,6 +11,8 @@
 #include <memory>
 #include <plugins/pluginStructs.h>
 
+namespace json_mapping {
+
 using MapArgs_t = std::unordered_map<std::string, nlohmann::json>;
 
 class PluginMapping : public Mapping
@@ -48,3 +50,5 @@ class PluginMapping : public Mapping
     [[nodiscard]] bool copy_from_cache(const MapArguments& arguments, const std::string& request_str) const;
     [[nodiscard]] int call_plugins(const MapArguments& arguments) const;
 };
+
+} // namespace json_mapping

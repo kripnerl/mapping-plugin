@@ -3,7 +3,7 @@
 #include "map_types/map_arguments.hpp"
 
 // template int ExprMapping::eval_expr<float>(const MapArguments& arguments) const;
-template int ExprMapping::eval_expr<double>(const MapArguments& arguments) const;
+template int json_mapping::ExprMapping::eval_expr<double>(const MapArguments& arguments) const;
 
 /**
  * @brief Entry map function, overriden from parent Mapping class
@@ -15,7 +15,7 @@ template int ExprMapping::eval_expr<double>(const MapArguments& arguments) const
  * @param global_data global JSON object used in templating
  * @return int error_code
  */
-int ExprMapping::map(const MapArguments& arguments) const
+int json_mapping::ExprMapping::map(const MapArguments& arguments) const
 {
 
     // Float only currently for testing purposes

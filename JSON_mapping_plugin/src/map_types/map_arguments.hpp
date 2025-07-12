@@ -5,9 +5,12 @@
 #include <nlohmann/json.hpp>
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 #include <clientserver/udaStructs.h>
 #include <clientserver/udaTypes.h>
+
+namespace json_mapping {
 
 enum class SignalType : uint8_t { DEFAULT, DATA, TIME, ERROR, DIM, INVALID };
 
@@ -33,3 +36,19 @@ struct MapArguments {
             , rank{rank}
     {}
 };
+
+/**
+ * @brief Deduce the type of signal being requested/mapped,
+ * currently using string comparisons
+ *
+ * The final_path_element for error can be either be error_upper
+ * or error_lower so search for substring error.
+ *
+ * @param element_back_str requested IDS path suffix (eg. data, time, error).
+ * @note if no string is supplied, SignalType set to invalid
+ * @return SignalType Enum class containing the current signal type
+ * [DEFAULT, INVALID, DATA, TIME, ERROR]
+ */
+SignalType deduce_signal_type(std::string_view final_path_element);
+
+} // namespace json_mapping

@@ -11,7 +11,10 @@
 #include <clientserver/udaTypes.h>
 
 #include "map_types/value_mapping.hpp"
+#include "map_types/map_arguments.hpp"
 #include "test_helpers.hpp"
+
+using namespace json_mapping;
 
 TEST_CASE("ValueMapping can be constructed from JSON", "[value_mapping]") {
     // Setup test fixture
