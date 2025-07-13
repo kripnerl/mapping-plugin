@@ -40,6 +40,13 @@ TEST_CASE("Creating new PluginMapping", "[plugin_mapping]") {
 
 static int plugin_mock(IDAM_PLUGIN_INTERFACE* interface) {
     REQUIRE(std::string{ interface->request_data->signal } == "get()");
+    DATA_BLOCK* data_block = interface->data_block;
+    initDataBlock(data_block);
+    data_block->data_type = UDA_TYPE_INT;
+    data_block->data_n = 1;
+    data_block->rank = 0;
+    data_block->data = static_cast<char*>(malloc(sizeof(int)));
+    reinterpret_cast<int*>(data_block->data)[0] = 42;
     return 0;
 }
 
@@ -66,14 +73,13 @@ TEST_CASE("PluginMapping calls plugin", "[plugin_mapping]") {
         auto mapping = std::make_unique<PluginMapping>("UDA", request_args, offset, scale, slice, function, ram_cache, &plugin_list);
         REQUIRE(mapping != nullptr);
 
-        DATA_BLOCK data_block;
-        MapArguments map_args = makeMapArguments(&data_block, UDA_TYPE_FLOAT, 1);
-        auto error_code = mapping->map(map_args);
+        MapArguments map_args = makeMapArguments(UDA_TYPE_FLOAT, 1);
+        auto array = mapping->map(map_args);
 
-        REQUIRE(error_code == 0);
-        // REQUIRE(data_block.data_type == UDA_TYPE_FLOAT);
-        // REQUIRE(data_block.rank == 0);
-        // REQUIRE(*reinterpret_cast<float*>(data_block.data) == -42.75);
+        REQUIRE(!array.empty());
+        REQUIRE(array.type_index() == std::type_index{ typeid(int) });
+        REQUIRE(array.rank() == 0);
+        REQUIRE(*reinterpret_cast<const int*>(array.buffer()) == 42);
     }
 
 }

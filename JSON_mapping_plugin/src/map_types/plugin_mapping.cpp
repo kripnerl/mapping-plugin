@@ -1,5 +1,15 @@
 #include "plugin_mapping.hpp"
 
+#include <cstddef>
+#include <cstring>
+#include <stdexcept>
+#include <exception>
+#include <fmt/core.h>
+#include <inja/inja.hpp>
+#include <sstream>
+#include <string>
+#include <vector>
+
 // UDA includes
 #include <client/getEnvironment.h>
 #include <clientserver/errorLog.h>
@@ -8,15 +18,10 @@
 #include <clientserver/parseXML.h>
 #include <clientserver/stringUtils.h>
 #include <clientserver/udaStructs.h>
+#include <clientserver/udaTypes.h>
 #include <structures/struct.h>
-
-#include <cstddef>
-#include <cstring>
-#include <exception>
-#include <fmt/core.h>
-#include <inja/inja.hpp>
-#include <sstream>
-#include <string>
+#include <plugins/pluginStructs.h>
+#include <plugins/udaPlugin.h>
 
 #include "map_types/map_arguments.hpp"
 #include "utils/ram_cache.hpp"
@@ -55,7 +60,7 @@ std::string json_mapping::PluginMapping::get_request_str(const MapArguments& arg
                     inja::render(inja::render(field.get<std::string>(), arguments.global_data), arguments.global_data);
                 string_stream << delim << key << "=" << value;
             } catch (std::exception& e) {
-                UDA_LOG(UDA_LOG_DEBUG, "Inja template error in request : %s\n", e.what());
+                // UDA_LOG(UDA_LOG_DEBUG, "Inja template error in request : %s\n", e.what());
                 return {};
             }
         } else if (field.is_boolean()) {
@@ -72,18 +77,17 @@ std::string json_mapping::PluginMapping::get_request_str(const MapArguments& arg
     }
 
     auto request = string_stream.str();
-    UDA_LOG(UDA_LOG_DEBUG, "Plugin Mapping Request : %s\n", request.c_str());
+    // UDA_LOG(UDA_LOG_DEBUG, "Plugin Mapping Request : %s\n", request.c_str());
     return request;
 }
 
-bool json_mapping::PluginMapping::copy_from_cache(const MapArguments& arguments, const std::string& request_str) const
+bool json_mapping::PluginMapping::copy_from_cache(DATA_BLOCK* data_block, const MapArguments& arguments, const std::string& request_str) const
 {
     if (!m_cache_enabled) {
         return false;
     }
 
     auto signal_type = arguments.sig_type;
-    auto* data_block = arguments.datablock;
 
     switch (signal_type) {
         case SignalType::DATA:
@@ -99,7 +103,7 @@ bool json_mapping::PluginMapping::copy_from_cache(const MapArguments& arguments,
     }
 }
 
-int json_mapping::PluginMapping::call_plugins(const MapArguments& arguments) const
+int json_mapping::PluginMapping::call_plugins(DATA_BLOCK* data_block, const MapArguments& arguments) const
 {
     int err{1};
     auto request_str = get_request_str(arguments);
@@ -153,11 +157,11 @@ int json_mapping::PluginMapping::call_plugins(const MapArguments& arguments) con
         m_ram_cache->log(ram_cache::LogLevel::DEBUG, "caching disbaled");
     }
 
-    bool cache_hit = copy_from_cache(arguments, request_str);
+    bool cache_hit = copy_from_cache(data_block, arguments, request_str);
     if (cache_hit) {
         m_ram_cache->log(ram_cache::LogLevel::INFO, "Adding cached datablock onto plugin_interface");
         m_ram_cache->log(ram_cache::LogLevel::INFO,
-                         "data on plugin_interface (data_n): " + std::to_string(arguments.datablock->data_n));
+                         "data on plugin_interface (data_n): " + std::to_string(data_block->data_n));
         err = 0;
     } else {
         IDAM_PLUGIN_INTERFACE interface = {0};
@@ -170,7 +174,7 @@ int json_mapping::PluginMapping::call_plugins(const MapArguments& arguments) con
 
         interface.request_data = &request;
         interface.pluginList = m_plugin_list;
-        interface.data_block = arguments.datablock;
+        interface.data_block = data_block;
         interface.environment = environment;
         interface.client_block = &client_block;
         interface.data_source = &data_source;
@@ -191,7 +195,7 @@ int json_mapping::PluginMapping::call_plugins(const MapArguments& arguments) con
         // Add retrieved datablock to cache. data is copied from datablock into a new ram_cache::data_entry. original
         // data remains on block (on plugin_interface structure) for return.
         if (m_cache_enabled) {
-            m_ram_cache->add(request_str, arguments.datablock);
+            m_ram_cache->add(request_str, data_block);
         }
     }
 
@@ -207,24 +211,36 @@ int json_mapping::PluginMapping::call_plugins(const MapArguments& arguments) con
         subset::log(subset::LogLevel::INFO, "scale factor is: " + std::to_string(scale_value));
         auto offset_value = (!dim_data && m_offset.has_value()) ? m_offset.value() : 0.0;
         subset::log(subset::LogLevel::INFO, "offset factor is: " + std::to_string(offset_value));
-        subset::apply_subsetting(arguments.datablock, data_subset, scale_value, offset_value);
+        subset::apply_subsetting(data_block, data_subset, scale_value, offset_value);
     }
 
     return err;
 }
 
-int json_mapping::PluginMapping::map(const MapArguments& arguments) const
+json_mapping::TypedDataArray json_mapping::PluginMapping::map(const MapArguments& arguments) const
 {
-    int err = call_plugins(arguments);
+    DATA_BLOCK data_block;
+    int err = call_plugins(&data_block, arguments);
 
     // temporary solution to the slice functionality returning arrays of 1 element
-    if (arguments.datablock->rank == 1 && arguments.datablock->data_n == 1) {
-        arguments.datablock->rank = 0;
-
-        // imas won't care about order here, but for testing this
-        // avoids a segfault in the client if you try to
-        // interrogate the result.time attribute
-        arguments.datablock->order = -1;
+    if (data_block.rank == 1 && data_block.data_n == 1) {
+        data_block.rank = 0;
     }
-    return err;
+
+    size_t size = data_block.data_n;
+    std::vector<size_t> shape(data_block.rank);
+    for (int i = 0; i < data_block.rank; ++i) {
+        shape[i] = data_block.dims[i].dim_n;
+    }
+
+    switch (data_block.data_type) {
+        case UDA_TYPE_INT:
+            return TypedDataArray{ reinterpret_cast<int*>(data_block.data), size, shape };
+        case UDA_TYPE_FLOAT:
+            return TypedDataArray{ reinterpret_cast<float*>(data_block.data), size, shape };
+        case UDA_TYPE_DOUBLE:
+            return TypedDataArray{ reinterpret_cast<double*>(data_block.data), size, shape };
+        default:
+            throw std::runtime_error{ "unknown data type" };
+    }
 }

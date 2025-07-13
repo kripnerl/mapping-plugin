@@ -7,15 +7,11 @@
 #include <string>
 #include <type_traits>
 #include <vector>
+#include <algorithm>
 
-// UDA includes
-#include <clientserver/udaStructs.h>
 #include <clientserver/udaTypes.h>
-#include <logging/logging.h>
-#include <plugins/udaPlugin.h>
 
 #include "map_types/map_arguments.hpp"
-#include "utils/uda_plugin_helpers.hpp"
 
 using namespace inja;
 using namespace nlohmann;
@@ -23,12 +19,12 @@ using namespace nlohmann;
 namespace
 {
 
-template <typename T> T string_to(const std::string& s, size_t* p);
+template <typename T> T string_to(const std::string& string, size_t* ptr);
 
-template <> float string_to<float>(const std::string& s, size_t* p) { return std::stof(s, p); }
-template <> double string_to<double>(const std::string& s, size_t* p) { return std::stod(s, p); }
-template <> int32_t string_to<int32_t>(const std::string& s, size_t* p) { return std::stoi(s, p); }
-template <> int64_t string_to<int64_t>(const std::string& s, size_t* p) { return std::stol(s, p); }
+template <> float string_to<float>(const std::string& string, size_t* ptr) { return std::stof(string, ptr); }
+template <> double string_to<double>(const std::string& string, size_t* ptr) { return std::stod(string, ptr); }
+template <> int32_t string_to<int32_t>(const std::string& string, size_t* ptr) { return std::stoi(string, ptr); }
+template <> int64_t string_to<int64_t>(const std::string& string, size_t* ptr) { return std::stol(string, ptr); }
 
 template <typename T> std::string name();
 
@@ -86,32 +82,18 @@ try_convert(const std::string& input)
     }
 }
 
-int type_deduce_array(DATA_BLOCK* data_block, const json& temp_val)
+json_mapping::TypedDataArray type_deduce_array(const json& temp_val)
 {
     switch (temp_val.front().type()) {
-        case json::value_t::number_float: {
-            // Handle array of floats
-            auto temp_vec = temp_val.get<std::vector<float>>();
-            imas_json_plugin::uda_helpers::set_return_data_array_vec<float>(data_block, temp_vec);
-            break;
-        }
-        case json::value_t::number_integer: {
-            // Handle array of ints
-            auto temp_vec = temp_val.get<std::vector<int>>();
-            imas_json_plugin::uda_helpers::set_return_data_array_vec<int>(data_block, temp_vec);
-            break;
-        }
-        case json::value_t::number_unsigned: {
-            // Handle array of ints
-            auto temp_vec = temp_val.get<std::vector<unsigned int>>();
-            imas_json_plugin::uda_helpers::set_return_data_array_vec<unsigned int>(data_block, temp_vec);
-            break;
-        }
+        case json::value_t::number_float:
+            return json_mapping::TypedDataArray{ temp_val.get<std::vector<float>>() };
+        case json::value_t::number_integer:
+            return json_mapping::TypedDataArray{ temp_val.get<std::vector<int>>() };
+        case json::value_t::number_unsigned:
+            return json_mapping::TypedDataArray{ temp_val.get<std::vector<unsigned int>>() };
         default:
-            return 1;
+            return {};
     }
-
-    return 0;
 }
 
 std::string render_string(const std::string& input, const json& global_data)
@@ -120,28 +102,17 @@ std::string render_string(const std::string& input, const json& global_data)
     return render(render(input, global_data), global_data);
 }
 
-int type_deduce_primitive(DATA_BLOCK* data_block, const json& temp_val, const json& global_data, UDA_TYPE data_type,
-                          int rank)
+json_mapping::TypedDataArray type_deduce_primitive(const json& temp_val, const json& global_data, UDA_TYPE data_type, int rank)
 {
     switch (temp_val.type()) {
         case json::value_t::number_float:
-            // Handle float
-            imas_json_plugin::uda_helpers::set_return_data_scalar_type<float>(data_block, temp_val.get<float>(),
-                                                                              nullptr);
-            break;
+            return json_mapping::TypedDataArray{ temp_val.get<float>() };
         case json::value_t::number_integer:
-            // Handle int
-            imas_json_plugin::uda_helpers::set_return_data_scalar_type<int>(data_block, temp_val.get<int>(), nullptr);
-            break;
+            return json_mapping::TypedDataArray{ temp_val.get<int>() };
         case json::value_t::number_unsigned:
-            // Handle int
-            imas_json_plugin::uda_helpers::set_return_data_scalar_type<unsigned int>(
-                data_block, temp_val.get<unsigned int>(), nullptr);
-            break;
+            return json_mapping::TypedDataArray{ temp_val.get<unsigned int>() };
         case json::value_t::boolean:
-            // Handle bool
-            imas_json_plugin::uda_helpers::set_return_data_scalar_type<bool>(data_block, temp_val.get<bool>(), nullptr);
-            break;
+            return json_mapping::TypedDataArray{ temp_val.get<bool>() };
         case json::value_t::string: {
             // Handle string
             std::string const rendered_string = render_string(temp_val.get<std::string>(), global_data);
@@ -153,59 +124,49 @@ int type_deduce_primitive(DATA_BLOCK* data_block, const json& temp_val, const js
                 if (rank == 0) {
                     switch (data_type) {
                         case UDA_TYPE_INT:
-                            return imas_json_plugin::uda_helpers::set_return_data_scalar_type<int>(
-                                data_block, try_convert<int>(rendered_string), nullptr);
+                            return json_mapping::TypedDataArray{ try_convert<int>(rendered_string) };
                         case UDA_TYPE_FLOAT:
-                            return imas_json_plugin::uda_helpers::set_return_data_scalar_type<float>(
-                                data_block, try_convert<float>(rendered_string), nullptr);
+                            return json_mapping::TypedDataArray{ try_convert<float>(rendered_string) };
                         case UDA_TYPE_DOUBLE:
-                            return imas_json_plugin::uda_helpers::set_return_data_scalar_type<double>(
-                                data_block, try_convert<double>(rendered_string), nullptr);
+                            return json_mapping::TypedDataArray{ try_convert<double>(rendered_string) };
                         default:
-                            return setReturnDataString(data_block, rendered_string.c_str(), nullptr);
+                            return json_mapping::TypedDataArray{ rendered_string };
                     }
                 } else {
                     switch (data_type) {
                         case UDA_TYPE_INT:
-                            return imas_json_plugin::uda_helpers::set_return_data_array_vec<int>(
-                                data_block, try_convert<int[]>(rendered_string), nullptr);
+                            return json_mapping::TypedDataArray{ try_convert<int[]>(rendered_string) };
                         case UDA_TYPE_FLOAT:
-                            return imas_json_plugin::uda_helpers::set_return_data_array_vec<float>(
-                                data_block, try_convert<float[]>(rendered_string), nullptr);
+                            return json_mapping::TypedDataArray{ try_convert<float[]>(rendered_string) };
                         case UDA_TYPE_DOUBLE:
-                            return imas_json_plugin::uda_helpers::set_return_data_array_vec<double>(
-                                data_block, try_convert<double[]>(rendered_string), nullptr);
+                            return json_mapping::TypedDataArray{ try_convert<double[]>(rendered_string) };
                         default:
-                            return setReturnDataString(data_block, rendered_string.c_str(), nullptr);
+                            return json_mapping::TypedDataArray{ rendered_string };
                     }
                 }
             } catch (const std::invalid_argument& e) {
-                UDA_LOG(UDA_LOG_DEBUG,
-                        "ValueMapping::map failure to convert"
-                        "string to int in mapping : %s\n",
-                        e.what());
-                setReturnDataString(data_block, rendered_string.c_str(), nullptr);
+                // UDA_LOG(UDA_LOG_DEBUG,
+                //         "ValueMapping::map failure to convert"
+                //         "string to int in mapping : %s\n",
+                //         e.what());
+                return json_mapping::TypedDataArray{ rendered_string };
             }
             break;
         }
         default:
-            return 1;
+            throw std::runtime_error{ "unknown json type" };
     }
-
-    return 0;
 }
 
 } // anon namespace
 
-int json_mapping::ValueMapping::map(const MapArguments& arguments) const
+json_mapping::TypedDataArray json_mapping::ValueMapping::map(const MapArguments& arguments) const
 {
     const auto temp_val = m_value;
     if (temp_val.is_discarded() or temp_val.is_binary() or temp_val.is_null()) {
-        UDA_LOG(UDA_LOG_DEBUG, "ValueMapping::map unrecognised json value type");
-        return 1;
+        throw std::runtime_error{ "map unrecognised json value type" };
     }
 
-    int err{1};
     if (temp_val.is_array()) {
         // Check all members of array are numbers
         // (Add array of strings if necessary)
@@ -214,15 +175,14 @@ int json_mapping::ValueMapping::map(const MapArguments& arguments) const
 
         // deduce type if true
         if (all_number) {
-            err = type_deduce_array(arguments.datablock, temp_val);
+            return type_deduce_array(temp_val);
         }
 
     } else if (temp_val.is_primitive()) {
-        err = type_deduce_primitive(arguments.datablock, temp_val, arguments.global_data, arguments.datatype,
-                                    arguments.rank);
+        return type_deduce_primitive(temp_val, arguments.global_data, arguments.datatype, arguments.rank);
     } else {
-        UDA_LOG(UDA_LOG_DEBUG, "ValueMapping::map not structured or primitive");
+        throw std::runtime_error{ "map not structured or primitive" };
     }
 
-    return err;
+    return {};
 }

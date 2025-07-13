@@ -9,7 +9,9 @@
 #include <utility>
 #include <string>
 #include <memory>
+
 #include <plugins/pluginStructs.h>
+#include <clientserver/udaStructs.h>
 
 namespace json_mapping {
 
@@ -33,7 +35,7 @@ class PluginMapping : public Mapping
         , m_plugin_list{plugin_list}
         {};
 
-    [[nodiscard]] int map(const MapArguments& arguments) const override;
+    [[nodiscard]] TypedDataArray map(const MapArguments& arguments) const override;
 
   private:
     std::string m_plugin;
@@ -47,8 +49,8 @@ class PluginMapping : public Mapping
     const PLUGINLIST* m_plugin_list;
 
     [[nodiscard]] std::string get_request_str(const MapArguments& arguments) const;
-    [[nodiscard]] bool copy_from_cache(const MapArguments& arguments, const std::string& request_str) const;
-    [[nodiscard]] int call_plugins(const MapArguments& arguments) const;
+    [[nodiscard]] bool copy_from_cache(DATA_BLOCK* data_block, const MapArguments& arguments, const std::string& request_str) const;
+    [[nodiscard]] int call_plugins(DATA_BLOCK* data_block, const MapArguments& arguments) const;
 };
 
 } // namespace json_mapping

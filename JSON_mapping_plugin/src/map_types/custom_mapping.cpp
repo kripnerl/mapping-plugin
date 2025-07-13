@@ -1,8 +1,6 @@
 #include "map_types/custom_mapping.hpp"
 
-// UDA includes
-#include <clientserver/udaStructs.h>
-#include <plugins/udaPlugin.h>
+#include <cstring>
 
 #include "map_types/map_arguments.hpp"
 
@@ -16,29 +14,29 @@
  * @param global_data global JSON object used in templating
  * @return int error_code
  */
-int json_mapping::CustomMapping::map(const MapArguments& arguments) const
+json_mapping::TypedDataArray json_mapping::CustomMapping::map(const MapArguments& /*arguments*/) const
 {
-    int err{1};
     switch (m_custom_type) {
         case CustomMapType_t::MASTU_helloworld:
-            err = MASTU_helloworld(arguments.datablock);
+            return MASTU_helloworld();
             break;
         case CustomMapType_t::DRAFT_helloworld:
-            err = DRAFT_helloworld(arguments.datablock);
+            return DRAFT_helloworld();
             break;
         case CustomMapType_t::INVALID:
+            return {};
             break;
     }
-
-    return err;
 }
 
-int json_mapping::CustomMapping::MASTU_helloworld(DATA_BLOCK* data_block)
+json_mapping::TypedDataArray json_mapping::CustomMapping::MASTU_helloworld()
 {
-    return setReturnDataString(data_block, "Hello World from MASTU", nullptr);
+    const char* string = "Hello World from MASTU";
+    return TypedDataArray{ string };
 }
 
-int json_mapping::CustomMapping::DRAFT_helloworld(DATA_BLOCK* data_block)
+json_mapping::TypedDataArray json_mapping::CustomMapping::DRAFT_helloworld()
 {
-    return setReturnDataString(data_block, "Hello World from DRAFT", nullptr);
+    const char* string = "Hello World from DRAFT";
+    return TypedDataArray{ string };
 }

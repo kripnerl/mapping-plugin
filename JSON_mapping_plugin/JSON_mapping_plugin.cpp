@@ -5,7 +5,6 @@
 #include <cstdint>
 #include <cstdlib>
 #include <ctime>
-#include <deque>
 #include <exception>
 #include <fstream>
 #include <iomanip>
@@ -13,7 +12,6 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
-#include <vector>
 
 // UDA includes
 #include <clientserver/errorLog.h>
@@ -27,6 +25,7 @@
 #include <server/getServerEnvironment.h>
 
 #include "handlers/mapping_handler.hpp"
+#include "utils/uda_plugin_helpers.hpp"
 
 namespace json_mapping_plugin
 {
@@ -220,7 +219,10 @@ int JSONMappingPlugin::get(IDAM_PLUGIN_INTERFACE* plugin_interface)
     nlohmann::json extra_attributes = {};
     add_machine_specific_attributes(plugin_interface, extra_attributes);
 
-    return m_mapping_handler.map(data_block, mapping, path, datatype, rank, extra_attributes);
+    auto array = m_mapping_handler.map(mapping, path, datatype, rank, extra_attributes);
+    imas_json_plugin::uda_helpers::set_data_block(data_block, array);
+
+    return 0;
 }
 
 int JSONMappingPlugin::execute(IDAM_PLUGIN_INTERFACE* plugin_interface)

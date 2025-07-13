@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <filesystem>
+#include <map_types/map_arguments.hpp>
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <optional>
@@ -9,13 +10,12 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-
-#include <plugins/pluginStructs.h>
+#include <deque>
 
 #include "map_types/base_mapping.hpp"
 #include "utils/ram_cache.hpp"
 
-typedef struct DataBlock DATA_BLOCK;
+struct PluginList;
 
 namespace json_mapping {
 
@@ -67,30 +67,30 @@ class MappingHandler
         , m_cache_enabled(false)
     {};
 
-    int reset();
-    int init(const PLUGINLIST* plugin_list);
-    int set_map_dir(const std::string& mapping_dir);
-    int map(DATA_BLOCK* data_block, const std::string& mapping, const std::string& path, int data_type, int rank, const nlohmann::json& extra_attributes);
+    void reset();
+    void init(const PluginList* plugin_list);
+    void set_map_dir(const std::string& mapping_dir);
+    TypedDataArray map(const std::string& mapping, const std::string& path, int data_type, int rank, const nlohmann::json& extra_attributes);
 
   private:
     [[nodiscard]] std::optional<MappingPair> read_mappings(const MachineName& machine, const std::string& request_ids, const nlohmann::json& extra_attributes);
     [[nodiscard]] std::vector<int> find_mapping_dirs(const MachineName& machine, const IDSName& ids_name) const;
     [[nodiscard]] std::filesystem::path mapping_path(const MachineName& machine, const IDSName& ids_name, int shot, const std::string& file_name) const;
-    int load_machine(const MachineName& machine);
+    void load_machine(const MachineName& machine);
     [[nodiscard]] nlohmann::json load_toplevel(const MachineName& machine) const;
-    int load_shot_globals(const MachineName& machine, const IDSName& ids_name, int shot);
-    int load_globals(const MachineName& machine, const IDSName& ids_name);
-    int load_shot_mappings(const MachineName& machine, const IDSName& ids_name, int shot);
-    int load_mappings(const MachineName& machine, const IDSName& ids_name);
+    void load_shot_globals(const MachineName& machine, const IDSName& ids_name, int shot);
+    void load_globals(const MachineName& machine, const IDSName& ids_name);
+    void load_shot_mappings(const MachineName& machine, const IDSName& ids_name, int shot);
+    void load_mappings(const MachineName& machine, const IDSName& ids_name);
 
-    int init_mappings(const MachineName& machine, const IDSName& ids_name, const nlohmann::json& data, int shot);
-    static int init_value_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
-    int init_plugin_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value,
+    void init_mappings(const MachineName& machine, const IDSName& ids_name, const nlohmann::json& data, int shot);
+    static void init_value_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
+    void init_plugin_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value,
                             const nlohmann::json& ids_attributes, std::shared_ptr<ram_cache::RamCache>& ram_cache);
-    static int init_dim_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
+    static void init_dim_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
     // static int init_slice_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
-    static int init_expr_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
-    static int init_custom_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
+    static void init_expr_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
+    static void init_custom_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
 
     MachineRegisterStore m_machine_register;
     bool m_init;
@@ -100,7 +100,7 @@ class MappingHandler
     nlohmann::json m_mapping_config;
     std::shared_ptr<ram_cache::RamCache> m_ram_cache;
     bool m_cache_enabled;
-    const PLUGINLIST* m_plugin_list = nullptr; // currently need this to be able to call UDA plugins
+    const PluginList* m_plugin_list = nullptr; // currently need this to be able to call UDA plugins
 };
 
 std::string generate_map_path(std::deque<std::string>& path_tokens, const std::vector<int>& indices,

@@ -29,7 +29,7 @@
 
 namespace ram_cache
 {
-enum class LogLevel { DEBUG, INFO, WARNING, ERROR };
+enum class LogLevel : uint8_t { DEBUG, INFO, WARNING, ERROR };
 
 /**
  * @brief Temporary logging function for JSON_mapping_plugin, outputs

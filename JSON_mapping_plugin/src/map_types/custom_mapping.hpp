@@ -3,8 +3,6 @@
 #include <cstdint>
 #include <nlohmann/json.hpp>
 
-#include <clientserver/udaStructs.h>
-
 #include "map_types/base_mapping.hpp"
 #include "map_types/map_arguments.hpp"
 
@@ -35,13 +33,13 @@ class CustomMapping : public Mapping
     CustomMapping& operator=(CustomMapping&& other) = default;
     CustomMapping& operator=(const CustomMapping& other) = default;
 
-    [[nodiscard]] int map(const MapArguments& arguments) const override;
+    [[nodiscard]] TypedDataArray map(const MapArguments& arguments) const override;
 
   private:
     CustomMapType_t m_custom_type;
 
-    static int MASTU_helloworld(DATA_BLOCK* data_block);
-    static int DRAFT_helloworld(DATA_BLOCK* data_block);
+    static TypedDataArray MASTU_helloworld();
+    static TypedDataArray DRAFT_helloworld();
 };
 
 } // namespace json_mapping

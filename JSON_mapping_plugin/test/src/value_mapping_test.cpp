@@ -4,6 +4,8 @@
 
 #include <nlohmann/json.hpp>
 #include <memory>
+#include <typeindex>
+#include <vector>
 
 // UDA includes
 #include <clientserver/initStructs.h>
@@ -65,14 +67,13 @@ TEST_CASE("ValueMapping returns expected data for different 0D types", "[value_m
         const auto& value_json = test_json.at("VALUE");
         auto mapping = std::make_unique<ValueMapping>(value_json);
 
-        DATA_BLOCK data_block;
-        MapArguments map_args = makeMapArguments(&data_block, UDA_TYPE_INT, 0);
-        auto error_code = mapping->map(map_args);
+        MapArguments map_args = makeMapArguments(UDA_TYPE_INT, 0);
+        auto array = mapping->map(map_args);
 
-        REQUIRE(error_code == 0);
-        REQUIRE(data_block.data_type == UDA_TYPE_INT);
-        REQUIRE(data_block.rank == 0);
-        REQUIRE(*reinterpret_cast<int*>(data_block.data) == 42);
+        REQUIRE(!array.empty());
+        REQUIRE(array.type_index() == std::type_index{ typeid(int) });
+        REQUIRE(array.rank() == 0);
+        REQUIRE(*reinterpret_cast<const int*>(array.buffer()) == 42);
     }
 
     SECTION("Negative integer values are correctly returned") {
@@ -81,14 +82,13 @@ TEST_CASE("ValueMapping returns expected data for different 0D types", "[value_m
         const auto& value_json = test_json.at("VALUE");
         auto mapping = std::make_unique<ValueMapping>(value_json);
 
-        DATA_BLOCK data_block;
-        MapArguments map_args = makeMapArguments(&data_block, UDA_TYPE_INT, 0);
-        auto error_code = mapping->map(map_args);
+        MapArguments map_args = makeMapArguments(UDA_TYPE_INT, 0);
+        auto array = mapping->map(map_args);
 
-        REQUIRE(error_code == 0);
-        REQUIRE(data_block.data_type == UDA_TYPE_INT);
-        REQUIRE(data_block.rank == 0);
-        REQUIRE(*reinterpret_cast<int*>(data_block.data) == -42);
+        REQUIRE(!array.empty());
+        REQUIRE(array.type_index() == std::type_index{ typeid(int) });
+        REQUIRE(array.rank() == 0);
+        REQUIRE(*reinterpret_cast<const int*>(array.buffer()) == -42);
     }
 
     SECTION("String values are correctly returned") {
@@ -97,14 +97,13 @@ TEST_CASE("ValueMapping returns expected data for different 0D types", "[value_m
         const auto& value_json = test_json.at("VALUE");
         auto mapping = std::make_unique<ValueMapping>(value_json);
 
-        DATA_BLOCK data_block;
-        MapArguments map_args = makeMapArguments(&data_block, UDA_TYPE_STRING, 1);
-        auto error_code = mapping->map(map_args);
+        MapArguments map_args = makeMapArguments(UDA_TYPE_STRING, 1);
+        auto array = mapping->map(map_args);
 
-        REQUIRE(error_code == 0);
-        REQUIRE(data_block.data_type == UDA_TYPE_STRING);
-        REQUIRE(data_block.rank == 1);
-        REQUIRE_THAT(data_block.data, Catch::Matchers::Equals("Hello World!"));
+        REQUIRE(!array.empty());
+        REQUIRE(array.type_index() == std::type_index{ typeid(const char) });
+        REQUIRE(array.rank() == 1);
+        REQUIRE_THAT(array.buffer(), Catch::Matchers::Equals("Hello World!"));
     }
 
     SECTION("Float values are correctly returned") {
@@ -113,14 +112,13 @@ TEST_CASE("ValueMapping returns expected data for different 0D types", "[value_m
         const auto& value_json = test_json.at("VALUE");
         auto mapping = std::make_unique<ValueMapping>(value_json);
 
-        DATA_BLOCK data_block;
-        MapArguments map_args = makeMapArguments(&data_block, UDA_TYPE_FLOAT, 0);
-        auto error_code = mapping->map(map_args);
+        MapArguments map_args = makeMapArguments(UDA_TYPE_FLOAT, 0);
+        auto array = mapping->map(map_args);
 
-        REQUIRE(error_code == 0);
-        REQUIRE(data_block.data_type == UDA_TYPE_FLOAT);
-        REQUIRE(data_block.rank == 0);
-        REQUIRE(*reinterpret_cast<float*>(data_block.data) == 42.75);
+        REQUIRE(!array.empty());
+        REQUIRE(array.type_index() == std::type_index{ typeid(float) });
+        REQUIRE(array.rank() == 0);
+        REQUIRE(*reinterpret_cast<const float*>(array.buffer()) == 42.75);
     }
 
     SECTION("Negative float values are correctly returned") {
@@ -129,14 +127,13 @@ TEST_CASE("ValueMapping returns expected data for different 0D types", "[value_m
         const auto& value_json = test_json.at("VALUE");
         auto mapping = std::make_unique<ValueMapping>(value_json);
 
-        DATA_BLOCK data_block;
-        MapArguments map_args = makeMapArguments(&data_block, UDA_TYPE_FLOAT, 0);
-        auto error_code = mapping->map(map_args);
+        MapArguments map_args = makeMapArguments(UDA_TYPE_FLOAT, 0);
+        auto array = mapping->map(map_args);
 
-        REQUIRE(error_code == 0);
-        REQUIRE(data_block.data_type == UDA_TYPE_FLOAT);
-        REQUIRE(data_block.rank == 0);
-        REQUIRE(*reinterpret_cast<float*>(data_block.data) == -42.75);
+        REQUIRE(!array.empty());
+        REQUIRE(array.type_index() == std::type_index{ typeid(float) });
+        REQUIRE(array.rank() == 0);
+        REQUIRE(*reinterpret_cast<const float*>(array.buffer()) == -42.75);
     }
 }
 
@@ -153,15 +150,15 @@ TEST_CASE("ValueMapping returns expected data for different 1D types", "[value_m
         const auto& value_json = test_json.at("VALUE");
         auto mapping = std::make_unique<ValueMapping>(value_json);
 
-        DATA_BLOCK data_block;
-        MapArguments map_args = makeMapArguments(&data_block, UDA_TYPE_INT, 1);
-        auto error_code = mapping->map(map_args);
+        MapArguments map_args = makeMapArguments(UDA_TYPE_INT, 1);
+        auto array = mapping->map(map_args);
 
-        REQUIRE(error_code == 0);
-        REQUIRE(data_block.data_type == UDA_TYPE_INT);
-        REQUIRE(data_block.rank == 1);
-        const auto* data = reinterpret_cast<int*>(data_block.data);
-        REQUIRE_THAT(std::vector<int>(data, data + data_block.data_n), Catch::Matchers::RangeEquals(test_vector_1d));
+        REQUIRE(!array.empty());
+        REQUIRE(array.type_index() == std::type_index{ typeid(int) });
+        REQUIRE(array.rank() == 1);
+        const auto* data = reinterpret_cast<const int*>(array.buffer());
+        auto vector = std::vector<int>{ data, data + array.size() };
+        REQUIRE_THAT(vector, Catch::Matchers::RangeEquals(test_vector_1d));
     }
 
     SECTION("1D negative integer arrays are correctly returned") {
@@ -171,15 +168,15 @@ TEST_CASE("ValueMapping returns expected data for different 1D types", "[value_m
         const auto& value_json = test_json.at("VALUE");
         auto mapping = std::make_unique<ValueMapping>(value_json);
 
-        DATA_BLOCK data_block;
-        MapArguments map_args = makeMapArguments(&data_block, UDA_TYPE_INT, 1);
-        auto error_code = mapping->map(map_args);
+        MapArguments map_args = makeMapArguments(UDA_TYPE_INT, 1);
+        auto array = mapping->map(map_args);
 
-        REQUIRE(error_code == 0);
-        REQUIRE(data_block.data_type == UDA_TYPE_INT);
-        REQUIRE(data_block.rank == 1);
-        const auto* data = reinterpret_cast<int*>(data_block.data);
-        REQUIRE_THAT(std::vector<int>(data, data + data_block.data_n), Catch::Matchers::RangeEquals(test_vector_1d));
+        REQUIRE(!array.empty());
+        REQUIRE(array.type_index() == std::type_index{ typeid(int) });
+        REQUIRE(array.rank() == 1);
+        const auto* data = reinterpret_cast<const int*>(array.buffer());
+        auto vector = std::vector<int>{ data, data + array.size() };
+        REQUIRE_THAT(vector, Catch::Matchers::RangeEquals(test_vector_1d));
     }
 
     SECTION("1D float arrays are correctly returned") {
@@ -189,15 +186,15 @@ TEST_CASE("ValueMapping returns expected data for different 1D types", "[value_m
         const auto& value_json = test_json.at("VALUE");
         auto mapping = std::make_unique<ValueMapping>(value_json);
 
-        DATA_BLOCK data_block;
-        MapArguments map_args = makeMapArguments(&data_block, UDA_TYPE_FLOAT, 1);
-        auto error_code = mapping->map(map_args);
+        MapArguments map_args = makeMapArguments(UDA_TYPE_FLOAT, 1);
+        auto array = mapping->map(map_args);
 
-        REQUIRE(error_code == 0);
-        REQUIRE(data_block.data_type == UDA_TYPE_FLOAT);
-        REQUIRE(data_block.rank == 1);
-        const auto* data = reinterpret_cast<float*>(data_block.data);
-        REQUIRE_THAT(std::vector<float>(data, data + data_block.data_n), Catch::Matchers::RangeEquals(test_vector_1d));
+        REQUIRE(!array.empty());
+        REQUIRE(array.type_index() == std::type_index{ typeid(float) });
+        REQUIRE(array.rank() == 1);
+        const auto* data = reinterpret_cast<const float*>(array.buffer());
+        auto vector = std::vector<float>{ data, data + array.size() };
+        REQUIRE_THAT(vector, Catch::Matchers::RangeEquals(test_vector_1d));
     }
 
     SECTION("1D negative float arrays are correctly returned") {
@@ -207,14 +204,14 @@ TEST_CASE("ValueMapping returns expected data for different 1D types", "[value_m
         const auto& value_json = test_json.at("VALUE");
         auto mapping = std::make_unique<ValueMapping>(value_json);
 
-        DATA_BLOCK data_block;
-        MapArguments map_args = makeMapArguments(&data_block, UDA_TYPE_FLOAT, 1);
-        auto error_code = mapping->map(map_args);
+        MapArguments map_args = makeMapArguments(UDA_TYPE_FLOAT, 1);
+        auto array = mapping->map(map_args);
 
-        REQUIRE(error_code == 0);
-        REQUIRE(data_block.data_type == UDA_TYPE_FLOAT);
-        REQUIRE(data_block.rank == 1);
-        const auto* data = reinterpret_cast<float*>(data_block.data);
-        REQUIRE_THAT(std::vector<float>(data, data + data_block.data_n), Catch::Matchers::RangeEquals(test_vector_1d));
+        REQUIRE(!array.empty());
+        REQUIRE(array.type_index() == std::type_index{ typeid(float) });
+        REQUIRE(array.rank() == 1);
+        const auto* data = reinterpret_cast<const float*>(array.buffer());
+        auto vector = std::vector<float>{ data, data + array.size() };
+        REQUIRE_THAT(vector, Catch::Matchers::RangeEquals(test_vector_1d));
     }
 }

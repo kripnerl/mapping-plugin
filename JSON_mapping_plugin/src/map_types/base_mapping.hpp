@@ -3,10 +3,6 @@
 #include <nlohmann/json.hpp>
 #include <cstdint>
 
-#include <clientserver/udaStructs.h>
-#include <plugins/pluginStructs.h>
-#include <plugins/udaPlugin.h>
-
 #include "map_arguments.hpp"
 
 namespace json_mapping {
@@ -30,7 +26,7 @@ class Mapping
     Mapping& operator=(Mapping&& other) = default;
     Mapping& operator=(const Mapping& other) = default;
 
-    [[nodiscard]] virtual int map(const MapArguments& arguments) const = 0;
+    [[nodiscard]] virtual TypedDataArray map(const MapArguments& arguments) const = 0;
 };
 
 } // namespace json_mapping

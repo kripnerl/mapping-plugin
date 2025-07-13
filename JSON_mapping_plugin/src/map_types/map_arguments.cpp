@@ -1,8 +1,8 @@
 #include "map_arguments.hpp"
 
+#include <boost/algorithm/string.hpp>
 #include <string>
 #include <string_view>
-#include <boost/algorithm/string.hpp>
 
 json_mapping::SignalType json_mapping::deduce_signal_type(std::string_view final_path_element)
 {

@@ -8,15 +8,11 @@
 #include <utility>
 #include <vector>
 
-#include <clientserver/initStructs.h>
-#include <clientserver/udaStructs.h>
-#include <plugins/pluginStructs.h>
-
 #include "map_types/base_mapping.hpp"
 #include "map_types/map_arguments.hpp"
-#include "utils/uda_plugin_helpers.hpp"
 
-namespace json_mapping {
+namespace json_mapping
+{
 
 /**
  * @class ExprMapping
@@ -43,13 +39,13 @@ class ExprMapping : public Mapping
     ExprMapping(std::string expr, std::unordered_map<std::string, std::string> parameters)
         : m_expr{std::move(expr)}, m_parameters{std::move(parameters)} {};
 
-    [[nodiscard]] int map(const MapArguments& arguments) const override;
+    [[nodiscard]] TypedDataArray map(const MapArguments& arguments) const override;
 
   private:
     std::string m_expr;
     std::unordered_map<std::string, std::string> m_parameters;
 
-    template <typename T> [[nodiscard]] int eval_expr(const MapArguments& arguments) const;
+    template <typename T> [[nodiscard]] TypedDataArray eval_expr(const MapArguments& arguments) const;
 };
 
 /**
@@ -69,7 +65,7 @@ class ExprMapping : public Mapping
  * @param global_data global JSON object used in templating
  * @return int error_code
  */
-template <typename T> int ExprMapping::eval_expr(const MapArguments& arguments) const
+template <typename T> TypedDataArray ExprMapping::eval_expr(const MapArguments& arguments) const
 {
     exprtk::symbol_table<T> symbol_table;
     exprtk::expression<T> expression;
@@ -81,32 +77,25 @@ template <typename T> int ExprMapping::eval_expr(const MapArguments& arguments) 
 
     symbol_table.add_constants();
     for (const auto& [key, json_name] : m_parameters) {
-
-        initDataBlock(arguments.datablock); // Reset datablock per param
-        int result = arguments.entries.at(json_name)->map(arguments);
-        if (result != 0) {
-            return result;
+        auto array = arguments.entries.at(json_name)->map(arguments);
+        if (array.empty()) {
+            return array;
         }
 
-        // No data for expression parameters, cannot evaluate, return 1;
-        if (!arguments.datablock->data) {
-            return 1;
-        }
-
-        T* raw_data = reinterpret_cast<T*>(arguments.datablock->data);
-        size_t data_size = arguments.datablock->data_n;
+        const T* raw_data = reinterpret_cast<const T*>(array.buffer());
+        size_t data_size = array.size();
 
         if (data_size > 1) {
-            symbol_table.add_vector(key, raw_data, data_size);
+            symbol_table.add_vector(key, const_cast<T*>(raw_data), data_size);
             if (first_vec_param) {
                 // use size of first vector parameter to define the size
                 // should use maximum but assumes all vectors in calculation same size
-                result_size = arguments.datablock->data_n;
+                result_size = array.size();
                 first_vec_param = false;
             }
             vector_expr = true;
         } else {
-            symbol_table.add_variable(key, *raw_data);
+            symbol_table.add_variable(key, *const_cast<T*>(raw_data));
         }
     }
 
@@ -126,12 +115,9 @@ template <typename T> int ExprMapping::eval_expr(const MapArguments& arguments) 
     // however, result added to the expression to handle vector operations
     expression.value();
     if (vector_expr) {
-        imas_json_plugin::uda_helpers::set_return_data_array_vec(arguments.datablock, result);
-    } else {
-        imas_json_plugin::uda_helpers::set_return_data_scalar_type(arguments.datablock, result.at(0));
+        return TypedDataArray{result};
     }
-
-    return 0;
+    return TypedDataArray{result.at(0)};
 }
 
 } // namespace json_mapping
