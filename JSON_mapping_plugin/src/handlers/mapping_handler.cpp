@@ -24,7 +24,7 @@
 #include "map_types/custom_mapping.hpp"
 #include "map_types/dim_mapping.hpp"
 #include "map_types/expr_mapping.hpp"
-#include "map_types/plugin_mapping.hpp"
+#include "map_types/data_source_mapping.hpp"
 #include "map_types/value_mapping.hpp"
 #include "utils/ram_cache.hpp"
 #include "utils/syntax_parser.hpp"
@@ -377,10 +377,10 @@ void json_mapping::MappingHandler::init_plugin_mapping(IDSMapRegister& map_reg, 
                                         const nlohmann::json& ids_attributes,
                                         std::shared_ptr<ram_cache::RamCache>& ram_cache)
 {
-    auto plugin_name = value["PLUGIN"].get<std::string>();
-    boost::to_upper(plugin_name);
+    auto data_source_name = value["DATA_SOURCE"].get<std::string>();
+    boost::to_upper(data_source_name);
 
-    auto args = value["ARGS"].get<MapArgs_t>();
+    auto args = value["ARGS"].get<DataSourceArgs>();
     auto offset = get_float_value("OFFSET", value, ids_attributes);
     auto scale = get_float_value("SCALE", value, ids_attributes);
     auto slice = value.contains("SLICE") ? std::optional<std::string>{value["SLICE"].get<std::string>()}
@@ -388,13 +388,12 @@ void json_mapping::MappingHandler::init_plugin_mapping(IDSMapRegister& map_reg, 
     auto function = value.contains("FUNCTION") ? std::optional<std::string>{value["FUNCTION"].get<std::string>()}
                                                : std::optional<std::string>{};
 
-    if (ids_attributes.contains("PLUGIN_CONFIG")) {
-        const auto& plugin_config_map = ids_attributes["PLUGIN_CONFIG"].get<nlohmann::json>();
-        apply_config(args, function, plugin_config_map, plugin_name);
+    if (ids_attributes.contains("DATA_SOURCE_CONFIG")) {
+        const auto& plugin_config_map = ids_attributes["DATA_SOURCE_CONFIG"].get<nlohmann::json>();
+        apply_config(args, function, plugin_config_map, data_source_name);
     }
 
-    map_reg.try_emplace(key, std::make_unique<PluginMapping>(plugin_name, args, offset, scale, slice, function,
-                                                             ram_cache, m_plugin_list));
+    map_reg.try_emplace(key, std::make_unique<DataSourceMapping>(data_source_name, args, offset, scale, slice, ram_cache));
 }
 
 void json_mapping::MappingHandler::init_dim_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value)

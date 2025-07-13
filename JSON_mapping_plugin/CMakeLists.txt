@@ -6,21 +6,21 @@ set( JSON_LIBNAME JSON_mapping_plugin )
 
 # Group source files by functionality for better organization
 set( UTIL_SOURCES
-    src/utils/scale_offset.cpp
-    src/utils/uda_plugin_helpers.cpp
+    src/utils/indices.cpp
     src/utils/ram_cache.cpp
+    src/utils/scale_offset.cpp
     src/utils/subset.cpp
     src/utils/syntax_parser.cpp
-    src/utils/indices.cpp
+    src/utils/uda_plugin_helpers.cpp
 )
 
 set( MAP_TYPE_SOURCES
     src/map_types/custom_mapping.cpp
+    src/map_types/data_source_mapping.cpp
     src/map_types/dim_mapping.cpp
     src/map_types/expr_mapping.cpp
-    src/map_types/plugin_mapping.cpp
-    src/map_types/value_mapping.cpp
     src/map_types/map_arguments.cpp
+    src/map_types/value_mapping.cpp
 )
 
 set( HANDLER_SOURCES
@@ -29,27 +29,28 @@ set( HANDLER_SOURCES
 
 set( SOURCES
     JSON_mapping_plugin.cpp
+    uda_data_source.cpp
     ${UTIL_SOURCES}
     ${MAP_TYPE_SOURCES}
     ${HANDLER_SOURCES}
 )
 
 set( UTIL_HEADERS
-    src/utils/scale_offset.hpp
-    src/utils/uda_plugin_helpers.hpp
-    src/utils/ram_cache.hpp
-    src/utils/subset.hpp
-    src/utils/uda_type_sizes.hpp
     src/utils/print_uda_structs.hpp
+    src/utils/ram_cache.hpp
+    src/utils/scale_offset.hpp
+    src/utils/subset.hpp
+    src/utils/uda_plugin_helpers.hpp
+    src/utils/uda_type_sizes.hpp
 )
 
 set( MAP_TYPE_HEADERS
     src/map_types/base_mapping.hpp
     src/map_types/custom_mapping.hpp
+    src/map_types/data_source_mapping.hpp
     src/map_types/dim_mapping.hpp
     src/map_types/expr_mapping.hpp
     src/map_types/map_arguments.hpp
-    src/map_types/plugin_mapping.hpp
     src/map_types/value_mapping.hpp
 )
 

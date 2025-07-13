@@ -7,12 +7,13 @@ project(
 )
 
 set( TEST_SOURCES
-    src/main_test.cpp
-    src/json_plugin_test.cpp
-    src/value_mapping_test.cpp
-    src/plugin_mapping_test.cpp
-    src/syntax_parser_test.cpp
+    src/data_source_mapping_test.cpp
     src/indices_test.cpp
+    src/json_plugin_test.cpp
+    src/main_test.cpp
+    src/syntax_parser_test.cpp
+    src/value_mapping_test.cpp
+    src/uda_data_source_test.cpp
 )
 
 include( FetchContent )
