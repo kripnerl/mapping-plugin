@@ -30,6 +30,7 @@ set( HANDLER_SOURCES
 set( SOURCES
     JSON_mapping_plugin.cpp
     uda_data_source.cpp
+    uda_ram_cache.cpp
     ${UTIL_SOURCES}
     ${MAP_TYPE_SOURCES}
     ${HANDLER_SOURCES}
@@ -60,6 +61,8 @@ set( HANDLER_HEADERS
 
 set( HEADERS
     JSON_mapping_plugin.h
+    uda_data_source.hpp
+    uda_ram_cache.hpp
     ${UTIL_HEADERS}
     ${MAP_TYPE_HEADERS}
     ${HANDLER_HEADERS}

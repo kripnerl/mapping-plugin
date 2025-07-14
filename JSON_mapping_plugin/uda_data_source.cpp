@@ -2,16 +2,15 @@
 
 #include <cstddef>
 #include <cstring>
-#include <map_types/data_source_mapping.hpp>
-#include <stdexcept>
 #include <exception>
 #include <fmt/core.h>
 #include <inja/inja.hpp>
-#include <sstream>
-#include <string>
-#include <vector>
 #include <optional>
+#include <sstream>
+#include <stdexcept>
+#include <string>
 #include <utility>
+#include <vector>
 
 // UDA includes
 #include <client/getEnvironment.h>
@@ -22,11 +21,13 @@
 #include <clientserver/stringUtils.h>
 #include <clientserver/udaStructs.h>
 #include <clientserver/udaTypes.h>
-#include <structures/struct.h>
 #include <plugins/pluginStructs.h>
 #include <plugins/udaPlugin.h>
+#include <structures/struct.h>
 
+#include "map_types/data_source_mapping.hpp"
 #include "map_types/map_arguments.hpp"
+#include "uda_ram_cache.hpp"
 #include "utils/ram_cache.hpp"
 #include "utils/scale_offset.hpp"
 #include "utils/subset.hpp"
@@ -46,7 +47,9 @@
  * @param json_globals
  * @return
  */
-std::string UDADataSource::get_request_str(const json_mapping::DataSourceArgs& data_source_args, const json_mapping::MapArguments& arguments, std::optional<std::string> slice) const
+std::string UDADataSource::get_request_str(const json_mapping::DataSourceArgs& data_source_args,
+                                           const json_mapping::MapArguments& arguments,
+                                           std::optional<std::string> slice) const
 {
     std::stringstream string_stream;
     string_stream << m_plugin_name << "::" << m_function.value_or("get") << "(";
@@ -84,7 +87,8 @@ std::string UDADataSource::get_request_str(const json_mapping::DataSourceArgs& d
     return request;
 }
 
-bool UDADataSource::copy_from_cache(ram_cache::RamCache* ram_cache, DATA_BLOCK* data_block, const json_mapping::MapArguments& arguments, const std::string& request_str) const
+bool UDADataSource::copy_from_cache(ram_cache::RamCache* ram_cache, DATA_BLOCK* data_block,
+                                    const json_mapping::MapArguments& arguments, const std::string& request_str) const
 {
     if (!m_cache_enabled) {
         return false;
@@ -95,19 +99,22 @@ bool UDADataSource::copy_from_cache(ram_cache::RamCache* ram_cache, DATA_BLOCK* 
     using json_mapping::SignalType;
     switch (signal_type) {
         case SignalType::DATA:
-            return ram_cache->copy_data_from_cache(request_str, data_block);
+            return ram_cache::uda::copy_data_from_cache(*ram_cache, request_str, data_block);
         case SignalType::ERROR:
-            return ram_cache->copy_error_high_from_cache(request_str, data_block);
+            return ram_cache::uda::copy_error_high_from_cache(*ram_cache, request_str, data_block);
         case SignalType::TIME:
-            return ram_cache->copy_time_from_cache(request_str, data_block);
+            return ram_cache::uda::copy_time_from_cache(*ram_cache, request_str, data_block);
         case SignalType::DIM:
-            return ram_cache->copy_dim_from_cache(request_str, 1, data_block);
+            return ram_cache::uda::copy_dim_from_cache(*ram_cache, request_str, 1, data_block);
         default:
-            return ram_cache->copy_from_cache(request_str, data_block);
+            return ram_cache::uda::copy_from_cache(*ram_cache, request_str, data_block);
     }
 }
 
-int UDADataSource::call_plugins(DATA_BLOCK* data_block, const json_mapping::DataSourceArgs& data_source_args, const json_mapping::MapArguments& arguments, ram_cache::RamCache* ram_cache, std::optional<float> scale, std::optional<float> offset, std::optional<std::string> slice) const
+int UDADataSource::call_plugins(DATA_BLOCK* data_block, const json_mapping::DataSourceArgs& data_source_args,
+                                const json_mapping::MapArguments& arguments, ram_cache::RamCache* ram_cache,
+                                std::optional<float> scale, std::optional<float> offset,
+                                std::optional<std::string> slice) const
 {
     int err{1};
     auto request_str = get_request_str(data_source_args, arguments, std::move(slice));
@@ -135,19 +142,19 @@ int UDADataSource::call_plugins(DATA_BLOCK* data_block, const json_mapping::Data
     // in sqaure bracktes
     if (request_str.back() == ']' && request_str.rfind('[') != std::string::npos) {
         std::size_t subset_syntax_position = request_str.rfind('[');
-        if (m_cache_enabled) {
-            ram_cache->log(ram_cache::LogLevel::INFO, "request before alteration: " + request_str);
-        }
+        // if (m_cache_enabled) {
+        //     ram_cache->log(ram_cache::LogLevel::INFO, "request before alteration: " + request_str);
+        // }
         request_str.erase(subset_syntax_position);
-        if (m_cache_enabled) {
-            ram_cache->log(ram_cache::LogLevel::INFO, "request after alteration: " + request_str);
-        }
+        // if (m_cache_enabled) {
+        //     ram_cache->log(ram_cache::LogLevel::INFO, "request after alteration: " + request_str);
+        // }
     }
 
-    if (m_cache_enabled) {
-        std::string key_found = ram_cache->has_entry(request_str) ? "True" : "False";
-        ram_cache->log(ram_cache::LogLevel::DEBUG, "key, \"" + request_str + "\" in cache? " + key_found);
-    }
+    // if (m_cache_enabled) {
+    //     std::string key_found = ram_cache->has_entry(request_str) ? "True" : "False";
+    //     ram_cache->log(ram_cache::LogLevel::DEBUG, "key, \"" + request_str + "\" in cache? " + key_found);
+    // }
 
     /*
      *
@@ -157,15 +164,15 @@ int UDADataSource::call_plugins(DATA_BLOCK* data_block, const json_mapping::Data
 
     // check cache for request string and only get data if it's not already there
     // currently copies whole datablock (data, error, and dims)
-    if (m_cache_enabled) {
-        ram_cache->log(ram_cache::LogLevel::DEBUG, "caching disbaled");
-    }
+    // if (m_cache_enabled) {
+    //     ram_cache->log(ram_cache::LogLevel::DEBUG, "caching disbaled");
+    // }
 
     bool cache_hit = copy_from_cache(ram_cache, data_block, arguments, request_str);
     if (cache_hit) {
-        ram_cache->log(ram_cache::LogLevel::INFO, "Adding cached datablock onto plugin_interface");
-        ram_cache->log(ram_cache::LogLevel::INFO,
-                         "data on plugin_interface (data_n): " + std::to_string(data_block->data_n));
+        // ram_cache->log(ram_cache::LogLevel::INFO, "Adding cached datablock onto plugin_interface");
+        // ram_cache->log(ram_cache::LogLevel::INFO,
+        //                  "data on plugin_interface (data_n): " + std::to_string(data_block->data_n));
         err = 0;
     } else {
         IDAM_PLUGIN_INTERFACE interface = {0};
@@ -198,9 +205,9 @@ int UDADataSource::call_plugins(DATA_BLOCK* data_block, const json_mapping::Data
 
         // Add retrieved datablock to cache. data is copied from datablock into a new ram_cache::data_entry. original
         // data remains on block (on plugin_interface structure) for return.
-        if (m_cache_enabled) {
-            ram_cache->add(request_str, data_block);
-        }
+        // if (m_cache_enabled) {
+        //     ram_cache->add(request_str, data_block);
+        // }
     }
 
     const char* subset_method = getenv("UDA_JSON_MAPPING_SUBSET_METHOD");
@@ -214,16 +221,21 @@ int UDADataSource::call_plugins(DATA_BLOCK* data_block, const json_mapping::Data
 
     if (data_subset.nbound > 0) {
         auto scale_value = (!dim_data && scale.has_value()) ? scale.value() : 1.0;
-        json_mapping::subset::log(json_mapping::subset::LogLevel::INFO, "scale factor is: " + std::to_string(scale_value));
+        json_mapping::subset::log(json_mapping::subset::LogLevel::INFO,
+                                  "scale factor is: " + std::to_string(scale_value));
         auto offset_value = (!dim_data && offset.has_value()) ? offset.value() : 0.0;
-        json_mapping::subset::log(json_mapping::subset::LogLevel::INFO, "offset factor is: " + std::to_string(offset_value));
+        json_mapping::subset::log(json_mapping::subset::LogLevel::INFO,
+                                  "offset factor is: " + std::to_string(offset_value));
         json_mapping::subset::apply_subsetting(data_block, data_subset, scale_value, offset_value);
     }
 
     return err;
 }
 
-json_mapping::TypedDataArray UDADataSource::get(const json_mapping::DataSourceArgs& data_source_args, const json_mapping::MapArguments& arguments, ram_cache::RamCache* ram_cache, std::optional<float> scale, std::optional<float> offset, std::optional<std::string> slice)
+json_mapping::TypedDataArray UDADataSource::get(const json_mapping::DataSourceArgs& data_source_args,
+                                                const json_mapping::MapArguments& arguments,
+                                                ram_cache::RamCache* ram_cache, std::optional<float> scale,
+                                                std::optional<float> offset, std::optional<std::string> slice)
 {
     DATA_BLOCK data_block;
     int err = call_plugins(&data_block, data_source_args, arguments, ram_cache, scale, offset, slice);
@@ -241,12 +253,12 @@ json_mapping::TypedDataArray UDADataSource::get(const json_mapping::DataSourceAr
 
     switch (data_block.data_type) {
         case UDA_TYPE_INT:
-            return json_mapping::TypedDataArray{ reinterpret_cast<int*>(data_block.data), size, shape };
+            return json_mapping::TypedDataArray{reinterpret_cast<int*>(data_block.data), size, shape};
         case UDA_TYPE_FLOAT:
-            return json_mapping::TypedDataArray{ reinterpret_cast<float*>(data_block.data), size, shape };
+            return json_mapping::TypedDataArray{reinterpret_cast<float*>(data_block.data), size, shape};
         case UDA_TYPE_DOUBLE:
-            return json_mapping::TypedDataArray{ reinterpret_cast<double*>(data_block.data), size, shape };
+            return json_mapping::TypedDataArray{reinterpret_cast<double*>(data_block.data), size, shape};
         default:
-            throw std::runtime_error{ "unknown data type" };
+            throw std::runtime_error{"unknown data type"};
     }
 }
