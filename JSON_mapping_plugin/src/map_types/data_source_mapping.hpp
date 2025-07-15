@@ -12,9 +12,6 @@
 #include <unordered_map>
 #include <utility>
 
-#include <clientserver/udaStructs.h>
-#include <plugins/pluginStructs.h>
-
 namespace json_mapping
 {
 
@@ -54,6 +51,11 @@ class DataSourceMapping : public Mapping
     static void register_data_source(const std::string& name, std::unique_ptr<DataSource> data_source)
     {
         m_data_sources[name] = std::move(data_source);
+    }
+
+    static void unregister_data_source(const std::string& name)
+    {
+        m_data_sources.erase(name);
     }
 
     [[nodiscard]] TypedDataArray map(const MapArguments& arguments) const override;

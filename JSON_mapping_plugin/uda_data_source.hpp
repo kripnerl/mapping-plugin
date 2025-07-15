@@ -15,7 +15,7 @@
 class UDADataSource : public json_mapping::DataSource
 {
 public:
-    explicit UDADataSource(std::string plugin_name, std::optional<std::string> function, PluginList* plugin_list, bool cache_enabled)
+    explicit UDADataSource(std::string plugin_name, std::optional<std::string> function, const PluginList* plugin_list, bool cache_enabled)
         : m_plugin_name{ std::move(plugin_name) }
         , m_function{ std::move(function) }
         , m_plugin_list{ plugin_list }
@@ -26,7 +26,7 @@ public:
 private:
     std::string m_plugin_name;
     std::optional<std::string> m_function;
-    PluginList* m_plugin_list;
+    const PluginList* m_plugin_list;
     bool m_cache_enabled;
 
     [[nodiscard]] std::string get_request_str(const json_mapping::DataSourceArgs& data_source_args, const json_mapping::MapArguments& arguments, std::optional<std::string> slice) const;

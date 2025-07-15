@@ -1,8 +1,8 @@
 #pragma once
 
 #include <cstddef>
+#include <deque>
 #include <filesystem>
-#include <map_types/map_arguments.hpp>
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <optional>
@@ -10,14 +10,15 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include <deque>
 
 #include "map_types/base_mapping.hpp"
+#include "map_types/map_arguments.hpp"
 #include "utils/ram_cache.hpp"
 
 struct PluginList;
 
-namespace json_mapping {
+namespace json_mapping
+{
 
 using IDSName = std::string;
 using MachineName = std::string;
@@ -56,26 +57,22 @@ using MappingPair = std::pair<nlohmann::json&, IDSMapRegister&>;
 class MappingHandler
 {
   public:
-    MappingHandler()
-        : m_init(false)
-        , m_dd_version("3.39.0")
-        , m_cache_enabled(false)
-    {};
+    MappingHandler() : m_init(false), m_dd_version("3.39.0"), m_cache_enabled(false) {};
     explicit MappingHandler(std::string dd_version)
-        : m_init(false)
-        , m_dd_version(std::move(dd_version))
-        , m_cache_enabled(false)
-    {};
+        : m_init(false), m_dd_version(std::move(dd_version)), m_cache_enabled(false) {};
 
     void reset();
-    void init(const PluginList* plugin_list);
+    void init();
     void set_map_dir(const std::string& mapping_dir);
-    TypedDataArray map(const std::string& mapping, const std::string& path, int data_type, int rank, const nlohmann::json& extra_attributes);
+    TypedDataArray map(const std::string& mapping, const std::string& path, int data_type, int rank,
+                       const nlohmann::json& extra_attributes);
 
   private:
-    [[nodiscard]] std::optional<MappingPair> read_mappings(const MachineName& machine, const std::string& request_ids, const nlohmann::json& extra_attributes);
+    [[nodiscard]] std::optional<MappingPair> read_mappings(const MachineName& machine, const std::string& request_ids,
+                                                           const nlohmann::json& extra_attributes);
     [[nodiscard]] std::vector<int> find_mapping_dirs(const MachineName& machine, const IDSName& ids_name) const;
-    [[nodiscard]] std::filesystem::path mapping_path(const MachineName& machine, const IDSName& ids_name, int shot, const std::string& file_name) const;
+    [[nodiscard]] std::filesystem::path mapping_path(const MachineName& machine, const IDSName& ids_name, int shot,
+                                                     const std::string& file_name) const;
     void load_machine(const MachineName& machine);
     [[nodiscard]] nlohmann::json load_toplevel(const MachineName& machine) const;
     void load_shot_globals(const MachineName& machine, const IDSName& ids_name, int shot);
@@ -86,7 +83,7 @@ class MappingHandler
     void init_mappings(const MachineName& machine, const IDSName& ids_name, const nlohmann::json& data, int shot);
     static void init_value_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
     void init_plugin_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value,
-                            const nlohmann::json& ids_attributes, std::shared_ptr<ram_cache::RamCache>& ram_cache);
+                             const nlohmann::json& ids_attributes, std::shared_ptr<ram_cache::RamCache>& ram_cache);
     static void init_dim_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
     // static int init_slice_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
     static void init_expr_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
@@ -100,7 +97,6 @@ class MappingHandler
     nlohmann::json m_mapping_config;
     std::shared_ptr<ram_cache::RamCache> m_ram_cache;
     bool m_cache_enabled;
-    const PluginList* m_plugin_list = nullptr; // currently need this to be able to call UDA plugins
 };
 
 std::string generate_map_path(std::deque<std::string>& path_tokens, const std::vector<int>& indices,

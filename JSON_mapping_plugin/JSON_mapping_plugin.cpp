@@ -9,9 +9,11 @@
 #include <fstream>
 #include <iomanip>
 #include <ios>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 
 // UDA includes
 #include <clientserver/errorLog.h>
@@ -25,6 +27,8 @@
 #include <server/getServerEnvironment.h>
 
 #include "handlers/mapping_handler.hpp"
+#include "map_types/data_source_mapping.hpp"
+#include "uda_data_source.hpp"
 #include "utils/uda_plugin_helpers.hpp"
 
 namespace json_mapping_plugin
@@ -133,7 +137,11 @@ int JSONMappingPlugin::init(IDAM_PLUGIN_INTERFACE* plugin_interface)
         log(LogLevel::ERROR, "JSONMappingPlugin::init: - JSON mapping locations not set");
         RAISE_PLUGIN_ERROR("JSONMappingPlugin::init: - JSON mapping locations not set")
     }
-    m_mapping_handler.init(plugin_interface->pluginList);
+    m_mapping_handler.init();
+
+    auto data_source = std::make_unique<UDADataSource>("UDA", "get", plugin_interface->pluginList, false);
+    json_mapping::DataSourceMapping::register_data_source("UDA", std::move(data_source));
+
     m_init = true;
 
     return 0;
@@ -150,12 +158,14 @@ int JSONMappingPlugin::reset(IDAM_PLUGIN_INTERFACE* /*plugin_interface*/) // sil
 {
     if (m_init) {
         // Free Heap & reset counters if initialised
+        json_mapping::DataSourceMapping::unregister_data_source("UDA");
         m_init = false;
     }
     return 0;
 }
 
-namespace {
+namespace
+{
 
 void add_machine_specific_attributes(IDAM_PLUGIN_INTERFACE* plugin_interface, nlohmann::json& attributes)
 {
@@ -173,7 +183,7 @@ void add_machine_specific_attributes(IDAM_PLUGIN_INTERFACE* plugin_interface, nl
     }
 }
 
-} // anon namespace
+} // namespace
 
 /**
  * @brief Main data/mapping function called from class entry function
@@ -209,11 +219,11 @@ int JSONMappingPlugin::get(IDAM_PLUGIN_INTERFACE* plugin_interface)
     FIND_REQUIRED_STRING_VALUE(request_data->nameValueList, path)
     FIND_REQUIRED_INT_VALUE(request_data->nameValueList, datatype);
     if (datatype < 0 || datatype > UDA_TYPE_CAPNP) {
-        throw std::runtime_error{ "Invalid datatype" };
+        throw std::runtime_error{"Invalid datatype"};
     }
     FIND_REQUIRED_INT_VALUE(request_data->nameValueList, rank);
     if (rank < 0) {
-        throw std::runtime_error{ "Invalid rank" };
+        throw std::runtime_error{"Invalid rank"};
     }
 
     nlohmann::json extra_attributes = {};
@@ -329,7 +339,7 @@ int JSONMappingPlugin::max_interface_version(IDAM_PLUGIN_INTERFACE* plugin_inter
                                   "Maximum Interface Version");
 }
 
-} // namespace json_mapping
+} // namespace json_mapping_plugin
 
 /**
  * @brief Plugin entry function

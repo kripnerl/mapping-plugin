@@ -38,10 +38,8 @@ void json_mapping::MappingHandler::reset()
     m_init = false;
 }
 
-void json_mapping::MappingHandler::init(const PLUGINLIST* plugin_list)
+void json_mapping::MappingHandler::init()
 {
-    m_plugin_list = plugin_list;
-
     if (m_init || !m_machine_register.empty()) {
         return;
     }
