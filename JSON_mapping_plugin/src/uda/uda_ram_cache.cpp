@@ -21,9 +21,9 @@
 #include <clientserver/udaTypes.h>
 #include <server/getServerEnvironment.h>
 
-#include "utils/print_uda_structs.hpp"
+#include "uda/print_uda_structs.hpp"
+#include "uda/uda_type_sizes.hpp"
 #include "utils/ram_cache.hpp"
-#include "utils/uda_type_sizes.hpp"
 
 using ram_cache::uda::UDACacheEntry;
 using uda_type_utils::size_of_uda_type;
@@ -148,7 +148,8 @@ std::unique_ptr<ram_cache::uda::UDACacheEntry> make_data_entry(DATA_BLOCK* data_
 
 } // namespace
 
-bool ram_cache::uda::copy_data_from_cache(const ram_cache::RamCache& cache, const std::string& key, DATA_BLOCK* data_block)
+bool ram_cache::uda::copy_data_from_cache(const ram_cache::RamCache& cache, const std::string& key,
+                                          DATA_BLOCK* data_block)
 {
     auto entry = cache.get(key);
     if (!entry) {
@@ -194,7 +195,8 @@ bool ram_cache::uda::copy_data_from_cache(const ram_cache::RamCache& cache, cons
     return true;
 }
 
-bool ram_cache::uda::copy_error_high_from_cache(const ram_cache::RamCache& cache, const std::string& key, DATA_BLOCK* data_block)
+bool ram_cache::uda::copy_error_high_from_cache(const ram_cache::RamCache& cache, const std::string& key,
+                                                DATA_BLOCK* data_block)
 {
     auto entry = cache.get(key);
     if (!entry) {
@@ -245,7 +247,8 @@ bool ram_cache::uda::copy_error_high_from_cache(const ram_cache::RamCache& cache
     return true;
 }
 
-bool ram_cache::uda::copy_time_from_cache(const ram_cache::RamCache& cache, const std::string& key, DATA_BLOCK* data_block)
+bool ram_cache::uda::copy_time_from_cache(const ram_cache::RamCache& cache, const std::string& key,
+                                          DATA_BLOCK* data_block)
 {
     auto entry = cache.get(key);
     if (!entry) {
@@ -296,7 +299,8 @@ bool ram_cache::uda::copy_time_from_cache(const ram_cache::RamCache& cache, cons
     return true;
 }
 
-bool ram_cache::uda::copy_dim_from_cache(const ram_cache::RamCache& cache, const std::string& key, unsigned int i, DATA_BLOCK* data_block)
+bool ram_cache::uda::copy_dim_from_cache(const ram_cache::RamCache& cache, const std::string& key, unsigned int i,
+                                         DATA_BLOCK* data_block)
 {
     auto entry = cache.get(key);
     if (!entry) {

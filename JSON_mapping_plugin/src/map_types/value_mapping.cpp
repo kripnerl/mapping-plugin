@@ -1,15 +1,15 @@
 #include "value_mapping.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <inja/inja.hpp>
+#include <map_types/data_source_mapping.hpp>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
+#include <typeindex>
 #include <vector>
-#include <algorithm>
-
-#include <clientserver/udaTypes.h>
 
 #include "map_types/map_arguments.hpp"
 
@@ -86,11 +86,11 @@ json_mapping::TypedDataArray type_deduce_array(const json& temp_val)
 {
     switch (temp_val.front().type()) {
         case json::value_t::number_float:
-            return json_mapping::TypedDataArray{ temp_val.get<std::vector<float>>() };
+            return json_mapping::TypedDataArray{temp_val.get<std::vector<float>>()};
         case json::value_t::number_integer:
-            return json_mapping::TypedDataArray{ temp_val.get<std::vector<int>>() };
+            return json_mapping::TypedDataArray{temp_val.get<std::vector<int>>()};
         case json::value_t::number_unsigned:
-            return json_mapping::TypedDataArray{ temp_val.get<std::vector<unsigned int>>() };
+            return json_mapping::TypedDataArray{temp_val.get<std::vector<unsigned int>>()};
         default:
             return {};
     }
@@ -102,17 +102,18 @@ std::string render_string(const std::string& input, const json& global_data)
     return render(render(input, global_data), global_data);
 }
 
-json_mapping::TypedDataArray type_deduce_primitive(const json& temp_val, const json& global_data, UDA_TYPE data_type, int rank)
+json_mapping::TypedDataArray type_deduce_primitive(const json& temp_val, const json& global_data,
+                                                   std::type_index data_type, int rank)
 {
     switch (temp_val.type()) {
         case json::value_t::number_float:
-            return json_mapping::TypedDataArray{ temp_val.get<float>() };
+            return json_mapping::TypedDataArray{temp_val.get<float>()};
         case json::value_t::number_integer:
-            return json_mapping::TypedDataArray{ temp_val.get<int>() };
+            return json_mapping::TypedDataArray{temp_val.get<int>()};
         case json::value_t::number_unsigned:
-            return json_mapping::TypedDataArray{ temp_val.get<unsigned int>() };
+            return json_mapping::TypedDataArray{temp_val.get<unsigned int>()};
         case json::value_t::boolean:
-            return json_mapping::TypedDataArray{ temp_val.get<bool>() };
+            return json_mapping::TypedDataArray{temp_val.get<bool>()};
         case json::value_t::string: {
             // Handle string
             std::string const rendered_string = render_string(temp_val.get<std::string>(), global_data);
@@ -122,26 +123,28 @@ json_mapping::TypedDataArray type_deduce_primitive(const json& temp_val, const j
             // inja templating may replace with number
             try {
                 if (rank == 0) {
-                    switch (data_type) {
-                        case UDA_TYPE_INT:
-                            return json_mapping::TypedDataArray{ try_convert<int>(rendered_string) };
-                        case UDA_TYPE_FLOAT:
-                            return json_mapping::TypedDataArray{ try_convert<float>(rendered_string) };
-                        case UDA_TYPE_DOUBLE:
-                            return json_mapping::TypedDataArray{ try_convert<double>(rendered_string) };
+                    using json_mapping::DataType;
+                    switch (json_mapping::type_index_map(data_type)) {
+                        case DataType::Int:
+                            return json_mapping::TypedDataArray{try_convert<int>(rendered_string)};
+                        case DataType::Float:
+                            return json_mapping::TypedDataArray{try_convert<float>(rendered_string)};
+                        case DataType::Double:
+                            return json_mapping::TypedDataArray{try_convert<double>(rendered_string)};
                         default:
-                            return json_mapping::TypedDataArray{ rendered_string };
+                            return json_mapping::TypedDataArray{rendered_string};
                     }
                 } else {
-                    switch (data_type) {
-                        case UDA_TYPE_INT:
-                            return json_mapping::TypedDataArray{ try_convert<int[]>(rendered_string) };
-                        case UDA_TYPE_FLOAT:
-                            return json_mapping::TypedDataArray{ try_convert<float[]>(rendered_string) };
-                        case UDA_TYPE_DOUBLE:
-                            return json_mapping::TypedDataArray{ try_convert<double[]>(rendered_string) };
+                    using json_mapping::DataType;
+                    switch (json_mapping::type_index_map(data_type)) {
+                        case DataType::Int:
+                            return json_mapping::TypedDataArray{try_convert<int[]>(rendered_string)};
+                        case DataType::Float:
+                            return json_mapping::TypedDataArray{try_convert<float[]>(rendered_string)};
+                        case DataType::Double:
+                            return json_mapping::TypedDataArray{try_convert<double[]>(rendered_string)};
                         default:
-                            return json_mapping::TypedDataArray{ rendered_string };
+                            return json_mapping::TypedDataArray{rendered_string};
                     }
                 }
             } catch (const std::invalid_argument& e) {
@@ -149,22 +152,22 @@ json_mapping::TypedDataArray type_deduce_primitive(const json& temp_val, const j
                 //         "ValueMapping::map failure to convert"
                 //         "string to int in mapping : %s\n",
                 //         e.what());
-                return json_mapping::TypedDataArray{ rendered_string };
+                return json_mapping::TypedDataArray{rendered_string};
             }
             break;
         }
         default:
-            throw std::runtime_error{ "unknown json type" };
+            throw std::runtime_error{"unknown json type"};
     }
 }
 
-} // anon namespace
+} // namespace
 
 json_mapping::TypedDataArray json_mapping::ValueMapping::map(const MapArguments& arguments) const
 {
     const auto temp_val = m_value;
     if (temp_val.is_discarded() or temp_val.is_binary() or temp_val.is_null()) {
-        throw std::runtime_error{ "map unrecognised json value type" };
+        throw std::runtime_error{"map unrecognised json value type"};
     }
 
     if (temp_val.is_array()) {
@@ -179,9 +182,9 @@ json_mapping::TypedDataArray json_mapping::ValueMapping::map(const MapArguments&
         }
 
     } else if (temp_val.is_primitive()) {
-        return type_deduce_primitive(temp_val, arguments.global_data, arguments.datatype, arguments.rank);
+        return type_deduce_primitive(temp_val, arguments.global_data, arguments.data_type, arguments.rank);
     } else {
-        throw std::runtime_error{ "map not structured or primitive" };
+        throw std::runtime_error{"map not structured or primitive"};
     }
 
     return {};

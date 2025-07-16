@@ -10,9 +10,11 @@
 #include <iomanip>
 #include <ios>
 #include <memory>
+#include <nlohmann/json.hpp>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <typeindex>
 #include <utility>
 
 // UDA includes
@@ -28,8 +30,8 @@
 
 #include "handlers/mapping_handler.hpp"
 #include "map_types/data_source_mapping.hpp"
-#include "uda_data_source.hpp"
-#include "utils/uda_plugin_helpers.hpp"
+#include "uda/uda_data_source.hpp"
+#include "uda/uda_plugin_helpers.hpp"
 
 namespace json_mapping_plugin
 {
@@ -229,7 +231,25 @@ int JSONMappingPlugin::get(IDAM_PLUGIN_INTERFACE* plugin_interface)
     nlohmann::json extra_attributes = {};
     add_machine_specific_attributes(plugin_interface, extra_attributes);
 
-    auto array = m_mapping_handler.map(mapping, path, datatype, rank, extra_attributes);
+    auto type_index = std::type_index{typeid(void)};
+    switch (datatype) {
+        case UDA_TYPE_INT:
+            type_index = std::type_index{typeid(int)};
+            break;
+        case UDA_TYPE_FLOAT:
+            type_index = std::type_index{typeid(float)};
+            break;
+        case UDA_TYPE_DOUBLE:
+            type_index = std::type_index{typeid(double)};
+            break;
+        case UDA_TYPE_STRING:
+            type_index = std::type_index{typeid(const char)};
+            break;
+        default:
+            break;
+    }
+
+    auto array = m_mapping_handler.map(mapping, path, type_index, rank, extra_attributes);
     imas_json_plugin::uda_helpers::set_data_block(data_block, array);
 
     return 0;

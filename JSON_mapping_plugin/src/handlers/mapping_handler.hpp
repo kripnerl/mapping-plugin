@@ -7,6 +7,7 @@
 #include <nlohmann/json.hpp>
 #include <optional>
 #include <string>
+#include <typeindex>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -64,7 +65,7 @@ class MappingHandler
     void reset();
     void init();
     void set_map_dir(const std::string& mapping_dir);
-    TypedDataArray map(const std::string& mapping, const std::string& path, int data_type, int rank,
+    TypedDataArray map(const std::string& mapping, const std::string& path, std::type_index data_type, int rank,
                        const nlohmann::json& extra_attributes);
 
   private:

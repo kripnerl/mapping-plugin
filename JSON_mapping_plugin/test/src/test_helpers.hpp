@@ -1,11 +1,8 @@
 #pragma once
 
-// UDA includes
-#include <plugins/pluginStructs.h>
-#include <plugins/udaPlugin.h>
-#include <clientserver/udaTypes.h>
-#include <clientserver/udaStructs.h>
+#include <typeindex>
 
 #include "map_types/map_arguments.hpp"
 
-json_mapping::MapArguments makeMapArguments(UDA_TYPE datatype, int rank, json_mapping::SignalType sig_type = json_mapping::SignalType::DEFAULT);
+json_mapping::MapArguments makeMapArguments(std::type_index data_type, int rank,
+    json_mapping::SignalType sig_type = json_mapping::SignalType::DEFAULT);

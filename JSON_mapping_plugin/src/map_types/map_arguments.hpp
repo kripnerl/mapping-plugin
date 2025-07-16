@@ -6,6 +6,7 @@
 #include <fmt/format.h>
 #include <memory>
 #include <nlohmann/json.hpp>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <typeindex>
@@ -13,12 +14,32 @@
 #include <utility>
 #include <vector>
 
-#include <clientserver/udaTypes.h>
-
 namespace json_mapping
 {
 
 enum class SignalType : uint8_t { DEFAULT, DATA, TIME, ERROR, DIM, INVALID };
+
+enum class DataType : uint8_t { Unknown, Short, Int, Long, Int64, UShort, UInt, ULong, UInt64, Float, Double };
+
+inline DataType type_index_map(std::type_index type_index)
+{
+    if (type_index == std::type_index{typeid(short)}) {
+        return DataType::Short;
+    }
+    if (type_index == std::type_index{typeid(int)}) {
+        return DataType::Int;
+    }
+    if (type_index == std::type_index{typeid(long)}) {
+        return DataType::Long;
+    }
+    if (type_index == std::type_index{typeid(float)}) {
+        return DataType::Float;
+    }
+    if (type_index == std::type_index{typeid(double)}) {
+        return DataType::Double;
+    }
+    return DataType::Unknown;
+}
 
 class TypedDataArray
 {
@@ -26,14 +47,14 @@ class TypedDataArray
     TypedDataArray() : m_type_index{typeid(void)}, m_size{0}, m_owning{false} {}
 
     template <typename T>
-    explicit TypedDataArray(const std::vector<T>& array, std::vector<size_t> shape = {}, bool owning = true)
+    explicit TypedDataArray(std::vector<T>& array, std::vector<size_t> shape = {}, bool owning = true)
         : m_type_index{typeid(T)}, m_size{array.size()}, m_shape{std::move(shape)}, m_owning{owning}
     {
         if (m_owning) {
             m_buffer = new char[m_size * sizeof(T)];
-            std::memcpy(const_cast<char*>(m_buffer), reinterpret_cast<const char*>(array.data()), m_size * sizeof(T));
+            std::memcpy(m_buffer, reinterpret_cast<const char*>(array.data()), m_size * sizeof(T));
         } else {
-            m_buffer = reinterpret_cast<const char*>(array.data());
+            m_buffer = reinterpret_cast<char*>(array.data());
         }
         if (m_shape.empty()) {
             m_shape.push_back(m_size);
@@ -41,28 +62,28 @@ class TypedDataArray
     }
 
     template <typename T>
-    explicit TypedDataArray(const T* array, size_t size, std::vector<size_t> shape, bool owning = false)
+    explicit TypedDataArray(T* array, size_t size, std::vector<size_t> shape, bool owning = false)
         : m_type_index{typeid(T)}, m_size{size}, m_shape{std::move(shape)}, m_owning{owning}
     {
         if (m_owning) {
             m_buffer = new char[m_size * sizeof(T)];
-            std::memcpy(const_cast<char*>(m_buffer), reinterpret_cast<const char*>(array), m_size * sizeof(T));
+            std::memcpy(m_buffer, reinterpret_cast<const char*>(array), m_size * sizeof(T));
         } else {
-            m_buffer = reinterpret_cast<const char*>(array);
+            m_buffer = reinterpret_cast<char*>(array);
         }
     }
 
     template <typename T> explicit TypedDataArray(const T value) : m_type_index{typeid(T)}, m_size{1}, m_owning{true}
     {
         m_buffer = new char[sizeof(T)];
-        std::memcpy(const_cast<char*>(m_buffer), reinterpret_cast<const char*>(&value), sizeof(T));
+        std::memcpy(m_buffer, reinterpret_cast<const char*>(&value), sizeof(T));
     }
 
     explicit TypedDataArray(const std::string& value)
         : m_type_index{typeid(const char)}, m_size{value.size() + 1}, m_shape{value.size() + 1}, m_owning{true}
     {
         m_buffer = new char[m_size * sizeof(char)];
-        std::memcpy(const_cast<char*>(m_buffer), value.data(), m_size);
+        std::memcpy(m_buffer, value.data(), m_size);
     }
 
     ~TypedDataArray()
@@ -82,7 +103,34 @@ class TypedDataArray
 
     [[nodiscard]] const std::vector<size_t>& shape() const { return m_shape; }
 
-    [[nodiscard]] const char* buffer() const { return m_buffer; }
+    [[nodiscard]] char* buffer() const { return m_buffer; }
+
+    [[nodiscard]] size_t element_size() {
+        switch (type_index_map(m_type_index)) {
+            case DataType::Unknown:
+                throw std::runtime_error{"unknown data type"};
+            case DataType::Short:
+                return sizeof(short);
+            case DataType::Int:
+                return sizeof(int);
+            case DataType::Long:
+                return sizeof(long);
+            case DataType::Int64:
+                return sizeof(int64_t);
+            case DataType::UShort:
+                return sizeof(unsigned short);
+            case DataType::UInt:
+                return sizeof(unsigned int);
+            case DataType::ULong:
+                return sizeof(unsigned long);
+            case DataType::UInt64:
+                return sizeof(uint64_t);
+            case DataType::Float:
+                return sizeof(float);
+            case DataType::Double:
+                return sizeof(double);
+        }
+    }
 
     // Moveable but not copyable
     TypedDataArray(const TypedDataArray&) = delete;
@@ -91,7 +139,7 @@ class TypedDataArray
     TypedDataArray& operator=(TypedDataArray&&) = default;
 
   private:
-    const char* m_buffer = nullptr;
+    char* m_buffer = nullptr;
     std::type_index m_type_index;
     size_t m_size;
     std::vector<size_t> m_shape;
@@ -104,13 +152,13 @@ struct MapArguments {
     const std::unordered_map<std::string, std::unique_ptr<Mapping>>& entries;
     const nlohmann::json& global_data;
     SignalType sig_type;
-    UDA_TYPE datatype;
+    std::type_index data_type;
     int rank;
 
     explicit MapArguments(const std::unordered_map<std::string, std::unique_ptr<Mapping>>& entries,
-                          const nlohmann::json& global_data, const SignalType sig_type, const UDA_TYPE datatype,
+                          const nlohmann::json& global_data, const SignalType sig_type, const std::type_index data_type,
                           const int rank)
-        : entries{entries}, global_data{global_data}, sig_type{sig_type}, datatype{datatype}, rank{rank}
+        : entries{entries}, global_data{global_data}, sig_type{sig_type}, data_type{data_type}, rank{rank}
     {
     }
 };

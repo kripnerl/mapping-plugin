@@ -1,145 +1,182 @@
 #include "utils/scale_offset.hpp"
-#include <clientserver/udaTypes.h>
-#include <logging/logging.h>
 
-int json_mapping::map_transform::transform_offset(DataBlock* data_block, float offset)
+#include <cstdlib>
+#include <gsl/gsl-lite.hpp>
+#include <stdexcept>
+
+#include "map_types/map_arguments.hpp"
+
+namespace
 {
 
+template <typename T> int offset_value(T& var, float offset)
+{
+    *var += offset;
+    return 0;
+}
+
+template <typename T> int offset_span(gsl::span<T> span, float offset)
+{
+    if (span.empty()) {
+        return 1;
+    }
+
+    std::for_each(span.begin(), span.end(), [&](T& elem) { elem += offset; });
+
+    return 0;
+}
+
+template <typename T> int scale_value(T& var, float scale)
+{
+    *var *= scale;
+    return 0;
+}
+
+template <typename T> int scale_span(gsl::span<T> span, float scale)
+{
+    if (span.empty()) {
+        return 1;
+    }
+
+    std::for_each(span.begin(), span.end(), [&](T& elem) { elem *= scale; });
+
+    return 0;
+}
+
+} // namespace
+
+int json_mapping::map_transform::transform_offset(TypedDataArray& array, float offset)
+{
     int err{1};
-    if (data_block->rank > 0) {
-        const size_t array_size(data_block->data_n);
-        switch (data_block->data_type) {
-            case UDA_TYPE_SHORT: {
-                auto* data = reinterpret_cast<short*>(data_block->data);
-                err = offset_span(gsl::span{data, array_size}, offset);
+    if (array.rank() > 0) {
+        const size_t size = array.size();
+        switch (type_index_map(array.type_index())) {
+            case DataType::Short: {
+                auto* data = reinterpret_cast<short*>(array.buffer());
+                err = offset_span(gsl::span{data, size}, offset);
                 break;
             }
-            case UDA_TYPE_INT: {
-                auto* data = reinterpret_cast<int*>(data_block->data);
-                err = offset_span(gsl::span{data, array_size}, offset);
+            case DataType::Int: {
+                auto* data = reinterpret_cast<int*>(array.buffer());
+                err = offset_span(gsl::span{data, size}, offset);
                 break;
             }
-            case UDA_TYPE_LONG: {
-                auto* data = reinterpret_cast<long*>(data_block->data);
-                err = offset_span(gsl::span{data, array_size}, offset);
+            case DataType::Long: {
+                auto* data = reinterpret_cast<long*>(array.buffer());
+                err = offset_span(gsl::span{data, size}, offset);
                 break;
             }
-            case UDA_TYPE_FLOAT: {
-                auto* data = reinterpret_cast<float*>(data_block->data);
-                err = offset_span(gsl::span{data, array_size}, offset);
+            case DataType::Float: {
+                auto* data = reinterpret_cast<float*>(array.buffer());
+                err = offset_span(gsl::span{data, size}, offset);
                 break;
             }
-            case UDA_TYPE_DOUBLE: {
-                auto* data = reinterpret_cast<double*>(data_block->data);
-                err = offset_span(gsl::span{data, array_size}, offset);
+            case DataType::Double: {
+                auto* data = reinterpret_cast<double*>(array.buffer());
+                err = offset_span(gsl::span{data, size}, offset);
                 break;
             }
             default:
-                UDA_LOG(UDA_LOG_DEBUG, "\nOffsetEntry::transform(...) Unrecognised type\n");
-                return 1;
+                throw std::runtime_error{"unrecognised type"};
         }
     } else {
-        switch (data_block->data_type) {
-            case UDA_TYPE_SHORT: {
-                auto* data = reinterpret_cast<short*>(data_block->data);
+        switch (type_index_map(array.type_index())) {
+            case DataType::Short: {
+                auto* data = reinterpret_cast<short*>(array.buffer());
                 err = offset_value(data, offset);
                 break;
             }
-            case UDA_TYPE_INT: {
-                auto* data = reinterpret_cast<int*>(data_block->data);
+            case DataType::Int: {
+                auto* data = reinterpret_cast<int*>(array.buffer());
                 err = offset_value(data, offset);
                 break;
             }
-            case UDA_TYPE_LONG: {
-                auto* data = reinterpret_cast<long*>(data_block->data);
+            case DataType::Long: {
+                auto* data = reinterpret_cast<long*>(array.buffer());
                 err = offset_value(data, offset);
                 break;
             }
-            case UDA_TYPE_FLOAT: {
-                auto* data = reinterpret_cast<float*>(data_block->data);
+            case DataType::Float: {
+                auto* data = reinterpret_cast<float*>(array.buffer());
                 err = offset_value(data, offset);
                 break;
             }
-            case UDA_TYPE_DOUBLE: {
-                auto* data = reinterpret_cast<double*>(data_block->data);
+            case DataType::Double: {
+                auto* data = reinterpret_cast<double*>(array.buffer());
                 err = offset_value(data, offset);
                 break;
             }
             default:
-                UDA_LOG(UDA_LOG_DEBUG, "\nOffsetEntry::transform(...) Unrecognised type\n");
-                break;
+                throw std::runtime_error{"unrecognised type"};
         }
     }
 
     return err;
 }
 
-int json_mapping::map_transform::transform_scale(DataBlock* data_block, float scale)
+int json_mapping::map_transform::transform_scale(TypedDataArray& array, float scale)
 {
-
     int err{1};
-    if (data_block->rank > 0) {
-        const size_t array_size(data_block->data_n);
-        switch (data_block->data_type) {
-            case UDA_TYPE_SHORT: {
-                auto* data = reinterpret_cast<short*>(data_block->data);
-                err = scale_span(gsl::span{data, array_size}, scale);
+    if (array.rank() > 0) {
+        const size_t size = array.size();
+        switch (type_index_map(array.type_index())) {
+            case DataType::Short: {
+                auto* data = reinterpret_cast<short*>(array.buffer());
+                err = scale_span(gsl::span{data, size}, scale);
                 break;
             }
-            case UDA_TYPE_INT: {
-                auto* data = reinterpret_cast<int*>(data_block->data);
-                err = scale_span(gsl::span{data, array_size}, scale);
+            case DataType::Int: {
+                auto* data = reinterpret_cast<int*>(array.buffer());
+                err = scale_span(gsl::span{data, size}, scale);
                 break;
             }
-            case UDA_TYPE_LONG: {
-                auto* data = reinterpret_cast<long*>(data_block->data);
-                err = scale_span(gsl::span{data, array_size}, scale);
+            case DataType::Long: {
+                auto* data = reinterpret_cast<long*>(array.buffer());
+                err = scale_span(gsl::span{data, size}, scale);
                 break;
             }
-            case UDA_TYPE_FLOAT: {
-                auto* data = reinterpret_cast<float*>(data_block->data);
-                err = scale_span(gsl::span{data, array_size}, scale);
+            case DataType::Float: {
+                auto* data = reinterpret_cast<float*>(array.buffer());
+                err = scale_span(gsl::span{data, size}, scale);
                 break;
             }
-            case UDA_TYPE_DOUBLE: {
-                auto* data = reinterpret_cast<double*>(data_block->data);
-                err = scale_span(gsl::span{data, array_size}, scale);
+            case DataType::Double: {
+                auto* data = reinterpret_cast<double*>(array.buffer());
+                err = scale_span(gsl::span{data, size}, scale);
                 break;
             }
             default:
-                UDA_LOG(UDA_LOG_DEBUG, "\nOffsetEntry::transform(...) Unrecognised type\n");
-                return 1;
+                throw std::runtime_error{"unrecognised type"};
         }
     } else {
-        switch (data_block->data_type) {
-            case UDA_TYPE_SHORT: {
-                auto* data = reinterpret_cast<short*>(data_block->data);
+        switch (type_index_map(array.type_index())) {
+            case DataType::Short: {
+                auto* data = reinterpret_cast<short*>(array.buffer());
                 err = scale_value(data, scale);
                 break;
             }
-            case UDA_TYPE_INT: {
-                auto* data = reinterpret_cast<int*>(data_block->data);
+            case DataType::Int: {
+                auto* data = reinterpret_cast<int*>(array.buffer());
                 err = scale_value(data, scale);
                 break;
             }
-            case UDA_TYPE_LONG: {
-                auto* data = reinterpret_cast<long*>(data_block->data);
+            case DataType::Long: {
+                auto* data = reinterpret_cast<long*>(array.buffer());
                 err = scale_value(data, scale);
                 break;
             }
-            case UDA_TYPE_FLOAT: {
-                auto* data = reinterpret_cast<float*>(data_block->data);
+            case DataType::Float: {
+                auto* data = reinterpret_cast<float*>(array.buffer());
                 err = scale_value(data, scale);
                 break;
             }
-            case UDA_TYPE_DOUBLE: {
-                auto* data = reinterpret_cast<double*>(data_block->data);
+            case DataType::Double: {
+                auto* data = reinterpret_cast<double*>(array.buffer());
                 err = scale_value(data, scale);
                 break;
             }
             default:
-                UDA_LOG(UDA_LOG_DEBUG, "\nOffsetEntry::transform(...) Unrecognised type\n");
-                break;
+                throw std::runtime_error{"unrecognised type"};
         }
     }
 

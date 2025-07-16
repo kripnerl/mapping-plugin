@@ -20,8 +20,7 @@ using namespace json_mapping;
 class TestDataSource : public json_mapping::DataSource
 {
     TypedDataArray get(const DataSourceArgs& /*map_args*/, const MapArguments& /*arguments*/,
-                       ram_cache::RamCache* /*ram_cache*/, std::optional<float> /*scale*/,
-                       std::optional<float> /*offset*/, std::optional<std::string> /*slice*/) override
+                       ram_cache::RamCache* /*ram_cache*/) override
     {
         return {};
     }

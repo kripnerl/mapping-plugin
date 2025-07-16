@@ -67,7 +67,7 @@ TEST_CASE("ValueMapping returns expected data for different 0D types", "[value_m
         const auto& value_json = test_json.at("VALUE");
         auto mapping = std::make_unique<ValueMapping>(value_json);
 
-        MapArguments map_args = makeMapArguments(UDA_TYPE_INT, 0);
+        MapArguments map_args = makeMapArguments(std::type_index{ typeid(int) }, 0);
         auto array = mapping->map(map_args);
 
         REQUIRE(!array.empty());
@@ -82,7 +82,7 @@ TEST_CASE("ValueMapping returns expected data for different 0D types", "[value_m
         const auto& value_json = test_json.at("VALUE");
         auto mapping = std::make_unique<ValueMapping>(value_json);
 
-        MapArguments map_args = makeMapArguments(UDA_TYPE_INT, 0);
+        MapArguments map_args = makeMapArguments(std::type_index{ typeid(int) }, 0);
         auto array = mapping->map(map_args);
 
         REQUIRE(!array.empty());
@@ -97,7 +97,7 @@ TEST_CASE("ValueMapping returns expected data for different 0D types", "[value_m
         const auto& value_json = test_json.at("VALUE");
         auto mapping = std::make_unique<ValueMapping>(value_json);
 
-        MapArguments map_args = makeMapArguments(UDA_TYPE_STRING, 1);
+        MapArguments map_args = makeMapArguments(std::type_index{ typeid(const char) }, 1);
         auto array = mapping->map(map_args);
 
         REQUIRE(!array.empty());
@@ -112,7 +112,7 @@ TEST_CASE("ValueMapping returns expected data for different 0D types", "[value_m
         const auto& value_json = test_json.at("VALUE");
         auto mapping = std::make_unique<ValueMapping>(value_json);
 
-        MapArguments map_args = makeMapArguments(UDA_TYPE_FLOAT, 0);
+        MapArguments map_args = makeMapArguments(std::type_index{ typeid(float) }, 0);
         auto array = mapping->map(map_args);
 
         REQUIRE(!array.empty());
@@ -127,7 +127,7 @@ TEST_CASE("ValueMapping returns expected data for different 0D types", "[value_m
         const auto& value_json = test_json.at("VALUE");
         auto mapping = std::make_unique<ValueMapping>(value_json);
 
-        MapArguments map_args = makeMapArguments(UDA_TYPE_FLOAT, 0);
+        MapArguments map_args = makeMapArguments(std::type_index{ typeid(float) }, 0);
         auto array = mapping->map(map_args);
 
         REQUIRE(!array.empty());
@@ -150,7 +150,7 @@ TEST_CASE("ValueMapping returns expected data for different 1D types", "[value_m
         const auto& value_json = test_json.at("VALUE");
         auto mapping = std::make_unique<ValueMapping>(value_json);
 
-        MapArguments map_args = makeMapArguments(UDA_TYPE_INT, 1);
+        MapArguments map_args = makeMapArguments(std::type_index{ typeid(int) }, 1);
         auto array = mapping->map(map_args);
 
         REQUIRE(!array.empty());
@@ -168,7 +168,7 @@ TEST_CASE("ValueMapping returns expected data for different 1D types", "[value_m
         const auto& value_json = test_json.at("VALUE");
         auto mapping = std::make_unique<ValueMapping>(value_json);
 
-        MapArguments map_args = makeMapArguments(UDA_TYPE_INT, 1);
+        MapArguments map_args = makeMapArguments(std::type_index{ typeid(int) }, 1);
         auto array = mapping->map(map_args);
 
         REQUIRE(!array.empty());
@@ -186,7 +186,7 @@ TEST_CASE("ValueMapping returns expected data for different 1D types", "[value_m
         const auto& value_json = test_json.at("VALUE");
         auto mapping = std::make_unique<ValueMapping>(value_json);
 
-        MapArguments map_args = makeMapArguments(UDA_TYPE_FLOAT, 1);
+        MapArguments map_args = makeMapArguments(std::type_index{ typeid(float) }, 1);
         auto array = mapping->map(map_args);
 
         REQUIRE(!array.empty());
@@ -204,7 +204,7 @@ TEST_CASE("ValueMapping returns expected data for different 1D types", "[value_m
         const auto& value_json = test_json.at("VALUE");
         auto mapping = std::make_unique<ValueMapping>(value_json);
 
-        MapArguments map_args = makeMapArguments(UDA_TYPE_FLOAT, 1);
+        MapArguments map_args = makeMapArguments(std::type_index{ typeid(float) }, 1);
         auto array = mapping->map(map_args);
 
         REQUIRE(!array.empty());

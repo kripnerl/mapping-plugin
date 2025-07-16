@@ -11,7 +11,12 @@ set( UTIL_SOURCES
     src/utils/scale_offset.cpp
     src/utils/subset.cpp
     src/utils/syntax_parser.cpp
-    src/utils/uda_plugin_helpers.cpp
+)
+
+set( UDA_SOURCES
+    src/uda/uda_plugin_helpers.cpp
+    src/uda/uda_data_source.cpp
+    src/uda/uda_ram_cache.cpp
 )
 
 set( MAP_TYPE_SOURCES
@@ -29,20 +34,24 @@ set( HANDLER_SOURCES
 
 set( SOURCES
     JSON_mapping_plugin.cpp
-    uda_data_source.cpp
-    uda_ram_cache.cpp
     ${UTIL_SOURCES}
     ${MAP_TYPE_SOURCES}
     ${HANDLER_SOURCES}
+    ${UDA_SOURCES}
 )
 
 set( UTIL_HEADERS
-    src/utils/print_uda_structs.hpp
     src/utils/ram_cache.hpp
     src/utils/scale_offset.hpp
     src/utils/subset.hpp
-    src/utils/uda_plugin_helpers.hpp
-    src/utils/uda_type_sizes.hpp
+)
+
+set( UDA_HEADERS
+    src/uda/uda_plugin_helpers.hpp
+    src/uda/uda_type_sizes.hpp
+    src/uda/print_uda_structs.hpp
+    src/uda/uda_data_source.hpp
+    src/uda/uda_ram_cache.hpp
 )
 
 set( MAP_TYPE_HEADERS
@@ -61,11 +70,10 @@ set( HANDLER_HEADERS
 
 set( HEADERS
     JSON_mapping_plugin.h
-    uda_data_source.hpp
-    uda_ram_cache.hpp
     ${UTIL_HEADERS}
     ${MAP_TYPE_HEADERS}
     ${HANDLER_HEADERS}
+    ${UDA_HEADERS}
 )
 
 # Create a list of all external dependencies

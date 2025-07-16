@@ -20,7 +20,7 @@ using DataSourceArgs = std::unordered_map<std::string, nlohmann::json>;
 class DataSource {
 public:
     DataSource() = default;
-    virtual TypedDataArray get(const DataSourceArgs& map_args, const MapArguments& arguments, ram_cache::RamCache* ram_cache, std::optional<float> scale, std::optional<float> offset, std::optional<std::string> slice) = 0;
+    virtual TypedDataArray get(const DataSourceArgs& map_args, const MapArguments& arguments, ram_cache::RamCache* ram_cache) = 0;
     virtual ~DataSource() = default;
 
     DataSource(DataSource&& other) = default;

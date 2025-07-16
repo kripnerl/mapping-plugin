@@ -1,50 +1,11 @@
-#include <algorithm>
-#include <clientserver/udaStructs.h>
+#pragma once
 
-#include "gsl/gsl-lite.hpp"
+#include "map_types/map_arguments.hpp"
 
 namespace json_mapping::map_transform
 {
 
-int transform_offset(DataBlock* data_block, float offset);
-int transform_scale(DataBlock* data_block, float scale);
-
-template <typename T> int offset_value(T& var, float offset)
-{
-
-    *var += offset;
-    return 0;
-}
-
-template <typename T> int offset_span(gsl::span<T> span, float offset)
-{
-
-    if (span.empty()) {
-        return 1;
-    }
-
-    std::for_each(span.begin(), span.end(), [&](T& elem) { elem += offset; });
-
-    return 0;
-}
-
-template <typename T> int scale_value(T& var, float scale)
-{
-
-    *var *= scale;
-    return 0;
-}
-
-template <typename T> int scale_span(gsl::span<T> span, float scale)
-{
-
-    if (span.empty()) {
-        return 1;
-    }
-
-    std::for_each(span.begin(), span.end(), [&](T& elem) { elem *= scale; });
-
-    return 0;
-}
+int transform_offset(TypedDataArray& array, float offset);
+int transform_scale(TypedDataArray& array, float scale);
 
 } // namespace json_mapping::map_transform

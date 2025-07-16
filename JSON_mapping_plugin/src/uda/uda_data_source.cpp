@@ -29,8 +29,6 @@
 #include "map_types/map_arguments.hpp"
 #include "uda_ram_cache.hpp"
 #include "utils/ram_cache.hpp"
-#include "utils/scale_offset.hpp"
-#include "utils/subset.hpp"
 
 // TODO:
 //  - handle compressed dims
@@ -48,8 +46,7 @@
  * @return
  */
 std::string UDADataSource::get_request_str(const json_mapping::DataSourceArgs& data_source_args,
-                                           const json_mapping::MapArguments& arguments,
-                                           std::optional<std::string> slice) const
+                                           const json_mapping::MapArguments& arguments) const
 {
     std::stringstream string_stream;
     string_stream << m_plugin_name << "::" << m_function.value_or("get") << "(";
@@ -77,10 +74,6 @@ std::string UDADataSource::get_request_str(const json_mapping::DataSourceArgs& d
         delim = ", ";
     }
     string_stream << ")";
-
-    if (slice.has_value() && arguments.sig_type != json_mapping::SignalType::DIM) {
-        string_stream << inja::render(inja::render(slice.value(), arguments.global_data), arguments.global_data);
-    }
 
     auto request = string_stream.str();
     // UDA_LOG(UDA_LOG_DEBUG, "Plugin Mapping Request : %s\n", request.c_str());
@@ -112,12 +105,10 @@ bool UDADataSource::copy_from_cache(ram_cache::RamCache* ram_cache, DATA_BLOCK* 
 }
 
 int UDADataSource::call_plugins(DATA_BLOCK* data_block, const json_mapping::DataSourceArgs& data_source_args,
-                                const json_mapping::MapArguments& arguments, ram_cache::RamCache* ram_cache,
-                                std::optional<float> scale, std::optional<float> offset,
-                                std::optional<std::string> slice) const
+                                const json_mapping::MapArguments& arguments, ram_cache::RamCache* ram_cache) const
 {
     int err{1};
-    auto request_str = get_request_str(data_source_args, arguments, std::move(slice));
+    auto request_str = get_request_str(data_source_args, arguments);
     if (request_str.empty()) {
         return err;
     } // Return 1 if no request receieved
@@ -134,22 +125,6 @@ int UDADataSource::call_plugins(DATA_BLOCK* data_block, const json_mapping::Data
 
     ENVIRONMENT* environment = getIdamClientEnvironment();
     makeRequestData(&request, *m_plugin_list, environment);
-
-    SUBSET data_subset = request.datasubset;
-    json_mapping::subset::log_request_status(&request, "request block before interception: ");
-
-    // assume subsetting is requested if the final part of the request string is
-    // in sqaure bracktes
-    if (request_str.back() == ']' && request_str.rfind('[') != std::string::npos) {
-        std::size_t subset_syntax_position = request_str.rfind('[');
-        // if (m_cache_enabled) {
-        //     ram_cache->log(ram_cache::LogLevel::INFO, "request before alteration: " + request_str);
-        // }
-        request_str.erase(subset_syntax_position);
-        // if (m_cache_enabled) {
-        //     ram_cache->log(ram_cache::LogLevel::INFO, "request after alteration: " + request_str);
-        // }
-    }
 
     // if (m_cache_enabled) {
     //     std::string key_found = ram_cache->has_entry(request_str) ? "True" : "False";
@@ -192,7 +167,6 @@ int UDADataSource::call_plugins(DATA_BLOCK* data_block, const json_mapping::Data
         interface.signal_desc = &signal_desc;
 
         err = callPlugin(m_plugin_list, request_str.c_str(), &interface);
-        json_mapping::subset::log_request_status(&request, "request block status:");
 
         if (err != 0) {
             // add check of int udaNumErrors() and if more than one, don't wipe
@@ -210,35 +184,15 @@ int UDADataSource::call_plugins(DATA_BLOCK* data_block, const json_mapping::Data
         // }
     }
 
-    const char* subset_method = getenv("UDA_JSON_MAPPING_SUBSET_METHOD");
-
-    using json_mapping::SignalType;
-
-    // set serverside subsetting as default unless new method is specifically requested.
-    bool use_plugin_subset = (subset_method != nullptr) && (StringIEquals(subset_method, "PLUGIN_SUBSET"));
-    // TODO: handle dim data scaling (hardcoded to disable scaling here)
-    bool dim_data = arguments.sig_type == SignalType::DIM || arguments.sig_type == SignalType::TIME;
-
-    if (data_subset.nbound > 0) {
-        auto scale_value = (!dim_data && scale.has_value()) ? scale.value() : 1.0;
-        json_mapping::subset::log(json_mapping::subset::LogLevel::INFO,
-                                  "scale factor is: " + std::to_string(scale_value));
-        auto offset_value = (!dim_data && offset.has_value()) ? offset.value() : 0.0;
-        json_mapping::subset::log(json_mapping::subset::LogLevel::INFO,
-                                  "offset factor is: " + std::to_string(offset_value));
-        json_mapping::subset::apply_subsetting(data_block, data_subset, scale_value, offset_value);
-    }
-
     return err;
 }
 
 json_mapping::TypedDataArray UDADataSource::get(const json_mapping::DataSourceArgs& data_source_args,
                                                 const json_mapping::MapArguments& arguments,
-                                                ram_cache::RamCache* ram_cache, std::optional<float> scale,
-                                                std::optional<float> offset, std::optional<std::string> slice)
+                                                ram_cache::RamCache* ram_cache)
 {
     DATA_BLOCK data_block;
-    int err = call_plugins(&data_block, data_source_args, arguments, ram_cache, scale, offset, slice);
+    int err = call_plugins(&data_block, data_source_args, arguments, ram_cache);
 
     // temporary solution to the slice functionality returning arrays of 1 element
     if (data_block.rank == 1 && data_block.data_n == 1) {

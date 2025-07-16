@@ -3,6 +3,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/case_conv.hpp>
 #include <cstddef>
+#include <deque>
 #include <filesystem>
 #include <fmt/format.h>
 #include <fstream>
@@ -13,23 +14,21 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <typeindex>
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include <deque>
-
-#include <clientserver/udaTypes.h>
 
 #include "map_types/base_mapping.hpp"
 #include "map_types/custom_mapping.hpp"
+#include "map_types/data_source_mapping.hpp"
 #include "map_types/dim_mapping.hpp"
 #include "map_types/expr_mapping.hpp"
-#include "map_types/data_source_mapping.hpp"
+#include "map_types/map_arguments.hpp"
 #include "map_types/value_mapping.hpp"
+#include "utils/indices.hpp"
 #include "utils/ram_cache.hpp"
 #include "utils/syntax_parser.hpp"
-#include "map_types/map_arguments.hpp"
-#include "utils/indices.hpp"
 
 void json_mapping::MappingHandler::reset()
 {
@@ -44,8 +43,9 @@ void json_mapping::MappingHandler::init()
         return;
     }
 
-    const char* cache_size_str = getenv("UDA_JSON_MAPPING_CACHE_SIZE");
-    const char* enable_caching_str = getenv("UDA_JSON_MAPPING_USE_CACHE");
+    // TODO: replace with config
+    const char* cache_size_str = getenv("JSON_MAPPING_CACHE_SIZE");
+    const char* enable_caching_str = getenv("JSON_MAPPING_USE_CACHE");
 
     bool enable_caching = (enable_caching_str == nullptr) or (std::stoi(enable_caching_str) > 0);
 
@@ -61,12 +61,14 @@ void json_mapping::MappingHandler::init()
     m_init = true;
 }
 
-json_mapping::TypedDataArray json_mapping::MappingHandler::map(const std::string& mapping, const std::string& path, int data_type, int rank, const nlohmann::json& extra_attributes)
+json_mapping::TypedDataArray json_mapping::MappingHandler::map(const std::string& mapping, const std::string& path,
+                                                               std::type_index data_type, int rank,
+                                                               const nlohmann::json& extra_attributes)
 {
     std::deque<std::string> path_tokens;
     boost::split(path_tokens, path, boost::is_any_of("/"));
     if (path_tokens.empty()) {
-        throw std::runtime_error{ "IDS path could not be split" };
+        throw std::runtime_error{"IDS path could not be split"};
     }
 
     auto [indices, new_tokens] = extract_indices(path_tokens);
@@ -84,7 +86,7 @@ json_mapping::TypedDataArray json_mapping::MappingHandler::map(const std::string
     const auto maybe_mappings = read_mappings(machine_string, ids_name, extra_attributes);
 
     if (!maybe_mappings) {
-        throw std::runtime_error{ "JSON mapping not loaded, no map entries" };
+        throw std::runtime_error{"JSON mapping not loaded, no map entries"};
     }
 
     const auto& [attributes, mappings] = maybe_mappings.value();
@@ -106,18 +108,14 @@ json_mapping::TypedDataArray json_mapping::MappingHandler::map(const std::string
         attributes[key] = value;
     }
 
-    const json_mapping::MapArguments map_arguments{
-        mappings,
-        attributes,
-        sig_type,
-        static_cast<UDA_TYPE>(data_type),
-        rank
-    };
+    const json_mapping::MapArguments map_arguments{mappings, attributes, sig_type, data_type, rank};
 
     return mappings.at(map_path)->map(map_arguments);
 }
 
-std::optional<json_mapping::MappingPair> json_mapping::MappingHandler::read_mappings(const MachineName& machine, const std::string& request_ids, const nlohmann::json& extra_attributes)
+std::optional<json_mapping::MappingPair>
+json_mapping::MappingHandler::read_mappings(const MachineName& machine, const std::string& request_ids,
+                                            const nlohmann::json& extra_attributes)
 {
     int shot = 0;
     const bool shot_found = extra_attributes.contains("shot");
@@ -154,12 +152,10 @@ std::optional<json_mapping::MappingPair> json_mapping::MappingHandler::read_mapp
     return {std::make_pair(std::ref(attr), std::ref(map))};
 }
 
-void json_mapping::MappingHandler::set_map_dir(const std::string& mapping_dir)
-{
-    m_mapping_dir = mapping_dir;
-}
+void json_mapping::MappingHandler::set_map_dir(const std::string& mapping_dir) { m_mapping_dir = mapping_dir; }
 
-std::vector<int> json_mapping::MappingHandler::find_mapping_dirs(const MachineName& machine, const IDSName& ids_name) const
+std::vector<int> json_mapping::MappingHandler::find_mapping_dirs(const MachineName& machine,
+                                                                 const IDSName& ids_name) const
 {
     auto path = m_mapping_dir / machine / ids_name;
     std::vector<int> mapping_dirs;
@@ -173,8 +169,8 @@ std::vector<int> json_mapping::MappingHandler::find_mapping_dirs(const MachineNa
     return mapping_dirs;
 }
 
-std::filesystem::path json_mapping::MappingHandler::mapping_path(const MachineName& machine, const IDSName& ids_name, const int shot,
-                                                   const std::string& file_name) const
+std::filesystem::path json_mapping::MappingHandler::mapping_path(const MachineName& machine, const IDSName& ids_name,
+                                                                 const int shot, const std::string& file_name) const
 {
     if (ids_name.empty()) {
         return m_mapping_dir / machine / file_name;
@@ -200,7 +196,7 @@ void json_mapping::MappingHandler::load_machine(const MachineName& machine)
     if (map_cfg_file) {
         map_cfg_file >> m_mapping_config;
     } else {
-        throw std::runtime_error{ "Cannot open JSON mapping config file" };
+        throw std::runtime_error{"Cannot open JSON mapping config file"};
     }
 
     m_machine_register[machine] = {{}, {}};
@@ -223,10 +219,10 @@ nlohmann::json json_mapping::MappingHandler::load_toplevel(const MachineName& ma
         try {
             globals_file >> toplevel_globals;
         } catch (nlohmann::json::exception& ex) {
-            throw std::runtime_error{ ex.what() };
+            throw std::runtime_error{ex.what()};
         }
     } else {
-        throw std::runtime_error{ "Cannot open top-level globals file" };
+        throw std::runtime_error{"Cannot open top-level globals file"};
     }
     return toplevel_globals;
 }
@@ -242,13 +238,13 @@ void json_mapping::MappingHandler::load_shot_globals(const MachineName& machine,
         try {
             globals_file >> temp_globals;
         } catch (nlohmann::json::exception& ex) {
-            throw std::runtime_error{ ex.what() };
+            throw std::runtime_error{ex.what()};
         }
 
         temp_globals.update(load_toplevel(machine));
         m_machine_register[machine].attributes[ids_name].map[shot] = temp_globals; // Record globals
     } else {
-        throw std::runtime_error{ "Cannot open JSON globals file" };
+        throw std::runtime_error{"Cannot open JSON globals file"};
     }
 }
 
@@ -274,12 +270,12 @@ void json_mapping::MappingHandler::load_shot_mappings(const MachineName& machine
         try {
             map_file >> temp_mappings;
         } catch (nlohmann::json::exception& ex) {
-            throw std::runtime_error{ ex.what() };
+            throw std::runtime_error{ex.what()};
         }
 
         init_mappings(machine, ids_name, temp_mappings, shot);
     } else {
-        throw std::runtime_error{ "Cannot open JSON mapping file" };
+        throw std::runtime_error{"Cannot open JSON mapping file"};
     }
 }
 
@@ -294,7 +290,8 @@ void json_mapping::MappingHandler::load_mappings(const MachineName& machine, con
     }
 }
 
-void json_mapping::MappingHandler::init_value_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value)
+void json_mapping::MappingHandler::init_value_mapping(IDSMapRegister& map_reg, const std::string& key,
+                                                      const nlohmann::json& value)
 {
     const auto& value_json = value.at("VALUE");
     map_reg.try_emplace(key, std::make_unique<ValueMapping>(value_json));
@@ -341,8 +338,8 @@ std::optional<float> get_float_value(const std::string& name, const nlohmann::js
     return opt_float;
 }
 
-std::string find_mapping(json_mapping::IDSMapRegister& mappings, const std::string& path, const std::vector<int>& indices,
-                         const std::string& full_path)
+std::string find_mapping(json_mapping::IDSMapRegister& mappings, const std::string& path,
+                         const std::vector<int>& indices, const std::string& full_path)
 {
     // If mapping is found we are good
     if (mappings.count(path) > 0) {
@@ -369,11 +366,12 @@ std::string find_mapping(json_mapping::IDSMapRegister& mappings, const std::stri
     return "";
 }
 
-} // anon namespace
+} // namespace
 
-void json_mapping::MappingHandler::init_plugin_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value,
-                                        const nlohmann::json& ids_attributes,
-                                        std::shared_ptr<ram_cache::RamCache>& ram_cache)
+void json_mapping::MappingHandler::init_plugin_mapping(IDSMapRegister& map_reg, const std::string& key,
+                                                       const nlohmann::json& value,
+                                                       const nlohmann::json& ids_attributes,
+                                                       std::shared_ptr<ram_cache::RamCache>& ram_cache)
 {
     auto data_source_name = value["DATA_SOURCE"].get<std::string>();
     boost::to_upper(data_source_name);
@@ -391,28 +389,32 @@ void json_mapping::MappingHandler::init_plugin_mapping(IDSMapRegister& map_reg, 
         apply_config(args, function, plugin_config_map, data_source_name);
     }
 
-    map_reg.try_emplace(key, std::make_unique<DataSourceMapping>(data_source_name, args, offset, scale, slice, ram_cache));
+    map_reg.try_emplace(key,
+                        std::make_unique<DataSourceMapping>(data_source_name, args, offset, scale, slice, ram_cache));
 }
 
-void json_mapping::MappingHandler::init_dim_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value)
+void json_mapping::MappingHandler::init_dim_mapping(IDSMapRegister& map_reg, const std::string& key,
+                                                    const nlohmann::json& value)
 {
     map_reg.try_emplace(key, std::make_unique<DimMapping>(value["DIM_PROBE"].get<std::string>()));
 }
 
-void json_mapping::MappingHandler::init_expr_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value)
+void json_mapping::MappingHandler::init_expr_mapping(IDSMapRegister& map_reg, const std::string& key,
+                                                     const nlohmann::json& value)
 {
     map_reg.try_emplace(
         key, std::make_unique<ExprMapping>(value["EXPR"].get<std::string>(),
                                            value["PARAMETERS"].get<std::unordered_map<std::string, std::string>>()));
 }
 
-void json_mapping::MappingHandler::init_custom_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value)
+void json_mapping::MappingHandler::init_custom_mapping(IDSMapRegister& map_reg, const std::string& key,
+                                                       const nlohmann::json& value)
 {
     map_reg.try_emplace(key, std::make_unique<CustomMapping>(value["CUSTOM_TYPE"].get<CustomMapType_t>()));
 }
 
-void json_mapping::MappingHandler::init_mappings(const MachineName& machine, const IDSName& ids_name, const nlohmann::json& data,
-                                  int shot)
+void json_mapping::MappingHandler::init_mappings(const MachineName& machine, const IDSName& ids_name,
+                                                 const nlohmann::json& data, int shot)
 {
     const auto& attributes = m_machine_register[machine].attributes;
     IDSMapRegister temp_map_reg;
@@ -445,7 +447,7 @@ void json_mapping::MappingHandler::init_mappings(const MachineName& machine, con
 }
 
 std::string json_mapping::generate_map_path(std::deque<std::string>& path_tokens, const std::vector<int>& indices,
-                                                 IDSMapRegister& mappings, const std::string& full_path)
+                                            IDSMapRegister& mappings, const std::string& full_path)
 {
     const auto sig_type = deduce_signal_type(path_tokens.back());
     if (sig_type == SignalType::INVALID) {

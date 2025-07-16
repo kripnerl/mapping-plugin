@@ -22,7 +22,7 @@
 #include "utils/ram_cache.hpp"
 
 #include "test_helpers.hpp"
-#include "uda_data_source.hpp"
+#include "uda/uda_data_source.hpp"
 
 using namespace json_mapping;
 
@@ -64,7 +64,7 @@ TEST_CASE("PluginMapping calls UDA data source", "[plugin_mapping][uda_data_sour
         auto mapping = std::make_unique<DataSourceMapping>("UDA", request_args, offset, scale, slice, ram_cache);
         REQUIRE(mapping != nullptr);
 
-        MapArguments map_args = makeMapArguments(UDA_TYPE_FLOAT, 1);
+        MapArguments map_args = makeMapArguments(std::type_index{typeid(int)}, 1);
         auto array = mapping->map(map_args);
 
         REQUIRE(!array.empty());

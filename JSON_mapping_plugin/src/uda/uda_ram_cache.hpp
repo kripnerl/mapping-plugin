@@ -3,7 +3,6 @@
 #include <boost/range/numeric.hpp>
 #include <cstdlib>
 #include <ctime>
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -11,7 +10,7 @@
 #include <clientserver/udaStructs.h>
 #include <clientserver/udaTypes.h>
 #include <server/getServerEnvironment.h>
-#include <utils/print_uda_structs.hpp>
+#include <uda/print_uda_structs.hpp>
 
 #include "utils/ram_cache.hpp"
 
