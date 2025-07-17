@@ -1,8 +1,16 @@
-set( CONFIGS
-    config/json_mapping.cfg
-)
+# Project details
+# project(
+#     LibTokaMap
+#     VERSION 0.1.0
+#     LANGUAGES CXX
+# )
 
-set( JSON_LIBNAME JSON_mapping_plugin )
+find_package( Boost REQUIRED )
+
+# Specify C++ standard for all targets
+#set( CMAKE_CXX_STANDARD 17 )
+#set( CMAKE_CXX_STANDARD_REQUIRED ON )
+#set( CMAKE_CXX_EXTENSIONS OFF )
 
 # Group source files by functionality for better organization
 set( UTIL_SOURCES
@@ -11,12 +19,6 @@ set( UTIL_SOURCES
     src/utils/scale_offset.cpp
     src/utils/subset.cpp
     src/utils/syntax_parser.cpp
-)
-
-set( UDA_SOURCES
-    src/uda/uda_plugin_helpers.cpp
-    src/uda/uda_data_source.cpp
-    src/uda/uda_ram_cache.cpp
 )
 
 set( MAP_TYPE_SOURCES
@@ -33,25 +35,15 @@ set( HANDLER_SOURCES
 )
 
 set( SOURCES
-    JSON_mapping_plugin.cpp
     ${UTIL_SOURCES}
     ${MAP_TYPE_SOURCES}
     ${HANDLER_SOURCES}
-    ${UDA_SOURCES}
 )
 
 set( UTIL_HEADERS
     src/utils/ram_cache.hpp
     src/utils/scale_offset.hpp
     src/utils/subset.hpp
-)
-
-set( UDA_HEADERS
-    src/uda/uda_plugin_helpers.hpp
-    src/uda/uda_type_sizes.hpp
-    src/uda/print_uda_structs.hpp
-    src/uda/uda_data_source.hpp
-    src/uda/uda_ram_cache.hpp
 )
 
 set( MAP_TYPE_HEADERS
@@ -69,44 +61,20 @@ set( HANDLER_HEADERS
 )
 
 set( HEADERS
-    JSON_mapping_plugin.h
     ${UTIL_HEADERS}
     ${MAP_TYPE_HEADERS}
     ${HANDLER_HEADERS}
-    ${UDA_HEADERS}
 )
 
-# Create a list of all external dependencies
-set( EXTERNAL_DEPS
-    ${UDA_CLIENT_LIBRARIES}
-    ${Boost_LIBRARIES}
-    uda_cpp
-)
-
-include( plugins )
-uda_plugin(
-    NAME IMAS_JSON_MAP
-    ENTRY_FUNC jsonMappingPlugin
-    DESCRIPTION "MAP IMAS element name to TOKAMAK data using JSON mapping files"
-    EXAMPLE "IMAS_JSON_MAP::read()"
-    LIBNAME ${JSON_LIBNAME}
-    SOURCES ${SOURCES}
-    CONFIG_FILE ${CONFIGS}
-    EXTRA_INCLUDE_DIRS
-        ${CMAKE_CURRENT_LIST_DIR}/src
-        ${CMAKE_CURRENT_LIST_DIR}/ext_include
-        ${UDA_CLIENT_INCLUDE_DIRS}
-        ${Boost_INCLUDE_DIRS}
-    EXTRA_LINK_DIRS
-        ${UDA_CLIENT_LIBRARY_DIRS}
-        ${Boost_LIBRARY_DIRS}
-    EXTRA_LINK_LIBS
-        ${EXTERNAL_DEPS}
+add_library( tokamap ${SOURCES} )
+target_link_libraries( tokamap PRIVATE Boost::boost )
+target_include_directories( tokamap PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext_include
 )
 
 # Unit testing setup
-if( ${PROJECT_NAME}_ENABLE_TESTING )
-    message( STATUS "TESTS: Building tests for the project." )
+if( ENABLE_TESTING )
     add_subdirectory( test )
 endif()
 

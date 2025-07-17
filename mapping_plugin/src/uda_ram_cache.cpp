@@ -15,15 +15,18 @@
 #include <string_view>
 #include <vector>
 
+// LibTokaMap includes
+#include <utils/ram_cache.hpp>
+
+// UDA includes
 #include <clientserver/compressDim.h>
 #include <clientserver/initStructs.h>
 #include <clientserver/udaStructs.h>
 #include <clientserver/udaTypes.h>
 #include <server/getServerEnvironment.h>
 
-#include "uda/print_uda_structs.hpp"
-#include "uda/uda_type_sizes.hpp"
-#include "utils/ram_cache.hpp"
+#include "print_uda_structs.hpp"
+#include "uda_type_sizes.hpp"
 
 using ram_cache::uda::UDACacheEntry;
 using uda_type_utils::size_of_uda_type;

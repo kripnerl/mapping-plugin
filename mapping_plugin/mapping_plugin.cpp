@@ -1,4 +1,4 @@
-#include "JSON_mapping_plugin.h"
+#include "mapping_plugin.h"
 
 #include <boost/algorithm/string.hpp>
 #include <chrono>
@@ -15,7 +15,10 @@
 #include <string>
 #include <string_view>
 #include <typeindex>
-#include <utility>
+
+// LibTokaMap includes
+#include <handlers/mapping_handler.hpp>
+#include <map_types/data_source_mapping.hpp>
 
 // UDA includes
 #include <clientserver/errorLog.h>
@@ -28,10 +31,8 @@
 #include <plugins/udaPlugin.h>
 #include <server/getServerEnvironment.h>
 
-#include "handlers/mapping_handler.hpp"
-#include "map_types/data_source_mapping.hpp"
-#include "uda/uda_data_source.hpp"
-#include "uda/uda_plugin_helpers.hpp"
+#include "uda_data_source.hpp"
+#include "uda_plugin_helpers.hpp"
 
 namespace json_mapping_plugin
 {

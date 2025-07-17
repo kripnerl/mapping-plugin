@@ -37,11 +37,9 @@ if (PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR )
 endif()
 
 # Find dependencies using modern approach
-if(POLICY CMP0167)
-    cmake_policy(SET CMP0167 NEW)
+if( POLICY CMP0167 )
+    cmake_policy( SET CMP0167 NEW )
 endif()
-find_package( Boost REQUIRED )
-find_package( UDA 2.7.0 REQUIRED )
 
 # Set project options
 include( StandardSettings )
@@ -50,54 +48,9 @@ include( Utils )
 
 add_clang_format_target()
 
-# Add global compile options using modern method
-add_compile_options( -fPIC )
-add_compile_options( -pthread )
-
-# Create module
-configure_file(
-    ${CMAKE_SOURCE_DIR}/JSON_mapping_plugin/etc/module.in
-    ${CMAKE_BINARY_DIR}/etc/JSON_mapping_plugin/${PROJECT_VERSION}
-    @ONLY
-)
-
-set( MODULE_PATH "modulefiles/JSON_mapping_plugin" CACHE PATH "location to install module files to" )
-set( MODULE_NAME "${PROJECT_VERSION}" CACHE STRING "name of the module file" )
-string( CONFIGURE "${MODULE_PATH}" MODULE_PATH_EXPANDED @ONLY )
-
-get_filename_component(
-    MODULE_PATH_EXPANDED ${MODULE_PATH_EXPANDED}
-    REALPATH BASE_DIR "${CMAKE_INSTALL_PREFIX}"
-)
-
-install(
-    FILES ${CMAKE_BINARY_DIR}/etc/JSON_mapping_plugin/${PROJECT_VERSION}
-    DESTINATION ${MODULE_PATH_EXPANDED}
-    RENAME ${MODULE_NAME}
-)
-
-if( ${PROJECT_NAME}_ENABLE_TESTING )
+if( ENABLE_TESTING )
     enable_testing()
 endif()
 
-# Add JSON_mapping_plugin subdirectory
-add_subdirectory( JSON_mapping_plugin )
-# add_subdirectory( CUSTOM_MASTU_plugin )
-# add_subdirectory( geometry_map_plugin )
-
-# This list is appended to by the uda_plugin macro
-set( BUILT_PLUGINS "${PLUGINS}" )
-message( STATUS "PLUGINS: ${PLUGINS}" )
-
-# Generate scripts
-string( REGEX REPLACE ";" " " PLUGINS "${BUILT_PLUGINS}" )
-configure_file(
-    ${CMAKE_SOURCE_DIR}/scripts/activate-plugins.sh.in
-    ${CMAKE_BINARY_DIR}/scripts/activate-plugins.sh
-    @ONLY
-)
-configure_file(
-    ${CMAKE_SOURCE_DIR}/scripts/remove-plugins.sh.in
-    ${CMAKE_BINARY_DIR}/scripts/remove-plugins.sh
-    @ONLY
-)
+add_subdirectory( libtokamap )
+add_subdirectory( mapping_plugin )

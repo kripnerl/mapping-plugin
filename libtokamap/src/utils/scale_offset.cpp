@@ -1,4 +1,4 @@
-#include "utils/scale_offset.hpp"
+#include "scale_offset.hpp"
 
 #include <cstdlib>
 #include <gsl/gsl-lite.hpp>

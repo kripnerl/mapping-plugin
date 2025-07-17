@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include <fmt/format.h>
 #include <gsl/gsl-lite.hpp>
 #include <memory>
 #include <nlohmann/json.hpp>

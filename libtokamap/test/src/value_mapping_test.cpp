@@ -7,11 +7,6 @@
 #include <iostream>
 #include <cxxabi.h>
 
-// UDA includes
-#include <clientserver/initStructs.h>
-#include <clientserver/udaStructs.h>
-#include <clientserver/udaTypes.h>
-
 #include "map_types/value_mapping.hpp"
 #include "map_types/map_arguments.hpp"
 #include "test_helpers.hpp"

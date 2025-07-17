@@ -13,24 +13,39 @@
 #include <optional>
 #include <string>
 #include <typeindex>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
+// LibTokaMap includes
+#include <map_types/data_source_mapping.hpp>
+#include <map_types/map_arguments.hpp>
+#include <utils/ram_cache.hpp>
+
+// UDA includes
 #include <clientserver/initStructs.h>
 #include <clientserver/udaStructs.h>
 #include <clientserver/udaTypes.h>
 #include <plugins/pluginStructs.h>
 
-#include "map_types/data_source_mapping.hpp"
-#include "map_types/map_arguments.hpp"
-#include "utils/ram_cache.hpp"
-
-#include "test_helpers.hpp"
-#include "uda/uda_data_source.hpp"
+#include "uda_data_source.hpp"
 
 using namespace json_mapping;
 
-static int plugin_return_scalar(IDAM_PLUGIN_INTERFACE* interface)
+namespace
+{
+
+json_mapping::MapArguments
+make_map_arguments(const std::type_index data_type, const int rank,
+                   const json_mapping::SignalType sig_type = json_mapping::SignalType::DEFAULT)
+{
+    static std::unordered_map<std::string, std::unique_ptr<json_mapping::Mapping>> empty_entries;
+    static nlohmann::json empty_global_data = nlohmann::json::object();
+
+    return json_mapping::MapArguments(empty_entries, empty_global_data, sig_type, data_type, rank);
+}
+
+int plugin_return_scalar(IDAM_PLUGIN_INTERFACE* interface)
 {
     REQUIRE(std::string{interface->request_data->signal} == "get()");
     DATA_BLOCK* data_block = interface->data_block;
@@ -45,7 +60,7 @@ static int plugin_return_scalar(IDAM_PLUGIN_INTERFACE* interface)
 
 constexpr size_t array_size = 100;
 
-static int plugin_return_array(IDAM_PLUGIN_INTERFACE* interface)
+int plugin_return_array(IDAM_PLUGIN_INTERFACE* interface)
 {
     REQUIRE(std::string{interface->request_data->signal} == "get()");
     DATA_BLOCK* data_block = interface->data_block;
@@ -61,6 +76,8 @@ static int plugin_return_array(IDAM_PLUGIN_INTERFACE* interface)
     }
     return 0;
 }
+
+} // namespace
 
 TEST_CASE("PluginMapping calls UDA data source", "[plugin_mapping][uda_data_source]")
 {
@@ -87,7 +104,7 @@ TEST_CASE("PluginMapping calls UDA data source", "[plugin_mapping][uda_data_sour
         auto mapping = std::make_unique<DataSourceMapping>("UDA", request_args, offset, scale, slice, ram_cache);
         REQUIRE(mapping != nullptr);
 
-        MapArguments map_args = makeMapArguments(std::type_index{typeid(int)}, 1);
+        MapArguments map_args = make_map_arguments(std::type_index{typeid(int)}, 1);
         auto array = mapping->map(map_args); // FIXME
 
         REQUIRE(!array.empty());
@@ -122,7 +139,7 @@ TEST_CASE("Slicing and offsetting returned data", "[plugin_mapping][uda_data_sou
         auto mapping = std::make_unique<DataSourceMapping>("UDA", request_args, offset, scale, slice, ram_cache);
         REQUIRE(mapping != nullptr);
 
-        MapArguments map_args = makeMapArguments(std::type_index{typeid(int)}, 1);
+        MapArguments map_args = make_map_arguments(std::type_index{typeid(int)}, 1);
         auto array = mapping->map(map_args); // FIXME
 
         REQUIRE(!array.empty());
@@ -147,7 +164,7 @@ TEST_CASE("Slicing and offsetting returned data", "[plugin_mapping][uda_data_sou
         auto mapping = std::make_unique<DataSourceMapping>("UDA", request_args, offset, scale, slice, ram_cache);
         REQUIRE(mapping != nullptr);
 
-        MapArguments map_args = makeMapArguments(std::type_index{typeid(int)}, 1);
+        MapArguments map_args = make_map_arguments(std::type_index{typeid(int)}, 1);
         auto array = mapping->map(map_args); // FIXME
 
         REQUIRE(!array.empty());
