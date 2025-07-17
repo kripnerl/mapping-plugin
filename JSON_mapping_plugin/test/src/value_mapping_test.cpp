@@ -1,11 +1,11 @@
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/matchers/catch_matchers_string.hpp>
-#include <catch2/matchers/catch_matchers_range_equals.hpp>
-
 #include <nlohmann/json.hpp>
 #include <memory>
 #include <typeindex>
 #include <vector>
+#include <string>
+#include <ostream>
+#include <iostream>
+#include <cxxabi.h>
 
 // UDA includes
 #include <clientserver/initStructs.h>
@@ -15,6 +15,29 @@
 #include "map_types/value_mapping.hpp"
 #include "map_types/map_arguments.hpp"
 #include "test_helpers.hpp"
+
+// define this _before_ including catch headers
+std::ostream& operator<<(std::ostream& out, const std::type_index& value) {
+    int status = 0;
+    out << abi::__cxa_demangle(value.name(), nullptr, nullptr, &status);
+    return out;
+}
+
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
+#include <catch2/matchers/catch_matchers_range_equals.hpp>
+#include <catch2/catch_tostring.hpp>
+#include <catch2/catch_message.hpp>
+
+namespace Catch {
+    template<>
+    struct StringMaker<std::type_index> {
+        static std::string convert(const std::type_index& value) {
+            int status = 0;
+            return abi::__cxa_demangle(value.name(), nullptr, nullptr, &status);
+        }
+    };
+}
 
 using namespace json_mapping;
 

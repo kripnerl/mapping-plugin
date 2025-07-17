@@ -2,13 +2,16 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <fmt/format.h>
+#include <gsl/gsl-lite.hpp>
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <typeindex>
 #include <unordered_map>
 #include <utility>
@@ -41,20 +44,61 @@ inline DataType type_index_map(std::type_index type_index)
     return DataType::Unknown;
 }
 
+class SubsetInfo
+{
+  public:
+    SubsetInfo(int64_t start, int64_t stop, int64_t stride, uint64_t size)
+        : m_start{start}, m_stop{stop}, m_stride{stride}, m_dim_size{size}
+    {
+        // negative indexes mean that many elements from the end
+        if (start < 0) {
+            m_start = size + start;
+        }
+        if (stop < 0) {
+            m_stop = size + stop + 1;
+        }
+    }
+
+    [[nodiscard]] bool empty() const { return m_start == m_stop; }
+
+    [[nodiscard]] uint64_t size() const { return (m_stop - m_start) / m_stride; }
+
+    [[nodiscard]] bool validate() const
+    {
+        return m_start <= m_dim_size - 1 && m_stop <= m_dim_size && m_start <= m_stop && m_stride < m_dim_size;
+    }
+
+    [[nodiscard]] uint64_t start() const { return m_start; }
+
+    [[nodiscard]] uint64_t stop() const { return m_stop; }
+
+    [[nodiscard]] int64_t stride() const { return m_stride; }
+
+    [[nodiscard]] uint64_t dim_size() const { return m_dim_size; }
+
+  private:
+    int64_t m_start;
+    int64_t m_stop;
+    int64_t m_stride = 1;
+    uint64_t m_dim_size;
+};
+
+std::vector<size_t> compute_offsets(const std::vector<size_t>& shape, const std::vector<SubsetInfo>& subsets);
+
 class TypedDataArray
 {
   public:
     TypedDataArray() : m_type_index{typeid(void)}, m_size{0}, m_owning{false} {}
 
     template <typename T>
-    explicit TypedDataArray(std::vector<T>& array, std::vector<size_t> shape = {}, bool owning = true)
+    explicit TypedDataArray(const std::vector<T>& array, std::vector<size_t> shape = {}, bool owning = true)
         : m_type_index{typeid(T)}, m_size{array.size()}, m_shape{std::move(shape)}, m_owning{owning}
     {
         if (m_owning) {
             m_buffer = new char[m_size * sizeof(T)];
             std::memcpy(m_buffer, reinterpret_cast<const char*>(array.data()), m_size * sizeof(T));
         } else {
-            m_buffer = reinterpret_cast<char*>(array.data());
+            m_buffer = reinterpret_cast<char*>(const_cast<T*>(array.data()));
         }
         if (m_shape.empty()) {
             m_shape.push_back(m_size);
@@ -73,7 +117,8 @@ class TypedDataArray
         }
     }
 
-    template <typename T> explicit TypedDataArray(const T value) : m_type_index{typeid(T)}, m_size{1}, m_owning{true}
+    template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, bool> = true>
+    explicit TypedDataArray(const T value) : m_type_index{typeid(T)}, m_size{1}, m_owning{true}
     {
         m_buffer = new char[sizeof(T)];
         std::memcpy(m_buffer, reinterpret_cast<const char*>(&value), sizeof(T));
@@ -93,6 +138,65 @@ class TypedDataArray
         }
     }
 
+    template <typename T> void apply(double scale_factor, double offset)
+    {
+        if (m_type_index != std::type_index{typeid(T)}) {
+            throw std::runtime_error{"invalid type given to apply"};
+        }
+
+        gsl::span<T> data{reinterpret_cast<T*>(m_buffer), m_size};
+        for (T& element : data) {
+            element *= scale_factor;
+            element += offset;
+        }
+    }
+
+    template <typename T> void slice(const std::vector<SubsetInfo>& subsets)
+    {
+        if (m_type_index != std::type_index{typeid(T)}) {
+            throw std::runtime_error{"invalid type given to slice"};
+        }
+        if (subsets.size() != m_shape.size()) {
+            throw std::runtime_error{"invalid number of subsets given"};
+        }
+
+        if (subsets.empty()) {
+            return;
+        }
+
+        const size_t n_dims = m_shape.size();
+
+        size_t new_size = 1;
+        std::vector<size_t> new_shape;
+        for (size_t dim = 0; dim < n_dims; ++dim) {
+            auto len = subsets[dim].size();
+            if (len > 1) {
+                new_shape.push_back(len);
+            }
+            new_size *= len;
+        }
+
+        gsl::span<T> array{reinterpret_cast<T*>(m_buffer), m_size};
+
+        auto* new_buffer = new char[sizeof(T) * new_size];
+        gsl::span<T> new_array{reinterpret_cast<T*>(new_buffer), new_size};
+
+        auto offsets = compute_offsets(m_shape, subsets);
+        size_t n = 0;
+        for (const auto offset : offsets) {
+            new_array[n] = array[offset];
+            ++n;
+        }
+
+        if (m_owning) {
+            delete[] m_buffer;
+        }
+        m_size = new_size;
+        m_shape = new_shape;
+        m_buffer = new_buffer;
+        m_owning = true;
+    }
+
     [[nodiscard]] bool empty() const { return m_size == 0; }
 
     [[nodiscard]] size_t size() const { return m_size; }
@@ -105,7 +209,16 @@ class TypedDataArray
 
     [[nodiscard]] char* buffer() const { return m_buffer; }
 
-    [[nodiscard]] size_t element_size() {
+    template <typename T> [[nodiscard]] gsl::span<T> span() const
+    {
+        if (m_type_index != std::type_index{typeid(T)}) {
+            throw std::runtime_error{"invalid type given to span"};
+        }
+        return gsl::span<T>{reinterpret_cast<T*>(m_buffer), m_size};
+    }
+
+    [[nodiscard]] size_t element_size()
+    {
         switch (type_index_map(m_type_index)) {
             case DataType::Unknown:
                 throw std::runtime_error{"unknown data type"};
@@ -134,9 +247,25 @@ class TypedDataArray
 
     // Moveable but not copyable
     TypedDataArray(const TypedDataArray&) = delete;
-    TypedDataArray(TypedDataArray&&) = default;
     TypedDataArray& operator=(const TypedDataArray&) = delete;
-    TypedDataArray& operator=(TypedDataArray&&) = default;
+
+    TypedDataArray(TypedDataArray&& other) noexcept : TypedDataArray()
+    {
+        std::swap(m_buffer, other.m_buffer);
+        std::swap(m_type_index, other.m_type_index);
+        std::swap(m_size, other.m_size);
+        std::swap(m_shape, other.m_shape);
+        std::swap(m_owning, other.m_owning);
+    };
+    TypedDataArray& operator=(TypedDataArray&& other) noexcept
+    {
+        std::swap(m_buffer, other.m_buffer);
+        std::swap(m_type_index, other.m_type_index);
+        std::swap(m_size, other.m_size);
+        std::swap(m_shape, other.m_shape);
+        std::swap(m_owning, other.m_owning);
+        return *this;
+    };
 
   private:
     char* m_buffer = nullptr;

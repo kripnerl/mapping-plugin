@@ -8,16 +8,17 @@
 #include <fstream>
 #include <iomanip>
 #include <ios>
+#include <optional>
 #include <string>
 #include <string_view>
-#include <optional>
 
 #include "map_types/map_arguments.hpp"
 
 namespace json_mapping::subset
 {
 
-void apply_subset(TypedDataArray& input, std::optional<std::string> slice, std::optional<float> scale_factor, std::optional<float> offset);
+void update_array(TypedDataArray& input, const std::optional<std::string>& slice, std::optional<float> scale_factor,
+                  std::optional<float> offset);
 
 enum class LogLevel : uint8_t { DEBUG, INFO, WARNING, ERROR };
 
