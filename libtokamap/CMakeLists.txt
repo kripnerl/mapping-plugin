@@ -72,6 +72,10 @@ target_include_directories( tokamap PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/ext_include
 )
+target_compile_options( tokamap PRIVATE
+    $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-Wall -Werror -Wpedantic>
+    $<$<CXX_COMPILER_ID:GNU>:-Wall -Werror -Wpedantic>
+)
 
 # Unit testing setup
 if( ENABLE_TESTING )

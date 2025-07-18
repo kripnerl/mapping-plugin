@@ -24,14 +24,14 @@ template <typename T> T string_to(const std::string& string, size_t* ptr);
 template <> float string_to<float>(const std::string& string, size_t* ptr) { return std::stof(string, ptr); }
 template <> double string_to<double>(const std::string& string, size_t* ptr) { return std::stod(string, ptr); }
 template <> int32_t string_to<int32_t>(const std::string& string, size_t* ptr) { return std::stoi(string, ptr); }
-template <> int64_t string_to<int64_t>(const std::string& string, size_t* ptr) { return std::stol(string, ptr); }
+// template <> int64_t string_to<int64_t>(const std::string& string, size_t* ptr) { return std::stol(string, ptr); }
 
 template <typename T> std::string name();
 
 template <> std::string name<float>() { return "float"; }
 template <> std::string name<double>() { return "double"; }
 template <> std::string name<int32_t>() { return "int32_t"; }
-template <> std::string name<int64_t>() { return "int64_t"; }
+// template <> std::string name<int64_t>() { return "int64_t"; }
 
 template <typename T> std::enable_if_t<std::is_scalar_v<T>, T> try_convert(const std::string& input)
 {
@@ -159,6 +159,8 @@ json_mapping::TypedDataArray type_deduce_primitive(const json& temp_val, const j
         default:
             throw std::runtime_error{"unknown json type"};
     }
+
+    return {};
 }
 
 } // namespace

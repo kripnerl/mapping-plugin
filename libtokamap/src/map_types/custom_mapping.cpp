@@ -27,6 +27,7 @@ json_mapping::TypedDataArray json_mapping::CustomMapping::map(const MapArguments
             return {};
             break;
     }
+    return {};
 }
 
 json_mapping::TypedDataArray json_mapping::CustomMapping::MASTU_helloworld()
