@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <gsl/gsl-lite.hpp>
+#include <limits>
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <stdexcept>
@@ -46,15 +47,18 @@ inline DataType type_index_map(std::type_index type_index)
 class SubsetInfo
 {
   public:
-    SubsetInfo(int64_t start, int64_t stop, int64_t stride, uint64_t size)
-        : m_start{start}, m_stop{stop}, m_stride{stride}, m_dim_size{size}
+    SubsetInfo(int64_t start, int64_t stop, int64_t stride, size_t size)
+        : m_start{start}, m_stop{stop}, m_stride{stride}, m_dim_size{static_cast<int64_t>(size)}
     {
+        if (size > std::numeric_limits<int64_t>::max()) {
+            throw std::runtime_error{"dimension size too large"};
+        }
         // negative indexes mean that many elements from the end
         if (start < 0) {
-            m_start = size + start;
+            m_start = m_dim_size + start;
         }
         if (stop < 0) {
-            m_stop = size + stop + 1;
+            m_stop = m_dim_size + stop + 1;
         }
     }
 
@@ -79,7 +83,7 @@ class SubsetInfo
     int64_t m_start;
     int64_t m_stop;
     int64_t m_stride = 1;
-    uint64_t m_dim_size;
+    int64_t m_dim_size;
 };
 
 std::vector<size_t> compute_offsets(const std::vector<size_t>& shape, const std::vector<SubsetInfo>& subsets);
