@@ -18,7 +18,7 @@
 
 struct PluginList;
 
-namespace json_mapping
+namespace libtokamap
 {
 
 using IDSName = std::string;
@@ -84,7 +84,7 @@ class MappingHandler
     void init_mappings(const MachineName& machine, const IDSName& ids_name, const nlohmann::json& data, int shot);
     static void init_value_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
     void init_plugin_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value,
-                             const nlohmann::json& ids_attributes, std::shared_ptr<ram_cache::RamCache>& ram_cache);
+                             const nlohmann::json& ids_attributes, std::shared_ptr<libtokamap::RamCache>& ram_cache);
     static void init_dim_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
     // static int init_slice_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
     static void init_expr_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
@@ -96,11 +96,11 @@ class MappingHandler
     std::string m_dd_version;
     std::filesystem::path m_mapping_dir;
     nlohmann::json m_mapping_config;
-    std::shared_ptr<ram_cache::RamCache> m_ram_cache;
+    std::shared_ptr<libtokamap::RamCache> m_ram_cache;
     bool m_cache_enabled;
 };
 
 std::string generate_map_path(std::deque<std::string>& path_tokens, const std::vector<int>& indices,
                               IDSMapRegister& mappings, const std::string& full_path);
 
-} // namespace json_mapping
+} // namespace libtokamap

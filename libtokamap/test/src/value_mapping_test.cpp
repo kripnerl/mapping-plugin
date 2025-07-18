@@ -34,7 +34,7 @@ namespace Catch {
     };
 }
 
-using namespace json_mapping;
+using namespace libtokamap;
 
 TEST_CASE("ValueMapping can be constructed from JSON", "[value_mapping]") {
     // Setup test fixture

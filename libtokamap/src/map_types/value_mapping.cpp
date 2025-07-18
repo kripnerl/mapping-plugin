@@ -82,15 +82,15 @@ try_convert(const std::string& input)
     }
 }
 
-json_mapping::TypedDataArray type_deduce_array(const json& temp_val)
+libtokamap::TypedDataArray type_deduce_array(const json& temp_val)
 {
     switch (temp_val.front().type()) {
         case json::value_t::number_float:
-            return json_mapping::TypedDataArray{temp_val.get<std::vector<float>>()};
+            return libtokamap::TypedDataArray{temp_val.get<std::vector<float>>()};
         case json::value_t::number_integer:
-            return json_mapping::TypedDataArray{temp_val.get<std::vector<int>>()};
+            return libtokamap::TypedDataArray{temp_val.get<std::vector<int>>()};
         case json::value_t::number_unsigned:
-            return json_mapping::TypedDataArray{temp_val.get<std::vector<unsigned int>>()};
+            return libtokamap::TypedDataArray{temp_val.get<std::vector<unsigned int>>()};
         default:
             return {};
     }
@@ -102,18 +102,18 @@ std::string render_string(const std::string& input, const json& global_data)
     return render(render(input, global_data), global_data);
 }
 
-json_mapping::TypedDataArray type_deduce_primitive(const json& temp_val, const json& global_data,
+libtokamap::TypedDataArray type_deduce_primitive(const json& temp_val, const json& global_data,
                                                    std::type_index data_type, int rank)
 {
     switch (temp_val.type()) {
         case json::value_t::number_float:
-            return json_mapping::TypedDataArray{temp_val.get<float>()};
+            return libtokamap::TypedDataArray{temp_val.get<float>()};
         case json::value_t::number_integer:
-            return json_mapping::TypedDataArray{temp_val.get<int>()};
+            return libtokamap::TypedDataArray{temp_val.get<int>()};
         case json::value_t::number_unsigned:
-            return json_mapping::TypedDataArray{temp_val.get<unsigned int>()};
+            return libtokamap::TypedDataArray{temp_val.get<unsigned int>()};
         case json::value_t::boolean:
-            return json_mapping::TypedDataArray{temp_val.get<bool>()};
+            return libtokamap::TypedDataArray{temp_val.get<bool>()};
         case json::value_t::string: {
             // Handle string
             std::string const rendered_string = render_string(temp_val.get<std::string>(), global_data);
@@ -123,28 +123,28 @@ json_mapping::TypedDataArray type_deduce_primitive(const json& temp_val, const j
             // inja templating may replace with number
             try {
                 if (rank == 0) {
-                    using json_mapping::DataType;
-                    switch (json_mapping::type_index_map(data_type)) {
+                    using libtokamap::DataType;
+                    switch (libtokamap::type_index_map(data_type)) {
                         case DataType::Int:
-                            return json_mapping::TypedDataArray{try_convert<int>(rendered_string)};
+                            return libtokamap::TypedDataArray{try_convert<int>(rendered_string)};
                         case DataType::Float:
-                            return json_mapping::TypedDataArray{try_convert<float>(rendered_string)};
+                            return libtokamap::TypedDataArray{try_convert<float>(rendered_string)};
                         case DataType::Double:
-                            return json_mapping::TypedDataArray{try_convert<double>(rendered_string)};
+                            return libtokamap::TypedDataArray{try_convert<double>(rendered_string)};
                         default:
-                            return json_mapping::TypedDataArray{rendered_string};
+                            return libtokamap::TypedDataArray{rendered_string};
                     }
                 } else {
-                    using json_mapping::DataType;
-                    switch (json_mapping::type_index_map(data_type)) {
+                    using libtokamap::DataType;
+                    switch (libtokamap::type_index_map(data_type)) {
                         case DataType::Int:
-                            return json_mapping::TypedDataArray{try_convert<int[]>(rendered_string)};
+                            return libtokamap::TypedDataArray{try_convert<int[]>(rendered_string)};
                         case DataType::Float:
-                            return json_mapping::TypedDataArray{try_convert<float[]>(rendered_string)};
+                            return libtokamap::TypedDataArray{try_convert<float[]>(rendered_string)};
                         case DataType::Double:
-                            return json_mapping::TypedDataArray{try_convert<double[]>(rendered_string)};
+                            return libtokamap::TypedDataArray{try_convert<double[]>(rendered_string)};
                         default:
-                            return json_mapping::TypedDataArray{rendered_string};
+                            return libtokamap::TypedDataArray{rendered_string};
                     }
                 }
             } catch (const std::invalid_argument& e) {
@@ -152,7 +152,7 @@ json_mapping::TypedDataArray type_deduce_primitive(const json& temp_val, const j
                 //         "ValueMapping::map failure to convert"
                 //         "string to int in mapping : %s\n",
                 //         e.what());
-                return json_mapping::TypedDataArray{rendered_string};
+                return libtokamap::TypedDataArray{rendered_string};
             }
             break;
         }
@@ -165,7 +165,7 @@ json_mapping::TypedDataArray type_deduce_primitive(const json& temp_val, const j
 
 } // namespace
 
-json_mapping::TypedDataArray json_mapping::ValueMapping::map(const MapArguments& arguments) const
+libtokamap::TypedDataArray libtokamap::ValueMapping::map(const MapArguments& arguments) const
 {
     const auto temp_val = m_value;
     if (temp_val.is_discarded() or temp_val.is_binary() or temp_val.is_null()) {

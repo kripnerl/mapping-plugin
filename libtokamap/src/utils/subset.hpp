@@ -14,7 +14,7 @@
 
 #include "map_types/map_arguments.hpp"
 
-namespace json_mapping::subset
+namespace libtokamap::subset
 {
 
 void update_array(TypedDataArray& input, const std::optional<std::string>& slice, std::optional<float> scale_factor,
@@ -24,7 +24,7 @@ enum class LogLevel : uint8_t { DEBUG, INFO, WARNING, ERROR };
 
 inline int log(LogLevel log_level, std::string_view log_msg)
 {
-    const char* log_env_option = getenv("JSON_MAPPING_SUBSET_LOGGING");
+    const char* log_env_option = getenv("libtokamap_SUBSET_LOGGING");
     if (log_env_option == nullptr or std::stoi(log_env_option) <= 0) {
         return 0;
     }
@@ -62,4 +62,4 @@ inline int log(LogLevel log_level, std::string_view log_msg)
     return 0;
 }
 
-} // namespace json_mapping::subset
+} // namespace libtokamap::subset

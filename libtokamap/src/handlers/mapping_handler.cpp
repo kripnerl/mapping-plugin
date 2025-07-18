@@ -29,29 +29,29 @@
 #include "utils/ram_cache.hpp"
 #include "utils/syntax_parser.hpp"
 
-void json_mapping::MappingHandler::reset()
+void libtokamap::MappingHandler::reset()
 {
     m_machine_register.clear();
     m_mapping_config.clear();
     m_init = false;
 }
 
-void json_mapping::MappingHandler::init()
+void libtokamap::MappingHandler::init()
 {
     if (m_init || !m_machine_register.empty()) {
         return;
     }
 
     // TODO: replace with config
-    const char* cache_size_str = getenv("JSON_MAPPING_CACHE_SIZE");
-    const char* enable_caching_str = getenv("JSON_MAPPING_USE_CACHE");
+    const char* cache_size_str = getenv("libtokamap_CACHE_SIZE");
+    const char* enable_caching_str = getenv("libtokamap_USE_CACHE");
 
     bool enable_caching = (enable_caching_str == nullptr) or (std::stoi(enable_caching_str) > 0);
 
     if (enable_caching) {
         const std::size_t cache_size =
-            (cache_size_str != nullptr) ? std::stoi(cache_size_str) : ram_cache::default_size;
-        m_ram_cache = std::make_shared<ram_cache::RamCache>(cache_size);
+            (cache_size_str != nullptr) ? std::stoi(cache_size_str) : libtokamap::default_size;
+        m_ram_cache = std::make_shared<libtokamap::RamCache>(cache_size);
     } else {
         m_ram_cache = nullptr;
     }
@@ -60,7 +60,7 @@ void json_mapping::MappingHandler::init()
     m_init = true;
 }
 
-json_mapping::TypedDataArray json_mapping::MappingHandler::map(const std::string& mapping, const std::string& path,
+libtokamap::TypedDataArray libtokamap::MappingHandler::map(const std::string& mapping, const std::string& path,
                                                                std::type_index data_type, int rank,
                                                                const nlohmann::json& extra_attributes)
 {
@@ -107,13 +107,13 @@ json_mapping::TypedDataArray json_mapping::MappingHandler::map(const std::string
         attributes[key] = value;
     }
 
-    const json_mapping::MapArguments map_arguments{mappings, attributes, sig_type, data_type, rank};
+    const libtokamap::MapArguments map_arguments{mappings, attributes, sig_type, data_type, rank};
 
     return mappings.at(map_path)->map(map_arguments);
 }
 
-std::optional<json_mapping::MappingPair>
-json_mapping::MappingHandler::read_mappings(const MachineName& machine, const std::string& request_ids,
+std::optional<libtokamap::MappingPair>
+libtokamap::MappingHandler::read_mappings(const MachineName& machine, const std::string& request_ids,
                                             const nlohmann::json& extra_attributes)
 {
     int shot = 0;
@@ -151,9 +151,9 @@ json_mapping::MappingHandler::read_mappings(const MachineName& machine, const st
     return {std::make_pair(std::ref(attr), std::ref(map))};
 }
 
-void json_mapping::MappingHandler::set_map_dir(const std::string& mapping_dir) { m_mapping_dir = mapping_dir; }
+void libtokamap::MappingHandler::set_map_dir(const std::string& mapping_dir) { m_mapping_dir = mapping_dir; }
 
-std::vector<int> json_mapping::MappingHandler::find_mapping_dirs(const MachineName& machine,
+std::vector<int> libtokamap::MappingHandler::find_mapping_dirs(const MachineName& machine,
                                                                  const IDSName& ids_name) const
 {
     auto path = m_mapping_dir / machine / ids_name;
@@ -168,7 +168,7 @@ std::vector<int> json_mapping::MappingHandler::find_mapping_dirs(const MachineNa
     return mapping_dirs;
 }
 
-std::filesystem::path json_mapping::MappingHandler::mapping_path(const MachineName& machine, const IDSName& ids_name,
+std::filesystem::path libtokamap::MappingHandler::mapping_path(const MachineName& machine, const IDSName& ids_name,
                                                                  const int shot, const std::string& file_name) const
 {
     if (ids_name.empty()) {
@@ -182,7 +182,7 @@ std::filesystem::path json_mapping::MappingHandler::mapping_path(const MachineNa
     return m_mapping_dir / machine / ids_name / std::to_string(shot) / file_name;
 }
 
-void json_mapping::MappingHandler::load_machine(const MachineName& machine)
+void libtokamap::MappingHandler::load_machine(const MachineName& machine)
 {
     if (m_machine_register.count(machine) == 1) {
         // machine already loaded
@@ -206,7 +206,7 @@ void json_mapping::MappingHandler::load_machine(const MachineName& machine)
     }
 }
 
-nlohmann::json json_mapping::MappingHandler::load_toplevel(const MachineName& machine) const
+nlohmann::json libtokamap::MappingHandler::load_toplevel(const MachineName& machine) const
 {
     auto file_path = mapping_path(machine, "", 0, "globals.json");
 
@@ -226,7 +226,7 @@ nlohmann::json json_mapping::MappingHandler::load_toplevel(const MachineName& ma
     return toplevel_globals;
 }
 
-void json_mapping::MappingHandler::load_shot_globals(const MachineName& machine, const IDSName& ids_name, int shot)
+void libtokamap::MappingHandler::load_shot_globals(const MachineName& machine, const IDSName& ids_name, int shot)
 {
     auto file_path = mapping_path(machine, ids_name, shot, "globals.json");
 
@@ -247,7 +247,7 @@ void json_mapping::MappingHandler::load_shot_globals(const MachineName& machine,
     }
 }
 
-void json_mapping::MappingHandler::load_globals(const MachineName& machine, const IDSName& ids_name)
+void libtokamap::MappingHandler::load_globals(const MachineName& machine, const IDSName& ids_name)
 {
     const auto mapping_dirs = find_mapping_dirs(machine, ids_name);
     if (mapping_dirs.empty()) {
@@ -258,7 +258,7 @@ void json_mapping::MappingHandler::load_globals(const MachineName& machine, cons
     }
 }
 
-void json_mapping::MappingHandler::load_shot_mappings(const MachineName& machine, const IDSName& ids_name, int shot)
+void libtokamap::MappingHandler::load_shot_mappings(const MachineName& machine, const IDSName& ids_name, int shot)
 {
     auto file_path = mapping_path(machine, ids_name, shot, "mappings.json");
 
@@ -278,7 +278,7 @@ void json_mapping::MappingHandler::load_shot_mappings(const MachineName& machine
     }
 }
 
-void json_mapping::MappingHandler::load_mappings(const MachineName& machine, const IDSName& ids_name)
+void libtokamap::MappingHandler::load_mappings(const MachineName& machine, const IDSName& ids_name)
 {
     const auto mapping_dirs = find_mapping_dirs(machine, ids_name);
     if (mapping_dirs.empty()) {
@@ -289,7 +289,7 @@ void json_mapping::MappingHandler::load_mappings(const MachineName& machine, con
     }
 }
 
-void json_mapping::MappingHandler::init_value_mapping(IDSMapRegister& map_reg, const std::string& key,
+void libtokamap::MappingHandler::init_value_mapping(IDSMapRegister& map_reg, const std::string& key,
                                                       const nlohmann::json& value)
 {
     const auto& value_json = value.at("VALUE");
@@ -337,7 +337,7 @@ std::optional<float> get_float_value(const std::string& name, const nlohmann::js
     return opt_float;
 }
 
-std::string find_mapping(json_mapping::IDSMapRegister& mappings, const std::string& path,
+std::string find_mapping(libtokamap::IDSMapRegister& mappings, const std::string& path,
                          const std::vector<int>& indices, const std::string& full_path)
 {
     // If mapping is found we are good
@@ -367,10 +367,10 @@ std::string find_mapping(json_mapping::IDSMapRegister& mappings, const std::stri
 
 } // namespace
 
-void json_mapping::MappingHandler::init_plugin_mapping(IDSMapRegister& map_reg, const std::string& key,
+void libtokamap::MappingHandler::init_plugin_mapping(IDSMapRegister& map_reg, const std::string& key,
                                                        const nlohmann::json& value,
                                                        const nlohmann::json& ids_attributes,
-                                                       std::shared_ptr<ram_cache::RamCache>& ram_cache)
+                                                       std::shared_ptr<libtokamap::RamCache>& ram_cache)
 {
     auto data_source_name = value["DATA_SOURCE"].get<std::string>();
     boost::to_upper(data_source_name);
@@ -392,13 +392,13 @@ void json_mapping::MappingHandler::init_plugin_mapping(IDSMapRegister& map_reg, 
                         std::make_unique<DataSourceMapping>(data_source_name, args, offset, scale, slice, ram_cache));
 }
 
-void json_mapping::MappingHandler::init_dim_mapping(IDSMapRegister& map_reg, const std::string& key,
+void libtokamap::MappingHandler::init_dim_mapping(IDSMapRegister& map_reg, const std::string& key,
                                                     const nlohmann::json& value)
 {
     map_reg.try_emplace(key, std::make_unique<DimMapping>(value["DIM_PROBE"].get<std::string>()));
 }
 
-void json_mapping::MappingHandler::init_expr_mapping(IDSMapRegister& map_reg, const std::string& key,
+void libtokamap::MappingHandler::init_expr_mapping(IDSMapRegister& map_reg, const std::string& key,
                                                      const nlohmann::json& value)
 {
     map_reg.try_emplace(
@@ -406,20 +406,20 @@ void json_mapping::MappingHandler::init_expr_mapping(IDSMapRegister& map_reg, co
                                            value["PARAMETERS"].get<std::unordered_map<std::string, std::string>>()));
 }
 
-void json_mapping::MappingHandler::init_custom_mapping(IDSMapRegister& map_reg, const std::string& key,
+void libtokamap::MappingHandler::init_custom_mapping(IDSMapRegister& map_reg, const std::string& key,
                                                        const nlohmann::json& value)
 {
     map_reg.try_emplace(key, std::make_unique<CustomMapping>(value["CUSTOM_TYPE"].get<CustomMapType_t>()));
 }
 
-void json_mapping::MappingHandler::init_mappings(const MachineName& machine, const IDSName& ids_name,
+void libtokamap::MappingHandler::init_mappings(const MachineName& machine, const IDSName& ids_name,
                                                  const nlohmann::json& data, int shot)
 {
     const auto& attributes = m_machine_register[machine].attributes;
     IDSMapRegister temp_map_reg;
     for (const auto& [key, value] : data.items()) {
         // Parse syntactic sugar
-        auto parsed_value = json_mapping::parse(value);
+        auto parsed_value = libtokamap::parse(value);
 
         switch (value["MAP_TYPE"].get<MappingType>()) {
             case MappingType::VALUE:
@@ -445,7 +445,7 @@ void json_mapping::MappingHandler::init_mappings(const MachineName& machine, con
     m_machine_register[machine].mappings[ids_name].map[shot] = std::move(temp_map_reg);
 }
 
-std::string json_mapping::generate_map_path(std::deque<std::string>& path_tokens, const std::vector<int>& indices,
+std::string libtokamap::generate_map_path(std::deque<std::string>& path_tokens, const std::vector<int>& indices,
                                             IDSMapRegister& mappings, const std::string& full_path)
 {
     const auto sig_type = deduce_signal_type(path_tokens.back());

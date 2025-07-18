@@ -5,7 +5,7 @@
 
 #include "map_arguments.hpp"
 
-namespace json_mapping {
+namespace libtokamap {
 
 enum class MappingType : uint8_t { VALUE, PLUGIN, SLICE, EXPR, CUSTOM, DIM };
 
@@ -29,4 +29,4 @@ class Mapping
     [[nodiscard]] virtual TypedDataArray map(const MapArguments& arguments) const = 0;
 };
 
-} // namespace json_mapping
+} // namespace libtokamap

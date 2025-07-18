@@ -34,13 +34,13 @@
 #include "uda_data_source.hpp"
 #include "uda_plugin_helpers.hpp"
 
-namespace json_mapping_plugin
+namespace
 {
 
 enum class LogLevel : uint8_t { DEBUG, INFO, WARNING, ERROR };
 
 /**
- * @brief Temporary logging function for JSON_mapping_plugin, outputs
+ * @brief Temporary logging function for libtokamap_plugin, outputs
  * to UDA_HOME/etc/
  *
  * @param log_level The LogLevel (INFO, WARNING, ERROR, DEBUG)
@@ -112,13 +112,13 @@ class JSONMappingPlugin
     static int max_interface_version(IDAM_PLUGIN_INTERFACE* plugin_interface);
 
     // Loads, controls, stores mapping file lifetime
-    json_mapping::MappingHandler m_mapping_handler;
+    libtokamap::MappingHandler m_mapping_handler;
     bool m_init = false;
     std::string m_request_function;
 };
 
 /**
- * @brief Initialise the JSON_mapping_plugin
+ * @brief Initialise the libtokamap_plugin
  *
  * Set mapping directory and load mapping files into mapping_handler
  * RAISE_PLUGIN_ERROR if JSON mapping file location is not set
@@ -133,7 +133,7 @@ int JSONMappingPlugin::init(IDAM_PLUGIN_INTERFACE* plugin_interface)
         reset(plugin_interface);
     }
 
-    std::string const map_dir = getenv("UDA_JSON_MAPPING_DIR"); // NOLINT(concurrency-mt-unsafe)
+    std::string const map_dir = getenv("UDA_libtokamap_DIR"); // NOLINT(concurrency-mt-unsafe)
     if (!map_dir.empty()) {
         m_mapping_handler.set_map_dir(map_dir);
     } else {
@@ -142,8 +142,8 @@ int JSONMappingPlugin::init(IDAM_PLUGIN_INTERFACE* plugin_interface)
     }
     m_mapping_handler.init();
 
-    auto data_source = std::make_unique<UDADataSource>("UDA", "get", plugin_interface->pluginList, false);
-    json_mapping::DataSourceMapping::register_data_source("UDA", std::move(data_source));
+    auto data_source = std::make_unique<json_plugin::UDADataSource>("UDA", "get", plugin_interface->pluginList, false);
+    libtokamap::DataSourceMapping::register_data_source("UDA", std::move(data_source));
 
     m_init = true;
 
@@ -161,14 +161,11 @@ int JSONMappingPlugin::reset(IDAM_PLUGIN_INTERFACE* /*plugin_interface*/) // sil
 {
     if (m_init) {
         // Free Heap & reset counters if initialised
-        json_mapping::DataSourceMapping::unregister_data_source("UDA");
+        libtokamap::DataSourceMapping::unregister_data_source("UDA");
         m_init = false;
     }
     return 0;
 }
-
-namespace
-{
 
 void add_machine_specific_attributes(IDAM_PLUGIN_INTERFACE* plugin_interface, nlohmann::json& attributes)
 {
@@ -185,8 +182,6 @@ void add_machine_specific_attributes(IDAM_PLUGIN_INTERFACE* plugin_interface, nl
         }
     }
 }
-
-} // namespace
 
 /**
  * @brief Main data/mapping function called from class entry function
@@ -251,7 +246,7 @@ int JSONMappingPlugin::get(IDAM_PLUGIN_INTERFACE* plugin_interface)
     }
 
     auto array = m_mapping_handler.map(mapping, path, type_index, rank, extra_attributes);
-    imas_json_plugin::uda_helpers::set_data_block(data_block, array);
+    json_plugin::set_data_block(data_block, array);
 
     return 0;
 }
@@ -360,7 +355,7 @@ int JSONMappingPlugin::max_interface_version(IDAM_PLUGIN_INTERFACE* plugin_inter
                                   "Maximum Interface Version");
 }
 
-} // namespace json_mapping_plugin
+} // namespace
 
 /**
  * @brief Plugin entry function
@@ -377,7 +372,7 @@ int JSONMappingPlugin::max_interface_version(IDAM_PLUGIN_INTERFACE* plugin_inter
     plugin_interface->pluginVersion = THISPLUGIN_VERSION;
 
     try {
-        static json_mapping_plugin::JSONMappingPlugin plugin = {};
+        static JSONMappingPlugin plugin = {};
         return plugin.entry_handle(plugin_interface);
     } catch (const std::exception& ex) {
         RAISE_PLUGIN_ERROR_EX(ex.what(), { concatUdaError(&plugin_interface->error_stack); })

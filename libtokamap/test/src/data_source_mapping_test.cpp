@@ -15,12 +15,12 @@
 #include "map_types/map_arguments.hpp"
 #include "utils/ram_cache.hpp"
 
-using namespace json_mapping;
+using namespace libtokamap;
 
-class TestDataSource : public json_mapping::DataSource
+class TestDataSource : public libtokamap::DataSource
 {
     TypedDataArray get(const DataSourceArgs& /*map_args*/, const MapArguments& /*arguments*/,
-                       ram_cache::RamCache* /*ram_cache*/) override
+                       libtokamap::RamCache* /*ram_cache*/) override
     {
         return {};
     }
@@ -38,7 +38,7 @@ TEST_CASE("Creating new PluginMapping", "[plugin_mapping]")
         std::optional<float> scale = {};
         std::optional<std::string> slice = {};
         std::optional<std::string> function = {};
-        std::shared_ptr<ram_cache::RamCache> ram_cache = nullptr;
+        std::shared_ptr<libtokamap::RamCache> ram_cache = nullptr;
         auto mapping = std::make_unique<DataSourceMapping>("TEST", request_args, offset, scale, slice, ram_cache);
         REQUIRE(mapping != nullptr);
     }

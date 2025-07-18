@@ -45,7 +45,7 @@ template <typename T> int scale_span(gsl::span<T> span, float scale)
 
 } // namespace
 
-int json_mapping::map_transform::transform_offset(TypedDataArray& array, float offset)
+int libtokamap::map_transform::transform_offset(TypedDataArray& array, float offset)
 {
     int err{1};
     if (array.rank() > 0) {
@@ -114,7 +114,7 @@ int json_mapping::map_transform::transform_offset(TypedDataArray& array, float o
     return err;
 }
 
-int json_mapping::map_transform::transform_scale(TypedDataArray& array, float scale)
+int libtokamap::map_transform::transform_scale(TypedDataArray& array, float scale)
 {
     int err{1};
     if (array.rank() > 0) {

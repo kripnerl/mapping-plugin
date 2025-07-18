@@ -12,7 +12,7 @@ namespace {
     using IndicesList = std::vector<Indices>;
 
     // Generate all index tuples for given start, stop, stride arrays
-    IndicesList generate_indices(const std::vector<json_mapping::SubsetInfo>& subsets)
+    IndicesList generate_indices(const std::vector<libtokamap::SubsetInfo>& subsets)
     {
         size_t n_dims = subsets.size();
         IndicesList result;
@@ -66,7 +66,7 @@ namespace {
     }
 } // anon namespace
 
-json_mapping::SignalType json_mapping::deduce_signal_type(std::string_view final_path_element)
+libtokamap::SignalType libtokamap::deduce_signal_type(std::string_view final_path_element)
 {
     // SignalType useful in determining for MAST-U
     SignalType sig_type{SignalType::DEFAULT};
@@ -82,7 +82,7 @@ json_mapping::SignalType json_mapping::deduce_signal_type(std::string_view final
     return sig_type;
 }
 
-std::vector<size_t> json_mapping::compute_offsets(const std::vector<size_t>& shape, const std::vector<SubsetInfo>& subsets)
+std::vector<size_t> libtokamap::compute_offsets(const std::vector<size_t>& shape, const std::vector<SubsetInfo>& subsets)
 {
     auto indices_list = generate_indices(subsets);
     auto index_factors = compute_index_factors(shape);

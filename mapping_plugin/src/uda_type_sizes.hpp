@@ -1,16 +1,17 @@
 #pragma once
 
-#include <clientserver/udaTypes.h>
+#include <cstddef>
 #include <cstdint>
 #include <stdexcept>
 #include <string>
 
-namespace uda_type_utils
+#include <clientserver/udaTypes.h>
+
+namespace json_plugin
 {
 inline size_t size_of_uda_type(int type_enum)
 {
-    switch(type_enum)
-    {
+    switch (type_enum) {
         case UDA_TYPE_SHORT:
             return sizeof(short);
         case UDA_TYPE_INT:
@@ -32,7 +33,8 @@ inline size_t size_of_uda_type(int type_enum)
         case UDA_TYPE_DOUBLE:
             return sizeof(double);
         default:
-            throw std::runtime_error(std::string("uda type ") + std::to_string(type_enum) + " not implemented for json_imas_mapping cache");
+            throw std::runtime_error(std::string("uda type ") + std::to_string(type_enum) +
+                                     " not implemented for json_imas_mapping cache");
     }
 }
-}
+} // namespace json_plugin

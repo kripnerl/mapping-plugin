@@ -18,7 +18,7 @@
  *
  */
 
-namespace ram_cache
+namespace libtokamap
 {
 
 class CacheEntry {

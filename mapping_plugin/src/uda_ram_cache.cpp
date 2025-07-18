@@ -28,9 +28,6 @@
 #include "print_uda_structs.hpp"
 #include "uda_type_sizes.hpp"
 
-using ram_cache::uda::UDACacheEntry;
-using uda_type_utils::size_of_uda_type;
-
 namespace
 {
 
@@ -39,7 +36,7 @@ enum class LogLevel : uint8_t { DEBUG, INFO, WARNING, ERROR };
 bool logging_active;
 
 /**
- * @brief Temporary logging function for JSON_mapping_plugin, outputs
+ * @brief Temporary logging function for libtokamap_plugin, outputs
  * to UDA_HOME/etc/
  *
  * @param log_level The LogLevel (INFO, WARNING, ERROR, DEBUG)
@@ -88,22 +85,21 @@ inline void log_datablock_status(DATA_BLOCK* data_block, const std::string& mess
     if (!logging_active) {
         return;
     }
-    log(LogLevel::DEBUG, message + "\n" + uda_structs::print_data_block(data_block));
+    log(LogLevel::DEBUG, message + "\n" + json_plugin::print_data_block(data_block));
 }
 
 void set_logging_option()
 {
-    const char* log_env_option = getenv("UDA_JSON_MAPPING_CACHE_LOGGING");
+    const char* log_env_option = getenv("UDA_libtokamap_CACHE_LOGGING");
     logging_active = (log_env_option != nullptr) and (std::stoi(log_env_option) > 0);
 }
 
-std::unique_ptr<ram_cache::uda::UDACacheEntry> make_data_entry(DATA_BLOCK* data_block)
+std::unique_ptr<json_plugin::UDACacheEntry> make_data_entry(DATA_BLOCK* data_block)
 {
-
     log_datablock_status(data_block, "data_block before caching");
 
-    auto data_entry = std::make_unique<UDACacheEntry>();
-    size_t byte_length = data_block->data_n * size_of_uda_type(data_block->data_type);
+    auto data_entry = std::make_unique<json_plugin::UDACacheEntry>();
+    size_t byte_length = data_block->data_n * json_plugin::size_of_uda_type(data_block->data_type);
     data_entry->data.reserve(byte_length);
     std::copy(data_block->data, data_block->data + byte_length, std::back_inserter(data_entry->data));
 
@@ -125,7 +121,7 @@ std::unique_ptr<ram_cache::uda::UDACacheEntry> make_data_entry(DATA_BLOCK* data_
             dim.ints = nullptr;
         }
 
-        size_t dim_byte_length = dim.dim_n * size_of_uda_type(dim.data_type);
+        size_t dim_byte_length = dim.dim_n * json_plugin::size_of_uda_type(dim.data_type);
         std::vector<char> dim_vals(dim.dim, dim.dim + dim_byte_length);
         data_entry->dims.emplace_back(dim_vals);
         data_entry->dim_types.emplace_back(dim.data_type);
@@ -134,13 +130,13 @@ std::unique_ptr<ram_cache::uda::UDACacheEntry> make_data_entry(DATA_BLOCK* data_
     data_entry->data_type = data_block->data_type;
 
     if (data_block->errhi != nullptr and data_block->error_type > 0) {
-        size_t errhi_bytes = data_block->data_n * size_of_uda_type(data_block->error_type);
+        size_t errhi_bytes = data_block->data_n * json_plugin::size_of_uda_type(data_block->error_type);
         data_entry->error_high.reserve(errhi_bytes);
         std::copy(data_block->errhi, data_block->errhi + errhi_bytes, std::back_inserter(data_entry->error_high));
         data_entry->error_type = data_block->error_type;
     }
     if (data_block->errlo != nullptr and data_block->error_type > 0) {
-        size_t errlo_bytes = data_block->data_n * size_of_uda_type(data_block->error_type);
+        size_t errlo_bytes = data_block->data_n * json_plugin::size_of_uda_type(data_block->error_type);
         data_entry->error_low.reserve(errlo_bytes);
         std::copy(data_block->errlo, data_block->errlo + errlo_bytes, std::back_inserter(data_entry->error_high));
         data_entry->error_type = data_block->error_type;
@@ -151,8 +147,8 @@ std::unique_ptr<ram_cache::uda::UDACacheEntry> make_data_entry(DATA_BLOCK* data_
 
 } // namespace
 
-bool ram_cache::uda::copy_data_from_cache(const ram_cache::RamCache& cache, const std::string& key,
-                                          DATA_BLOCK* data_block)
+bool json_plugin::copy_data_from_cache(const libtokamap::RamCache& cache, const std::string& key,
+                                       DATA_BLOCK* data_block)
 {
     auto entry = cache.get(key);
     if (!entry) {
@@ -198,8 +194,8 @@ bool ram_cache::uda::copy_data_from_cache(const ram_cache::RamCache& cache, cons
     return true;
 }
 
-bool ram_cache::uda::copy_error_high_from_cache(const ram_cache::RamCache& cache, const std::string& key,
-                                                DATA_BLOCK* data_block)
+bool json_plugin::copy_error_high_from_cache(const libtokamap::RamCache& cache, const std::string& key,
+                                             DATA_BLOCK* data_block)
 {
     auto entry = cache.get(key);
     if (!entry) {
@@ -250,8 +246,8 @@ bool ram_cache::uda::copy_error_high_from_cache(const ram_cache::RamCache& cache
     return true;
 }
 
-bool ram_cache::uda::copy_time_from_cache(const ram_cache::RamCache& cache, const std::string& key,
-                                          DATA_BLOCK* data_block)
+bool json_plugin::copy_time_from_cache(const libtokamap::RamCache& cache, const std::string& key,
+                                       DATA_BLOCK* data_block)
 {
     auto entry = cache.get(key);
     if (!entry) {
@@ -302,8 +298,8 @@ bool ram_cache::uda::copy_time_from_cache(const ram_cache::RamCache& cache, cons
     return true;
 }
 
-bool ram_cache::uda::copy_dim_from_cache(const ram_cache::RamCache& cache, const std::string& key, unsigned int i,
-                                         DATA_BLOCK* data_block)
+bool json_plugin::copy_dim_from_cache(const libtokamap::RamCache& cache, const std::string& key, unsigned int i,
+                                      DATA_BLOCK* data_block)
 {
     auto entry = cache.get(key);
     if (!entry) {
@@ -354,7 +350,7 @@ bool ram_cache::uda::copy_dim_from_cache(const ram_cache::RamCache& cache, const
     return true;
 }
 
-bool ram_cache::uda::copy_from_cache(const ram_cache::RamCache& cache, const std::string& key, DATA_BLOCK* data_block)
+bool json_plugin::copy_from_cache(const libtokamap::RamCache& cache, const std::string& key, DATA_BLOCK* data_block)
 {
     auto entry = cache.get(key);
     if (!entry) {

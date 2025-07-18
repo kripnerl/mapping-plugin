@@ -14,7 +14,7 @@
  * @param global_data global JSON object used in templating
  * @return int error_code
  */
-json_mapping::TypedDataArray json_mapping::CustomMapping::map(const MapArguments& /*arguments*/) const
+libtokamap::TypedDataArray libtokamap::CustomMapping::map(const MapArguments& /*arguments*/) const
 {
     switch (m_custom_type) {
         case CustomMapType_t::MASTU_helloworld:
@@ -30,13 +30,13 @@ json_mapping::TypedDataArray json_mapping::CustomMapping::map(const MapArguments
     return {};
 }
 
-json_mapping::TypedDataArray json_mapping::CustomMapping::MASTU_helloworld()
+libtokamap::TypedDataArray libtokamap::CustomMapping::MASTU_helloworld()
 {
     const char* string = "Hello World from MASTU";
     return TypedDataArray{ string };
 }
 
-json_mapping::TypedDataArray json_mapping::CustomMapping::DRAFT_helloworld()
+libtokamap::TypedDataArray libtokamap::CustomMapping::DRAFT_helloworld()
 {
     const char* string = "Hello World from DRAFT";
     return TypedDataArray{ string };

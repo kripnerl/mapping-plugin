@@ -6,7 +6,7 @@
 #include "map_types/base_mapping.hpp"
 #include "map_types/map_arguments.hpp"
 
-namespace json_mapping {
+namespace libtokamap {
 
 class DimMapping : public Mapping
 {
@@ -20,4 +20,4 @@ class DimMapping : public Mapping
     std::string m_dim_probe;
 };
 
-} // namespace json_mapping
+} // namespace libtokamap

@@ -3,12 +3,12 @@
 ## $name $ver modulefile
 ##
 set ver @PROJECT_VERSION@
-set name JSON_mapping_plugin
+set name libtokamap_plugin
 
 # Join selected words with "/"
 set loading [module-info mode load]
 
-set desc "JSON_mapping_plugin"
+set desc "libtokamap_plugin"
 
 proc ModulesHelp { } {
   puts stderr "\tThis module sets the environment for $name v$ver"

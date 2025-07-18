@@ -14,7 +14,7 @@
 
 #include "map_types/map_arguments.hpp"
 
-std::unordered_map<std::string, UDA_TYPE> imas_json_plugin::uda_helpers::uda_type_map()
+std::unordered_map<std::string, UDA_TYPE> json_plugin::uda_type_map()
 {
     static std::unordered_map<std::string, UDA_TYPE> type_map;
     if (type_map.empty()) {
@@ -26,7 +26,7 @@ std::unordered_map<std::string, UDA_TYPE> imas_json_plugin::uda_helpers::uda_typ
     return type_map;
 }
 
-std::unordered_map<std::type_index, UDA_TYPE> imas_json_plugin::uda_helpers::uda_type_index_map()
+std::unordered_map<std::type_index, UDA_TYPE> json_plugin::uda_type_index_map()
 {
     static std::unordered_map<std::type_index, UDA_TYPE> type_map;
     if (type_map.empty()) {
@@ -38,7 +38,7 @@ std::unordered_map<std::type_index, UDA_TYPE> imas_json_plugin::uda_helpers::uda
     return type_map;
 }
 
-void imas_json_plugin::uda_helpers::set_data_block(DATA_BLOCK* data_block, const json_mapping::TypedDataArray& array)
+void json_plugin::set_data_block(DATA_BLOCK* data_block, const libtokamap::TypedDataArray& array)
 {
     initDataBlock(data_block);
 

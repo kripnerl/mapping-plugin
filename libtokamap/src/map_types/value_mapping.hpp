@@ -6,7 +6,7 @@
 #include "map_types/base_mapping.hpp"
 #include "map_types/map_arguments.hpp"
 
-namespace json_mapping {
+namespace libtokamap {
 
 class ValueMapping : public Mapping
 {
@@ -25,4 +25,4 @@ class ValueMapping : public Mapping
     nlohmann::json m_value;
 };
 
-} // namespace json_mapping
+} // namespace libtokamap

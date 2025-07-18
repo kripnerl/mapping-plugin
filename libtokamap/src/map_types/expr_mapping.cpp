@@ -3,7 +3,7 @@
 #include "map_types/map_arguments.hpp"
 
 // template int ExprMapping::eval_expr<float>(const MapArguments& arguments) const;
-template json_mapping::TypedDataArray json_mapping::ExprMapping::eval_expr<double>(const MapArguments& arguments) const;
+template libtokamap::TypedDataArray libtokamap::ExprMapping::eval_expr<double>(const MapArguments& arguments) const;
 
 /**
  * @brief Entry map function, overriden from parent Mapping class
@@ -15,7 +15,7 @@ template json_mapping::TypedDataArray json_mapping::ExprMapping::eval_expr<doubl
  * @param global_data global JSON object used in templating
  * @return int error_code
  */
-json_mapping::TypedDataArray json_mapping::ExprMapping::map(const MapArguments& arguments) const
+libtokamap::TypedDataArray libtokamap::ExprMapping::map(const MapArguments& arguments) const
 {
     // Float only currently for testing purposes
     return eval_expr<double>(arguments);

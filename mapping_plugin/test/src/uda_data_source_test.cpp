@@ -30,19 +30,20 @@
 
 #include "uda_data_source.hpp"
 
-using namespace json_mapping;
+using namespace libtokamap;
+using namespace json_plugin;
 
 namespace
 {
 
-json_mapping::MapArguments
+MapArguments
 make_map_arguments(const std::type_index data_type, const int rank,
-                   const json_mapping::SignalType sig_type = json_mapping::SignalType::DEFAULT)
+                   const SignalType sig_type = SignalType::DEFAULT)
 {
-    static std::unordered_map<std::string, std::unique_ptr<json_mapping::Mapping>> empty_entries;
+    static std::unordered_map<std::string, std::unique_ptr<Mapping>> empty_entries;
     static nlohmann::json empty_global_data = nlohmann::json::object();
 
-    return json_mapping::MapArguments(empty_entries, empty_global_data, sig_type, data_type, rank);
+    return MapArguments(empty_entries, empty_global_data, sig_type, data_type, rank);
 }
 
 int plugin_return_scalar(IDAM_PLUGIN_INTERFACE* interface)
@@ -99,7 +100,7 @@ TEST_CASE("PluginMapping calls UDA data source", "[plugin_mapping][uda_data_sour
         std::optional<float> offset = {};
         std::optional<float> scale = {};
         std::optional<std::string> slice = {};
-        std::shared_ptr<ram_cache::RamCache> ram_cache = nullptr;
+        std::shared_ptr<RamCache> ram_cache = nullptr;
 
         auto mapping = std::make_unique<DataSourceMapping>("UDA", request_args, offset, scale, slice, ram_cache);
         REQUIRE(mapping != nullptr);
@@ -134,7 +135,7 @@ TEST_CASE("Slicing and offsetting returned data", "[plugin_mapping][uda_data_sou
         std::optional<float> offset = {};
         std::optional<float> scale = {};
         std::optional<std::string> slice = {};
-        std::shared_ptr<ram_cache::RamCache> ram_cache = nullptr;
+        std::shared_ptr<RamCache> ram_cache = nullptr;
 
         auto mapping = std::make_unique<DataSourceMapping>("UDA", request_args, offset, scale, slice, ram_cache);
         REQUIRE(mapping != nullptr);
@@ -159,7 +160,7 @@ TEST_CASE("Slicing and offsetting returned data", "[plugin_mapping][uda_data_sou
         constexpr float scale = 2.0;
         constexpr size_t range_len = 10;
         std::string slice = "[0:" + std::to_string(range_len) + "]";
-        std::shared_ptr<ram_cache::RamCache> ram_cache = nullptr;
+        std::shared_ptr<RamCache> ram_cache = nullptr;
 
         auto mapping = std::make_unique<DataSourceMapping>("UDA", request_args, offset, scale, slice, ram_cache);
         REQUIRE(mapping != nullptr);

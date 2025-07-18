@@ -17,7 +17,7 @@
 #include <utility>
 #include <vector>
 
-namespace json_mapping
+namespace libtokamap
 {
 
 enum class SignalType : uint8_t { DEFAULT, DATA, TIME, ERROR, DIM, INVALID };
@@ -309,4 +309,4 @@ struct MapArguments {
  */
 SignalType deduce_signal_type(std::string_view final_path_element);
 
-} // namespace json_mapping
+} // namespace libtokamap

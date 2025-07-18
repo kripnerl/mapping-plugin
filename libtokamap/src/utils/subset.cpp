@@ -27,12 +27,12 @@ constexpr auto token_re = ctll::fixed_string{R"(\[([^\[\]]*)\])"};
 constexpr auto index_re = ctll::fixed_string{R"((\d+))"};
 constexpr auto slice_re = ctll::fixed_string{R"((\d*)(:(-?\d*)(:(-?\d*))?)?)"};
 
-template <typename T> json_mapping::SubsetInfo parse_slice(const T& slice, size_t dimension)
+template <typename T> libtokamap::SubsetInfo parse_slice(const T& slice, size_t dimension)
 {
     const auto& index_match = ctre::match<index_re>(slice);
     if (index_match) {
         int64_t index = to_int(index_match.template get<1>().to_optional_string(), 0);
-        auto subset = json_mapping::SubsetInfo{index, index + 1, 1, dimension};
+        auto subset = libtokamap::SubsetInfo{index, index + 1, 1, dimension};
         if (!subset.validate()) {
             throw std::runtime_error{"invalid subset: " + slice.to_string()};
         }
@@ -43,7 +43,7 @@ template <typename T> json_mapping::SubsetInfo parse_slice(const T& slice, size_
         int64_t start = to_int(slice_match.template get<1>().to_optional_string(), 0);
         int64_t stop = to_int(slice_match.template get<3>().to_optional_string(), -1);
         int64_t stride = to_int(slice_match.template get<5>().to_optional_string(), 1);
-        auto subset = json_mapping::SubsetInfo{start, stop, stride, dimension};
+        auto subset = libtokamap::SubsetInfo{start, stop, stride, dimension};
         if (!subset.validate()) {
             throw std::runtime_error{"invalid subset: " + slice.to_string()};
         }
@@ -52,10 +52,10 @@ template <typename T> json_mapping::SubsetInfo parse_slice(const T& slice, size_
     throw std::runtime_error{"invalid subset: " + slice.to_string()};
 }
 
-std::vector<json_mapping::SubsetInfo> parse_slices(const std::string& slice, const std::vector<size_t>& shape)
+std::vector<libtokamap::SubsetInfo> parse_slices(const std::string& slice, const std::vector<size_t>& shape)
 {
     size_t dim_idx = 0;
-    std::vector<json_mapping::SubsetInfo> subsets;
+    std::vector<libtokamap::SubsetInfo> subsets;
     for (const auto& token : ctre::search_all<token_re>(slice)) {
         if (dim_idx == shape.size()) {
             throw std::runtime_error{"to many slices provided"};
@@ -66,15 +66,15 @@ std::vector<json_mapping::SubsetInfo> parse_slices(const std::string& slice, con
     return subsets;
 }
 
-void apply_subset(json_mapping::TypedDataArray& input, const std::optional<std::string>& slice)
+void apply_subset(libtokamap::TypedDataArray& input, const std::optional<std::string>& slice)
 {
     if (!slice) {
         return;
     }
 
-    std::vector<json_mapping::SubsetInfo> subset_info = parse_slices(slice.value(), input.shape());
-    using json_mapping::DataType;
-    switch (json_mapping::type_index_map(input.type_index())) {
+    std::vector<libtokamap::SubsetInfo> subset_info = parse_slices(slice.value(), input.shape());
+    using libtokamap::DataType;
+    switch (libtokamap::type_index_map(input.type_index())) {
         case DataType::Short:
             input.slice<short>(subset_info);
             break;
@@ -110,14 +110,14 @@ void apply_subset(json_mapping::TypedDataArray& input, const std::optional<std::
     }
 }
 
-void apply_scale_offset(json_mapping::TypedDataArray& input, std::optional<float> scale_factor,
+void apply_scale_offset(libtokamap::TypedDataArray& input, std::optional<float> scale_factor,
                         std::optional<float> offset)
 {
     if (!scale_factor && !offset) {
         return;
     }
-    using json_mapping::DataType;
-    switch (json_mapping::type_index_map(input.type_index())) {
+    using libtokamap::DataType;
+    switch (libtokamap::type_index_map(input.type_index())) {
         case DataType::Short:
             input.apply<short>(scale_factor.value_or(1.0), offset.value_or(0.0));
             break;
@@ -155,7 +155,7 @@ void apply_scale_offset(json_mapping::TypedDataArray& input, std::optional<float
 
 } // namespace
 
-void json_mapping::subset::update_array(json_mapping::TypedDataArray& input, const std::optional<std::string>& slice,
+void libtokamap::subset::update_array(libtokamap::TypedDataArray& input, const std::optional<std::string>& slice,
                                         std::optional<float> scale_factor, std::optional<float> offset)
 {
     apply_subset(input, slice);

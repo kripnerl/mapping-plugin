@@ -6,7 +6,7 @@
 #include "map_types/base_mapping.hpp"
 #include "map_types/map_arguments.hpp"
 
-namespace json_mapping {
+namespace libtokamap {
 
 enum class CustomMapType_t : uint8_t { MASTU_helloworld, DRAFT_helloworld, INVALID };
 
@@ -42,4 +42,4 @@ class CustomMapping : public Mapping
     static TypedDataArray DRAFT_helloworld();
 };
 
-} // namespace json_mapping
+} // namespace libtokamap

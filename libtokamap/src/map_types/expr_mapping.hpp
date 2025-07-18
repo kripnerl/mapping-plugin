@@ -11,7 +11,7 @@
 #include "map_types/base_mapping.hpp"
 #include "map_types/map_arguments.hpp"
 
-namespace json_mapping
+namespace libtokamap
 {
 
 /**
@@ -120,4 +120,4 @@ template <typename T> TypedDataArray ExprMapping::eval_expr(const MapArguments& 
     return TypedDataArray{result.at(0)};
 }
 
-} // namespace json_mapping
+} // namespace libtokamap

@@ -12,7 +12,7 @@
 #include <unordered_map>
 #include <utility>
 
-namespace json_mapping
+namespace libtokamap
 {
 
 using DataSourceArgs = std::unordered_map<std::string, nlohmann::json>;
@@ -20,7 +20,7 @@ using DataSourceArgs = std::unordered_map<std::string, nlohmann::json>;
 class DataSource {
 public:
     DataSource() = default;
-    virtual TypedDataArray get(const DataSourceArgs& map_args, const MapArguments& arguments, ram_cache::RamCache* ram_cache) = 0;
+    virtual TypedDataArray get(const DataSourceArgs& map_args, const MapArguments& arguments, libtokamap::RamCache* ram_cache) = 0;
     virtual ~DataSource() = default;
 
     DataSource(DataSource&& other) = default;
@@ -34,7 +34,7 @@ class DataSourceMapping : public Mapping
   public:
     DataSourceMapping() = delete;
     DataSourceMapping(const std::string& data_source_name, DataSourceArgs data_source_args, std::optional<float> offset,
-                      std::optional<float> scale, std::optional<std::string> slice, std::shared_ptr<ram_cache::RamCache> ram_cache)
+                      std::optional<float> scale, std::optional<std::string> slice, std::shared_ptr<libtokamap::RamCache> ram_cache)
         : m_data_source_args{std::move(data_source_args)}
         , m_offset{offset}
         , m_scale{scale}
@@ -68,8 +68,8 @@ class DataSourceMapping : public Mapping
     std::optional<float> m_offset;
     std::optional<float> m_scale;
     std::optional<std::string> m_slice;
-    std::shared_ptr<ram_cache::RamCache> m_ram_cache;
+    std::shared_ptr<libtokamap::RamCache> m_ram_cache;
     bool m_cache_enabled;
 };
 
-} // namespace json_mapping
+} // namespace libtokamap

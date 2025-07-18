@@ -15,7 +15,7 @@ static constexpr auto indices_re = ctll::fixed_string{ R"(\[(\d+)\])" };
  * @return {indices, processed_tokens} pair of the indices vector and tokens
  */
 std::pair<std::vector<int>, std::deque<std::string>>
-json_mapping::extract_indices(const std::deque<std::string>& path_tokens)
+libtokamap::extract_indices(const std::deque<std::string>& path_tokens)
 {
     std::vector<int> indices;
     std::deque<std::string> processed_tokens;

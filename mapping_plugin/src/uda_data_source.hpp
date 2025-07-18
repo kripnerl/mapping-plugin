@@ -12,7 +12,9 @@
 #include <clientserver/udaStructs.h>
 #include <plugins/pluginStructs.h>
 
-class UDADataSource : public json_mapping::DataSource
+namespace json_plugin {
+
+class UDADataSource : public libtokamap::DataSource
 {
   public:
     explicit UDADataSource(std::string plugin_name, std::optional<std::string> function, const PluginList* plugin_list,
@@ -21,9 +23,9 @@ class UDADataSource : public json_mapping::DataSource
           m_cache_enabled{cache_enabled}
     {
     }
-    json_mapping::TypedDataArray get(const json_mapping::DataSourceArgs& data_source_args,
-                                     const json_mapping::MapArguments& arguments,
-                                     ram_cache::RamCache* ram_cache) override;
+    libtokamap::TypedDataArray get(const libtokamap::DataSourceArgs& data_source_args,
+                                     const libtokamap::MapArguments& arguments,
+                                     libtokamap::RamCache* ram_cache) override;
 
   private:
     std::string m_plugin_name;
@@ -31,11 +33,13 @@ class UDADataSource : public json_mapping::DataSource
     const PluginList* m_plugin_list;
     bool m_cache_enabled;
 
-    [[nodiscard]] std::string get_request_str(const json_mapping::DataSourceArgs& data_source_args,
-                                              const json_mapping::MapArguments& arguments) const;
-    [[nodiscard]] bool copy_from_cache(ram_cache::RamCache* ram_cache, DATA_BLOCK* data_block,
-                                       const json_mapping::MapArguments& arguments,
+    [[nodiscard]] std::string get_request_str(const libtokamap::DataSourceArgs& data_source_args,
+                                              const libtokamap::MapArguments& arguments) const;
+    [[nodiscard]] bool copy_from_cache(libtokamap::RamCache* ram_cache, DATA_BLOCK* data_block,
+                                       const libtokamap::MapArguments& arguments,
                                        const std::string& request_str) const;
-    [[nodiscard]] int call_plugins(DATA_BLOCK* data_block, const json_mapping::DataSourceArgs& data_source_args,
-                                   const json_mapping::MapArguments& arguments, ram_cache::RamCache* ram_cache) const;
+    [[nodiscard]] int call_plugins(DATA_BLOCK* data_block, const libtokamap::DataSourceArgs& data_source_args,
+                                   const libtokamap::MapArguments& arguments, libtokamap::RamCache* ram_cache) const;
 };
+
+} // namespace json_plugin

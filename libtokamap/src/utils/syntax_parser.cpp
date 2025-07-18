@@ -53,7 +53,7 @@ void walk_json(nlohmann::json& json)
 
 } // anon namespace
 
-nlohmann::json json_mapping::parse(nlohmann::json input)
+nlohmann::json libtokamap::parse(nlohmann::json input)
 {
     if (input.is_string()) {
         // parse forward mapping or simple string value

@@ -44,8 +44,8 @@
  * @param json_globals
  * @return
  */
-std::string UDADataSource::get_request_str(const json_mapping::DataSourceArgs& data_source_args,
-                                           const json_mapping::MapArguments& arguments) const
+std::string json_plugin::UDADataSource::get_request_str(const libtokamap::DataSourceArgs& data_source_args,
+                                                        const libtokamap::MapArguments& arguments) const
 {
     std::stringstream string_stream;
     string_stream << m_plugin_name << "::" << m_function.value_or("get") << "(";
@@ -79,8 +79,9 @@ std::string UDADataSource::get_request_str(const json_mapping::DataSourceArgs& d
     return request;
 }
 
-bool UDADataSource::copy_from_cache(ram_cache::RamCache* ram_cache, DATA_BLOCK* data_block,
-                                    const json_mapping::MapArguments& arguments, const std::string& request_str) const
+bool json_plugin::UDADataSource::copy_from_cache(libtokamap::RamCache* ram_cache, DATA_BLOCK* data_block,
+                                                 const libtokamap::MapArguments& arguments,
+                                                 const std::string& request_str) const
 {
     if (!m_cache_enabled) {
         return false;
@@ -88,23 +89,24 @@ bool UDADataSource::copy_from_cache(ram_cache::RamCache* ram_cache, DATA_BLOCK* 
 
     auto signal_type = arguments.sig_type;
 
-    using json_mapping::SignalType;
+    using libtokamap::SignalType;
     switch (signal_type) {
         case SignalType::DATA:
-            return ram_cache::uda::copy_data_from_cache(*ram_cache, request_str, data_block);
+            return json_plugin::copy_data_from_cache(*ram_cache, request_str, data_block);
         case SignalType::ERROR:
-            return ram_cache::uda::copy_error_high_from_cache(*ram_cache, request_str, data_block);
+            return json_plugin::copy_error_high_from_cache(*ram_cache, request_str, data_block);
         case SignalType::TIME:
-            return ram_cache::uda::copy_time_from_cache(*ram_cache, request_str, data_block);
+            return json_plugin::copy_time_from_cache(*ram_cache, request_str, data_block);
         case SignalType::DIM:
-            return ram_cache::uda::copy_dim_from_cache(*ram_cache, request_str, 1, data_block);
+            return json_plugin::copy_dim_from_cache(*ram_cache, request_str, 1, data_block);
         default:
-            return ram_cache::uda::copy_from_cache(*ram_cache, request_str, data_block);
+            return json_plugin::copy_from_cache(*ram_cache, request_str, data_block);
     }
 }
 
-int UDADataSource::call_plugins(DATA_BLOCK* data_block, const json_mapping::DataSourceArgs& data_source_args,
-                                const json_mapping::MapArguments& arguments, ram_cache::RamCache* ram_cache) const
+int json_plugin::UDADataSource::call_plugins(DATA_BLOCK* data_block, const libtokamap::DataSourceArgs& data_source_args,
+                                             const libtokamap::MapArguments& arguments,
+                                             libtokamap::RamCache* ram_cache) const
 {
     int err{1};
     auto request_str = get_request_str(data_source_args, arguments);
@@ -127,7 +129,7 @@ int UDADataSource::call_plugins(DATA_BLOCK* data_block, const json_mapping::Data
 
     // if (m_cache_enabled) {
     //     std::string key_found = ram_cache->has_entry(request_str) ? "True" : "False";
-    //     ram_cache->log(ram_cache::LogLevel::DEBUG, "key, \"" + request_str + "\" in cache? " + key_found);
+    //     ram_cache->log(libtokamap:LogLevel::DEBUG, "key, \"" + request_str + "\" in cache? " + key_found);
     // }
 
     /*
@@ -139,13 +141,13 @@ int UDADataSource::call_plugins(DATA_BLOCK* data_block, const json_mapping::Data
     // check cache for request string and only get data if it's not already there
     // currently copies whole datablock (data, error, and dims)
     // if (m_cache_enabled) {
-    //     ram_cache->log(ram_cache::LogLevel::DEBUG, "caching disbaled");
+    //     ram_cache->log(libtokamap:LogLevel::DEBUG, "caching disbaled");
     // }
 
     bool cache_hit = copy_from_cache(ram_cache, data_block, arguments, request_str);
     if (cache_hit) {
-        // ram_cache->log(ram_cache::LogLevel::INFO, "Adding cached datablock onto plugin_interface");
-        // ram_cache->log(ram_cache::LogLevel::INFO,
+        // ram_cache->log(libtokamap:LogLevel::INFO, "Adding cached datablock onto plugin_interface");
+        // ram_cache->log(libtokamap:LogLevel::INFO,
         //                  "data on plugin_interface (data_n): " + std::to_string(data_block->data_n));
         err = 0;
     } else {
@@ -176,7 +178,7 @@ int UDADataSource::call_plugins(DATA_BLOCK* data_block, const json_mapping::Data
             return err;
         } // return code if failure, no need to proceed
 
-        // Add retrieved datablock to cache. data is copied from datablock into a new ram_cache::data_entry. original
+        // Add retrieved datablock to cache. data is copied from datablock into a new libtokamap:data_entry. original
         // data remains on block (on plugin_interface structure) for return.
         // if (m_cache_enabled) {
         //     ram_cache->add(request_str, data_block);
@@ -186,9 +188,9 @@ int UDADataSource::call_plugins(DATA_BLOCK* data_block, const json_mapping::Data
     return err;
 }
 
-json_mapping::TypedDataArray UDADataSource::get(const json_mapping::DataSourceArgs& data_source_args,
-                                                const json_mapping::MapArguments& arguments,
-                                                ram_cache::RamCache* ram_cache)
+libtokamap::TypedDataArray json_plugin::UDADataSource::get(const libtokamap::DataSourceArgs& data_source_args,
+                                                           const libtokamap::MapArguments& arguments,
+                                                           libtokamap::RamCache* ram_cache)
 {
     DATA_BLOCK data_block;
     int err = call_plugins(&data_block, data_source_args, arguments, ram_cache);
@@ -206,11 +208,11 @@ json_mapping::TypedDataArray UDADataSource::get(const json_mapping::DataSourceAr
 
     switch (data_block.data_type) {
         case UDA_TYPE_INT:
-            return json_mapping::TypedDataArray{reinterpret_cast<int*>(data_block.data), size, shape};
+            return libtokamap::TypedDataArray{reinterpret_cast<int*>(data_block.data), size, shape};
         case UDA_TYPE_FLOAT:
-            return json_mapping::TypedDataArray{reinterpret_cast<float*>(data_block.data), size, shape};
+            return libtokamap::TypedDataArray{reinterpret_cast<float*>(data_block.data), size, shape};
         case UDA_TYPE_DOUBLE:
-            return json_mapping::TypedDataArray{reinterpret_cast<double*>(data_block.data), size, shape};
+            return libtokamap::TypedDataArray{reinterpret_cast<double*>(data_block.data), size, shape};
         default:
             throw std::runtime_error{"unknown data type"};
     }

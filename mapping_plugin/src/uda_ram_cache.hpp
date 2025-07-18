@@ -14,10 +14,10 @@
 #include <clientserver/udaTypes.h>
 #include <server/getServerEnvironment.h>
 
-namespace ram_cache::uda
+namespace json_plugin
 {
 
-class UDACacheEntry : public CacheEntry
+class UDACacheEntry : public libtokamap::CacheEntry
 {
   public:
     UDACacheEntry() = default;
@@ -37,11 +37,11 @@ class UDACacheEntry : public CacheEntry
     int error_type = UDA_TYPE_UNKNOWN;
 };
 
-bool copy_from_cache(const ram_cache::RamCache& cache, const std::string& key, DATA_BLOCK* data_block);
-bool copy_data_from_cache(const ram_cache::RamCache& cache, const std::string& key, DATA_BLOCK* data_block);
-bool copy_error_high_from_cache(const ram_cache::RamCache& cache, const std::string& key, DATA_BLOCK* data_block);
-bool copy_time_from_cache(const ram_cache::RamCache& cache, const std::string& key, DATA_BLOCK* data_block);
-bool copy_dim_from_cache(const ram_cache::RamCache& cache, const std::string& key, unsigned int i,
+bool copy_from_cache(const libtokamap::RamCache& cache, const std::string& key, DATA_BLOCK* data_block);
+bool copy_data_from_cache(const libtokamap::RamCache& cache, const std::string& key, DATA_BLOCK* data_block);
+bool copy_error_high_from_cache(const libtokamap::RamCache& cache, const std::string& key, DATA_BLOCK* data_block);
+bool copy_time_from_cache(const libtokamap::RamCache& cache, const std::string& key, DATA_BLOCK* data_block);
+bool copy_dim_from_cache(const libtokamap::RamCache& cache, const std::string& key, unsigned int i,
                          DATA_BLOCK* data_block);
 
-} // namespace ram_cache::uda
+} // namespace json_plugin

@@ -16,7 +16,7 @@ TEST_CASE("Test create array")
     SECTION("0d array")
     {
         constexpr int num = 10;
-        json_mapping::TypedDataArray array{num};
+        libtokamap::TypedDataArray array{num};
         REQUIRE(array.rank() == 0);
         REQUIRE(array.size() == 1);
         REQUIRE(array.shape() == std::vector<size_t>{});
@@ -29,7 +29,7 @@ TEST_CASE("Test create array")
         constexpr size_t len = 100;
         std::vector<float> vec(len);
         boost::range::iota(vec, 0);
-        json_mapping::TypedDataArray array{vec, {len}, false};
+        libtokamap::TypedDataArray array{vec, {len}, false};
         REQUIRE(array.rank() == 1);
         REQUIRE(array.size() == len);
         REQUIRE(array.shape() == std::vector<size_t>{len});
@@ -44,7 +44,7 @@ TEST_CASE("Test create array")
         constexpr size_t len = dim1 * dim2;
         std::vector<float> vec(len);
         boost::range::iota(vec, 0);
-        json_mapping::TypedDataArray array{vec, {dim1, dim2}, false};
+        libtokamap::TypedDataArray array{vec, {dim1, dim2}, false};
         REQUIRE(array.rank() == 2);
         REQUIRE(array.size() == len);
         REQUIRE(array.shape() == std::vector<size_t>{dim1, dim2});
@@ -58,7 +58,7 @@ TEST_CASE("Test array slice")
     SECTION("invalid type throws exception")
     {
         constexpr size_t num = 10;
-        json_mapping::TypedDataArray array{num};
+        libtokamap::TypedDataArray array{num};
         REQUIRE_THROWS(array.slice<float>({}));
     }
 
@@ -67,12 +67,12 @@ TEST_CASE("Test array slice")
         constexpr size_t len = 100;
         std::vector<float> vec(len);
         boost::range::iota(vec, 0);
-        json_mapping::TypedDataArray array{vec, {len}, true};
+        libtokamap::TypedDataArray array{vec, {len}, true};
 
         SECTION("select one element")
         {
             constexpr size_t element = 10;
-            std::vector<json_mapping::SubsetInfo> subsets = {json_mapping::SubsetInfo{element, element + 1, 1, len}};
+            std::vector<libtokamap::SubsetInfo> subsets = {libtokamap::SubsetInfo{element, element + 1, 1, len}};
             array.slice<float>(subsets);
 
             REQUIRE(array.rank() == 0);
@@ -88,7 +88,7 @@ TEST_CASE("Test array slice")
             constexpr size_t start = 0;
             constexpr size_t stop = start + range_len;
             constexpr size_t stride = 1;
-            std::vector<json_mapping::SubsetInfo> subsets = {json_mapping::SubsetInfo{start, stop, stride, len}};
+            std::vector<libtokamap::SubsetInfo> subsets = {libtokamap::SubsetInfo{start, stop, stride, len}};
             array.slice<float>(subsets);
 
             REQUIRE(array.rank() == 1);
@@ -107,7 +107,7 @@ TEST_CASE("Test array slice")
             constexpr size_t start = 0;
             constexpr size_t stride = 2;
             constexpr size_t stop = start + (range_len * stride);
-            std::vector<json_mapping::SubsetInfo> subsets = {json_mapping::SubsetInfo{start, stop, stride, len}};
+            std::vector<libtokamap::SubsetInfo> subsets = {libtokamap::SubsetInfo{start, stop, stride, len}};
             array.slice<float>(subsets);
 
             REQUIRE(array.rank() == 1);
@@ -129,15 +129,15 @@ TEST_CASE("Test array slice")
         constexpr size_t len = dim1 * dim2;
         std::vector<float> vec(len);
         boost::range::iota(vec, 0);
-        json_mapping::TypedDataArray array{vec, {dim1, dim2}, true};
+        libtokamap::TypedDataArray array{vec, {dim1, dim2}, true};
 
         SECTION("select one element")
         {
             constexpr size_t element1 = 1;
             constexpr size_t element2 = 3;
-            std::vector<json_mapping::SubsetInfo> subsets = {
-                json_mapping::SubsetInfo{element1, element1 + 1, 1, dim1},
-                json_mapping::SubsetInfo{element2, element2 + 1, 1, dim2},
+            std::vector<libtokamap::SubsetInfo> subsets = {
+                libtokamap::SubsetInfo{element1, element1 + 1, 1, dim1},
+                libtokamap::SubsetInfo{element2, element2 + 1, 1, dim2},
             };
             array.slice<float>(subsets);
 
@@ -151,9 +151,9 @@ TEST_CASE("Test array slice")
         SECTION("select 1d slice")
         {
             constexpr size_t element1 = 5;
-            std::vector<json_mapping::SubsetInfo> subsets = {
-                json_mapping::SubsetInfo{element1, element1 + 1, 1, dim1},
-                json_mapping::SubsetInfo{0, -1, 1, dim2},
+            std::vector<libtokamap::SubsetInfo> subsets = {
+                libtokamap::SubsetInfo{element1, element1 + 1, 1, dim1},
+                libtokamap::SubsetInfo{0, -1, 1, dim2},
             };
             array.slice<float>(subsets);
 
@@ -173,9 +173,9 @@ TEST_CASE("Test array slice")
             constexpr size_t start = 0;
             constexpr size_t stop = start + range_len;
             constexpr size_t stride = 1;
-            std::vector<json_mapping::SubsetInfo> subsets = {
-                json_mapping::SubsetInfo{start, stop, stride, dim1},
-                json_mapping::SubsetInfo{0, -1, 1, dim2},
+            std::vector<libtokamap::SubsetInfo> subsets = {
+                libtokamap::SubsetInfo{start, stop, stride, dim1},
+                libtokamap::SubsetInfo{0, -1, 1, dim2},
             };
             array.slice<float>(subsets);
 
@@ -195,9 +195,9 @@ TEST_CASE("Test array slice")
             constexpr size_t start = 0;
             constexpr size_t stop = start + range_len;
             constexpr size_t stride = 1;
-            std::vector<json_mapping::SubsetInfo> subsets = {
-                json_mapping::SubsetInfo{0, -1, 1, dim1},
-                json_mapping::SubsetInfo{start, stop, stride, dim2},
+            std::vector<libtokamap::SubsetInfo> subsets = {
+                libtokamap::SubsetInfo{0, -1, 1, dim1},
+                libtokamap::SubsetInfo{start, stop, stride, dim2},
             };
             array.slice<float>(subsets);
 
@@ -229,9 +229,9 @@ TEST_CASE("Test array slice")
             constexpr size_t stop2 = start2 + range2_len;
             constexpr size_t stride2 = 1;
 
-            std::vector<json_mapping::SubsetInfo> subsets = {
-                json_mapping::SubsetInfo{start1, stop1, stride1, dim1},
-                json_mapping::SubsetInfo{start2, stop2, stride2, dim2},
+            std::vector<libtokamap::SubsetInfo> subsets = {
+                libtokamap::SubsetInfo{start1, stop1, stride1, dim1},
+                libtokamap::SubsetInfo{start2, stop2, stride2, dim2},
             };
             array.slice<float>(subsets);
 
@@ -258,14 +258,14 @@ TEST_CASE("Test array apply scale and offset")
     SECTION("invalid type throws exception")
     {
         constexpr int num = 10;
-        json_mapping::TypedDataArray array{num};
+        libtokamap::TypedDataArray array{num};
         REQUIRE_THROWS(array.apply<float>(1.0, 0.0));
     }
 
     SECTION("0d array")
     {
         constexpr int num = 10;
-        json_mapping::TypedDataArray array{num};
+        libtokamap::TypedDataArray array{num};
 
         SECTION("scale")
         {
@@ -291,7 +291,7 @@ TEST_CASE("Test array apply scale and offset")
         constexpr size_t len = 100;
         std::vector<float> vec(len);
         boost::range::iota(vec, 0);
-        json_mapping::TypedDataArray array{vec, {len}, true};
+        libtokamap::TypedDataArray array{vec, {len}, true};
 
         SECTION("scale")
         {
@@ -325,7 +325,7 @@ TEST_CASE("Test array apply scale and offset")
         constexpr size_t len = dim1 * dim2;
         std::vector<float> vec(len);
         boost::range::iota(vec, 0);
-        json_mapping::TypedDataArray array{vec, {dim1, dim2}, true};
+        libtokamap::TypedDataArray array{vec, {dim1, dim2}, true};
 
         SECTION("scale")
         {

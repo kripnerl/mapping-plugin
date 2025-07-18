@@ -2,8 +2,8 @@
 
 #include <nlohmann/json.hpp>
 
-namespace json_mapping {
+namespace libtokamap {
 
 nlohmann::json parse(nlohmann::json input);
 
-} // namespace json_mapping
+} // namespace libtokamap

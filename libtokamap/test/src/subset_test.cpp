@@ -22,15 +22,15 @@ TEST_CASE("Test slice operations") {
     //     std::vector<size_t> shape = {array_size};
 
     //     SECTION("select single element") {
-    //         json_mapping::TypedDataArray array{data, shape, true};
-    //         json_mapping::subset::apply_subset(array, "[1]", {}, {});
+    //         libtokamap::TypedDataArray array{data, shape, true};
+    //         libtokamap::subset::apply_subset(array, "[1]", {}, {});
     //         REQUIRE(array.size() == 1);
     //         REQUIRE(array.shape() == std::vector<size_t>{});
     //     }
 
     //     SECTION("select simple range") {
-    //         json_mapping::TypedDataArray array{data, shape, true};
-    //         json_mapping::subset::apply_subset(array, "[0:10]", {}, {});
+    //         libtokamap::TypedDataArray array{data, shape, true};
+    //         libtokamap::subset::apply_subset(array, "[0:10]", {}, {});
     //         REQUIRE(array.size() == 10);
     //         REQUIRE(array.shape() == std::vector<size_t>{10});
     //     }
