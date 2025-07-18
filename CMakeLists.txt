@@ -52,5 +52,9 @@ if( ENABLE_TESTING )
     enable_testing()
 endif()
 
+find_package( UDA QUIET )
+
 add_subdirectory( libtokamap )
-add_subdirectory( mapping_plugin )
+if( UDA_FOUND )
+    add_subdirectory( mapping_plugin )
+endif()

@@ -41,7 +41,7 @@ jobs:
 
       - name: Configure CMake
         run: >
-          cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=${{ matrix.release }}
+          cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=${{ matrix.release }} -DENABLE_TESTING=ON
 
       - name: Build
         run: cmake --build build --config ${{ matrix.release }}
