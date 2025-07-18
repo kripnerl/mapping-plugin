@@ -3,7 +3,6 @@
 #include <cstddef>
 #include <cstring>
 #include <exception>
-#include <fmt/core.h>
 #include <inja/inja.hpp>
 #include <optional>
 #include <sstream>

@@ -5,7 +5,6 @@
 #include <cstddef>
 #include <deque>
 #include <filesystem>
-#include <fmt/format.h>
 #include <fstream>
 #include <functional>
 #include <inja/inja.hpp>
