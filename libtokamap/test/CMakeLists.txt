@@ -45,7 +45,7 @@ target_link_libraries( libtokamap_tests
     PRIVATE
     Catch2::Catch2WithMain
     test_helpers
-    tokamap
+    LibTokaMap::libtokamap
     Boost::boost
 )
 

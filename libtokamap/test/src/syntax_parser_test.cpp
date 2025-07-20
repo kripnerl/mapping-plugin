@@ -27,8 +27,6 @@ TEST_CASE("Parse forward mapping", "[syntax_parser]") {
     }
 }
 
-// X (number, string) => { "MAP_TYPE": "VALUE", "VALUE": X }
-
 TEST_CASE("Parse value mapping", "[syntax_parser]") {
     SECTION("string value") {
         nlohmann::json input = "foo";
@@ -73,6 +71,27 @@ TEST_CASE("Parse indices expansion", "[syntax_parser]") {
         nlohmann::json expected = {
             { "MAP_TYPE", "VALUE" },
             { "VALUE", "{{ indices.3 }}" }
+        };
+        REQUIRE(result == expected);
+    }
+
+    //coils/#0/name
+    SECTION("index in path") {
+        nlohmann::json input = "foo/{{ #0 }}/bar";
+        nlohmann::json result = libtokamap::parse(input);
+        nlohmann::json expected = {
+            { "MAP_TYPE", "VALUE" },
+            { "VALUE", "foo/{{ indices.0 }}/bar" }
+        };
+        REQUIRE(result == expected);
+    }
+
+    SECTION("multiple indices in path") {
+        nlohmann::json input = "foo/{{ #0 }}/bar/{{ #1 }}/baz";
+        nlohmann::json result = libtokamap::parse(input);
+        nlohmann::json expected = {
+            { "MAP_TYPE", "VALUE" },
+            { "VALUE", "foo/{{ indices.0 }}/bar/{{ indices.1 }}/baz" }
         };
         REQUIRE(result == expected);
     }

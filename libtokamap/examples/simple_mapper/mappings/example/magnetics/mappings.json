@@ -1,0 +1,60 @@
+{
+  "version": "1.0.0",
+  "coil": {
+    "MAP_TYPE": "DIMENSION",
+    "DIM_PROBE": "_coils"
+  },
+  "_coils": {
+    "MAP_TYPE": "DATA_SOURCE",
+    "DATA_SOURCE": "JSON",
+    "ARGS": {
+      "signal": "coils"
+    }
+  },
+  "coil[#]/name": {
+    "MAP_TYPE": "DATA_SOURCE",
+    "DATA_SOURCE": "JSON",
+    "ARGS": {
+      "signal": "coils/{{ #0 }}/name"
+    }
+  },
+  "coil[#]/position": {
+    "MAP_TYPE": "DIMENSION",
+    "DIM_PROBE": "_coil[#]/position"
+  },
+  "_coil[#]/position": {
+    "MAP_TYPE": "DATA_SOURCE",
+    "DATA_SOURCE": "JSON",
+    "ARGS": {
+      "signal": "coils/{{ #0 }}/position"
+    }
+  },
+  "coil[#]/position[#]/r": {
+    "MAP_TYPE": "DATA_SOURCE",
+    "DATA_SOURCE": "JSON",
+    "ARGS": {
+      "signal": "coils/{{ #0 }}/position/{{ #1 }}/0"
+    }
+  },
+  "coil[#]/position[#]/z": {
+    "MAP_TYPE": "DATA_SOURCE",
+    "DATA_SOURCE": "JSON",
+    "ARGS": {
+      "signal": "coils/{{ #0 }}/position/{{ #1 }}/1"
+    }
+  },
+  "coil[#]/flux/time": {
+    "MAP_TYPE": "DATA_SOURCE",
+    "DATA_SOURCE": "JSON",
+    "ARGS": {
+      "signal": "coils/{{ #0 }}/flux/time"
+    }
+  },
+  "coil[#]/flux/data": {
+    "MAP_TYPE": "DATA_SOURCE",
+    "DATA_SOURCE": "JSON",
+    "ARGS": {
+      "signal": "coils/{{ #0 }}/flux/data"
+    }
+  }
+}

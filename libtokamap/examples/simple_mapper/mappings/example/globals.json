@@ -1,0 +1,9 @@
+{
+  "DATA_SOURCE_CONFIG": {
+    "JSON": {
+      "ARGS": {
+        "file_name": "data_{{ shot }}.json"
+      }
+    }
+  }
+}

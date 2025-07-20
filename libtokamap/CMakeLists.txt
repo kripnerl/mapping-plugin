@@ -8,9 +8,9 @@
 find_package( Boost REQUIRED )
 
 # Specify C++ standard for all targets
-#set( CMAKE_CXX_STANDARD 17 )
-#set( CMAKE_CXX_STANDARD_REQUIRED ON )
-#set( CMAKE_CXX_EXTENSIONS OFF )
+set( CMAKE_CXX_STANDARD 20 )
+set( CMAKE_CXX_STANDARD_REQUIRED ON )
+set( CMAKE_CXX_EXTENSIONS OFF )
 
 # Group source files by functionality for better organization
 set( UTIL_SOURCES
@@ -66,15 +66,64 @@ set( HEADERS
     ${HANDLER_HEADERS}
 )
 
-add_library( tokamap ${SOURCES} )
-target_link_libraries( tokamap PRIVATE Boost::boost )
-target_include_directories( tokamap PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/ext_include
+configure_file(
+    ${CMAKE_CURRENT_LIST_DIR}/include/version.hpp.in
+    ${CMAKE_CURRENT_BINARY_DIR}/include/version.hpp
+    @ONLY
 )
-target_compile_options( tokamap PRIVATE
+
+add_library( libtokamap ${SOURCES} )
+target_link_libraries( libtokamap PUBLIC Boost::boost )
+target_include_directories( libtokamap
+    PRIVATE
+      ${CMAKE_CURRENT_SOURCE_DIR}/src
+      ${CMAKE_CURRENT_SOURCE_DIR}/ext_include
+    INTERFACE
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/ext_include>
+      $<INSTALL_INTERFACE:include/libtokamap>
+)
+target_compile_options( libtokamap PRIVATE
     $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-Wall -Werror -Wpedantic>
     $<$<CXX_COMPILER_ID:GNU>:-Wall -Werror -Wpedantic>
+)
+set( PUBLIC_HEADERS
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/libtokamap.hpp
+    ${CMAKE_CURRENT_BINARY_DIR}/include/version.hpp
+)
+set_target_properties( libtokamap PROPERTIES
+    OUTPUT_NAME tokamap
+    PUBLIC_HEADER "${PUBLIC_HEADERS}"
+)
+
+add_library( LibTokaMap::libtokamap ALIAS libtokamap )
+
+install( TARGETS libtokamap
+    EXPORT tokamapTargets
+    DESTINATION lib
+    INCLUDES DESTINATION include
+    PUBLIC_HEADER DESTINATION include
+)
+
+install( EXPORT tokamapTargets
+    FILE LibTokaMapTargets.cmake
+    NAMESPACE LibTokaMap::
+    DESTINATION lib/cmake/libtokamap
+)
+
+include( CMakePackageConfigHelpers )
+
+configure_package_config_file(
+    cmake/LibTokaMapConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/LibTokaMapConfig.cmake
+    INSTALL_DESTINATION lib/cmake/libtokamap
+)
+
+install( FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/LibTokaMapConfig.cmake
+    DESTINATION lib/cmake/libtokamap
 )
 
 # Unit testing setup
@@ -82,7 +131,12 @@ if( ENABLE_TESTING )
     add_subdirectory( test )
 endif()
 
+if( ENABLE_EXAMPLES )
+    add_subdirectory( examples/simple_mapper )
+endif()
+
 list( TRANSFORM SOURCES PREPEND ${CMAKE_CURRENT_LIST_DIR}/ )
 list( TRANSFORM HEADERS PREPEND ${CMAKE_CURRENT_LIST_DIR}/ )
 
+set_property( TARGET clang-format APPEND PROPERTY SOURCES ${SOURCES} ${HEADERS} )
 set_property( TARGET clang-format APPEND PROPERTY SOURCES ${SOURCES} ${HEADERS} )

@@ -1,17 +1,17 @@
 #include "syntax_parser.hpp"
 
-#include <nlohmann/json.hpp>
-#include <string>
 #include <boost/algorithm/string.hpp>
 #include <ctre/ctre.hpp>
-#include <string_view>
+#include <nlohmann/json.hpp>
+#include <string>
 
-static constexpr auto indices_re = ctll::fixed_string{ R"(\{\{\s*(#\d+|.*\[#\d+\](\.\S+)?)\s*\}\})" };
-static constexpr auto simple_index_re = ctll::fixed_string{ R"(#(\d+))" };
-static constexpr auto array_index_re = ctll::fixed_string{ R"((.*)\[#(\d+)\](\.\S+)?)" };
-static constexpr auto subindices_re = ctll::fixed_string{ R"(\((.*\[#(\d+)\](\.\S+))\))" };
+static constexpr auto indices_re = ctll::fixed_string{R"(\{\{\s*(#\d+|.*\[#\d+\](\.\S+)?)\s*\}\})"};
+static constexpr auto simple_index_re = ctll::fixed_string{R"(#(\d+))"};
+static constexpr auto array_index_re = ctll::fixed_string{R"((.*)\[#(\d+)\](\.\S+)?)"};
+static constexpr auto subindices_re = ctll::fixed_string{R"(\((.*\[#(\d+)\](\.\S+))\))"};
 
-namespace {
+namespace
+{
 
 std::string expand_indices(const std::string& input)
 {
@@ -25,10 +25,12 @@ std::string expand_indices(const std::string& input)
         if (auto submatch = ctre::match<subindices_re>(array)) {
             array = expand_indices(submatch.get<1>().to_string());
         }
-        if (field.empty()) {
-            return "at(" + array + ", indices." + index + ")";
+        std::string result;
+        result.append("at(").append(array).append(", indices.").append(index).append(")");
+        if (!field.empty()) {
+            result.append(field);
         }
-        return "at(" + array + ", indices." + index + ")" + field;
+        return result;
     }
     return input;
 }
@@ -40,10 +42,16 @@ void walk_json(nlohmann::json& json)
         if (element.key() != "MAP_TYPE") {
             if (element.value().is_string()) {
                 std::string value = element.value();
-                if (auto match = ctre::match<indices_re>(value)) {
+                std::string result;
+                auto iter = value.begin();
+                for (const auto& match : ctre::search_all<indices_re>(value)) {
+                    std::string prefix{iter, match.begin()};
                     auto expression = match.get<1>().to_string();
-                    element.value() = "{{ " + expand_indices(expression) + " }}";
+                    result.append(prefix).append("{{ ").append(expand_indices(expression)).append(" }}");
+                    iter = match.end();
                 }
+                result.append(std::string{iter, value.end()});
+                element.value() = result;
             } else if (element.value().is_object()) {
                 walk_json(element.value());
             }
@@ -51,7 +59,7 @@ void walk_json(nlohmann::json& json)
     }
 }
 
-} // anon namespace
+} // namespace
 
 nlohmann::json libtokamap::parse(nlohmann::json input)
 {
@@ -60,22 +68,13 @@ nlohmann::json libtokamap::parse(nlohmann::json input)
         std::string str = input;
         if (!str.empty() && str[0] == '@') {
             str = str.substr(1);
-            input = {
-                { "MAP_TYPE", "FORWARD" },
-                { "VALUE", str }
-            };
+            input = {{"MAP_TYPE", "FORWARD"}, {"VALUE", str}};
         } else {
-            input = {
-                { "MAP_TYPE", "VALUE" },
-                { "VALUE", str }
-            };
+            input = {{"MAP_TYPE", "VALUE"}, {"VALUE", str}};
         }
     } else if (input.is_primitive()) {
         // parse simple non-string value
-        input = {
-            { "MAP_TYPE", "VALUE" },
-            { "VALUE", input }
-        };
+        input = {{"MAP_TYPE", "VALUE"}, {"VALUE", input}};
     }
 
     // walk object looking for strings with #N

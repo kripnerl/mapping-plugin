@@ -38,7 +38,7 @@ target_link_libraries( mapping_plugin_tests
     PRIVATE
     Catch2::Catch2WithMain
     Boost::boost
-    tokamap
+    LibTokaMap::libtokamap
     libtokamap_uda_extension
     uda_plugins
     uda_client

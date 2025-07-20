@@ -133,14 +133,25 @@ int JSONMappingPlugin::init(IDAM_PLUGIN_INTERFACE* plugin_interface)
         reset(plugin_interface);
     }
 
-    std::string const map_dir = getenv("UDA_libtokamap_DIR"); // NOLINT(concurrency-mt-unsafe)
-    if (!map_dir.empty()) {
-        m_mapping_handler.set_map_dir(map_dir);
-    } else {
+    const char* map_dir = getenv("UDA_MAPPING_DIR"); // NOLINT(concurrency-mt-unsafe)
+    if (map_dir == nullptr) {
         log(LogLevel::ERROR, "JSONMappingPlugin::init: - JSON mapping locations not set");
         RAISE_PLUGIN_ERROR("JSONMappingPlugin::init: - JSON mapping locations not set")
     }
-    m_mapping_handler.init();
+
+    nlohmann::json config = {{"mapping_directory", std::string{map_dir}}};
+
+    const char* use_cache = getenv("UDA_MAPPING_USE_CACHE");
+    if (use_cache != nullptr) {
+        config["use_cache"] = bool(std::stoi(std::string{use_cache}));
+    }
+
+    const char* cache_size = getenv("UDA_MAPPING_USE_CACHE");
+    if (use_cache != nullptr) {
+        config["cache_size"] = std::stoi(std::string{cache_size});
+    }
+
+    m_mapping_handler.init(config);
 
     auto data_source = std::make_unique<json_plugin::UDADataSource>("UDA", "get", plugin_interface->pluginList, false);
     libtokamap::DataSourceMapping::register_data_source("UDA", std::move(data_source));

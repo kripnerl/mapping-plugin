@@ -1,0 +1,7 @@
+#pragma once
+
+constexpr const char* LibTokaMapVersion = "@PROJECT_VERSION@";
+constexpr int LibTokaMapVersionMajor = @PROJECT_VERSION_MAJOR@;
+constexpr int LibTokaMapVersionMinor = @PROJECT_VERSION_MINOR@;
+constexpr int LibTokaMapVersionPatch = @PROJECT_VERSION_PATCH@;
+constexpr int LibTokaMapVersionTweak = @PROJECT_VERSION_TWEAK@;

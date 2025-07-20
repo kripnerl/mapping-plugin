@@ -63,10 +63,10 @@ class MappingHandler
         : m_init(false), m_dd_version(std::move(dd_version)), m_cache_enabled(false) {};
 
     void reset();
-    void init();
-    void set_map_dir(const std::string& mapping_dir);
-    TypedDataArray map(const std::string& mapping, const std::string& path, std::type_index data_type, int rank,
-                       const nlohmann::json& extra_attributes);
+    void init(const nlohmann::json& config);
+
+    [[nodiscard]] TypedDataArray map(const std::string& mapping, const std::string& path, std::type_index data_type,
+                                     int rank, const nlohmann::json& extra_attributes);
 
   private:
     [[nodiscard]] std::optional<MappingPair> read_mappings(const MachineName& machine, const std::string& request_ids,
@@ -82,13 +82,6 @@ class MappingHandler
     void load_mappings(const MachineName& machine, const IDSName& ids_name);
 
     void init_mappings(const MachineName& machine, const IDSName& ids_name, const nlohmann::json& data, int shot);
-    static void init_value_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
-    void init_plugin_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value,
-                             const nlohmann::json& ids_attributes, std::shared_ptr<libtokamap::RamCache>& ram_cache);
-    static void init_dim_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
-    // static int init_slice_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
-    static void init_expr_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
-    static void init_custom_mapping(IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value);
 
     MachineRegisterStore m_machine_register;
     bool m_init;

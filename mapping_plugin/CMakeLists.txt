@@ -55,7 +55,7 @@ uda_plugin(
         ${UDA_CLIENT_LIBRARY_DIRS}
     EXTRA_LINK_LIBS
         Boost::boost
-        tokamap
+        LibTokaMap::libtokamap
         libtokamap_uda_extension
         uda_client
 )

@@ -40,36 +40,34 @@ class RamCache
   public:
     RamCache()
     {
-        _entries.reserve(_max_size);
+        m_entries.reserve(m_max_size);
     }
 
-    explicit RamCache(uint32_t max_size) : _max_size{max_size}
+    explicit RamCache(uint32_t max_size) : m_max_size{max_size}
     {
-        _entries.reserve(_max_size);
+        m_entries.reserve(m_max_size);
     }
 
     void add(std::string key, std::unique_ptr<CacheEntry> entry)
     {
-        if (_entries.size() == _max_size) {
+        if (m_entries.size() == m_max_size) {
             drop_entries();
         }
-        _entries.emplace(key, std::move(entry));
+        m_entries.emplace(key, std::move(entry));
     }
 
-    [[nodiscard]] bool contains(const std::string& key) const {
-        return _entries.count(key) != 0;
-    }
+    [[nodiscard]] bool contains(const std::string& key) const;
 
     [[nodiscard]] std::optional<CacheEntry*> get(const std::string& key) const {
         if (!contains(key)) {
             return {};
         }
-        return _entries.at(key).get();
+        return m_entries.at(key).get();
     }
 
   private:
-    const uint32_t _max_size = default_size;
-    std::unordered_map<std::string, std::unique_ptr<CacheEntry>> _entries;
+    const uint32_t m_max_size = default_size;
+    std::unordered_map<std::string, std::unique_ptr<CacheEntry>> m_entries;
 
     void drop_entries() {
 

@@ -22,10 +22,13 @@ namespace libtokamap
 
 enum class SignalType : uint8_t { DEFAULT, DATA, TIME, ERROR, DIM, INVALID };
 
-enum class DataType : uint8_t { Unknown, Short, Int, Long, Int64, UShort, UInt, ULong, UInt64, Float, Double };
+enum class DataType : uint8_t { Unknown, Char, Short, Int, Long, Int64, UChar, UShort, UInt, ULong, UInt64, Float, Double };
 
 inline DataType type_index_map(std::type_index type_index)
 {
+    if (type_index == std::type_index{typeid(char)}) {
+        return DataType::Char;
+    }
     if (type_index == std::type_index{typeid(short)}) {
         return DataType::Short;
     }
@@ -34,6 +37,18 @@ inline DataType type_index_map(std::type_index type_index)
     }
     if (type_index == std::type_index{typeid(long)}) {
         return DataType::Long;
+    }
+    if (type_index == std::type_index{typeid(unsigned char)}) {
+        return DataType::UChar;
+    }
+    if (type_index == std::type_index{typeid(unsigned short)}) {
+        return DataType::UShort;
+    }
+    if (type_index == std::type_index{typeid(unsigned int)}) {
+        return DataType::UInt;
+    }
+    if (type_index == std::type_index{typeid(unsigned long)}) {
+        return DataType::ULong;
     }
     if (type_index == std::type_index{typeid(float)}) {
         return DataType::Float;
@@ -128,7 +143,7 @@ class TypedDataArray
     }
 
     explicit TypedDataArray(const std::string& value)
-        : m_type_index{typeid(const char)}, m_size{value.size() + 1}, m_shape{value.size() + 1}, m_owning{true}
+        : m_type_index{typeid(char)}, m_size{value.size()}, m_shape{value.size()}, m_owning{true}
     {
         m_buffer = new char[m_size * sizeof(char)];
         std::memcpy(m_buffer, value.data(), m_size);
@@ -225,6 +240,8 @@ class TypedDataArray
         switch (type_index_map(m_type_index)) {
             case DataType::Unknown:
                 throw std::runtime_error{"unknown data type"};
+            case DataType::Char:
+                return sizeof(char);
             case DataType::Short:
                 return sizeof(short);
             case DataType::Int:
@@ -233,6 +250,8 @@ class TypedDataArray
                 return sizeof(long);
             case DataType::Int64:
                 return sizeof(int64_t);
+            case DataType::UChar:
+                return sizeof(unsigned char);
             case DataType::UShort:
                 return sizeof(unsigned short);
             case DataType::UInt:
@@ -247,6 +266,8 @@ class TypedDataArray
                 return sizeof(double);
         }
     }
+
+    [[nodiscard]] std::string to_string() const;
 
     // Moveable but not copyable
     TypedDataArray(const TypedDataArray&) = delete;

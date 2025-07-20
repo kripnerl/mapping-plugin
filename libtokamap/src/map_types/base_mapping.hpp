@@ -1,16 +1,18 @@
 #pragma once
 
-#include <nlohmann/json.hpp>
 #include <cstdint>
+#include <nlohmann/json.hpp>
 
 #include "map_arguments.hpp"
 
-namespace libtokamap {
+namespace libtokamap
+{
 
-enum class MappingType : uint8_t { VALUE, PLUGIN, SLICE, EXPR, CUSTOM, DIM };
+enum class MappingType : uint8_t { UNKNOWN, VALUE, DATA_SOURCE, SLICE, EXPR, CUSTOM, DIM };
 
-NLOHMANN_JSON_SERIALIZE_ENUM(MappingType, {{MappingType::VALUE, "VALUE"},
-                                           {MappingType::PLUGIN, "PLUGIN"},
+NLOHMANN_JSON_SERIALIZE_ENUM(MappingType, {{MappingType::UNKNOWN, ""}, // will default to this on no match
+                                           {MappingType::VALUE, "VALUE"},
+                                           {MappingType::DATA_SOURCE, "DATA_SOURCE"},
                                            {MappingType::SLICE, "SLICE"},
                                            {MappingType::EXPR, "EXPR"},
                                            {MappingType::CUSTOM, "CUSTOM"},

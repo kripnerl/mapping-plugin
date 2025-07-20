@@ -24,7 +24,7 @@ enum class LogLevel : uint8_t { DEBUG, INFO, WARNING, ERROR };
 
 inline int log(LogLevel log_level, std::string_view log_msg)
 {
-    const char* log_env_option = getenv("libtokamap_SUBSET_LOGGING");
+    const char* log_env_option = getenv("LIBTOKAMAP_SUBSET_LOGGING");
     if (log_env_option == nullptr or std::stoi(log_env_option) <= 0) {
         return 0;
     }

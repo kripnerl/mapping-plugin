@@ -17,10 +17,11 @@ namespace libtokamap
 
 using DataSourceArgs = std::unordered_map<std::string, nlohmann::json>;
 
-class DataSource {
-public:
+class DataSource
+{
+  public:
     DataSource() = default;
-    virtual TypedDataArray get(const DataSourceArgs& map_args, const MapArguments& arguments, libtokamap::RamCache* ram_cache) = 0;
+    virtual TypedDataArray get(const DataSourceArgs& map_args, const MapArguments& arguments, RamCache* ram_cache) = 0;
     virtual ~DataSource() = default;
 
     DataSource(DataSource&& other) = default;
@@ -34,29 +35,15 @@ class DataSourceMapping : public Mapping
   public:
     DataSourceMapping() = delete;
     DataSourceMapping(const std::string& data_source_name, DataSourceArgs data_source_args, std::optional<float> offset,
-                      std::optional<float> scale, std::optional<std::string> slice, std::shared_ptr<libtokamap::RamCache> ram_cache)
-        : m_data_source_args{std::move(data_source_args)}
-        , m_offset{offset}
-        , m_scale{scale}
-        , m_slice{std::move(slice)}
-        , m_ram_cache{std::move(ram_cache)}
-        , m_cache_enabled(m_ram_cache != nullptr)
-    {
-        if (m_data_sources.count(data_source_name) == 0) {
-            throw std::runtime_error{ "data source " + data_source_name + " not registered" };
-        }
-        m_data_source = m_data_sources[data_source_name].get();
-    }
+                      std::optional<float> scale, std::optional<std::string> slice,
+                      std::shared_ptr<libtokamap::RamCache> ram_cache);
 
     static void register_data_source(const std::string& name, std::unique_ptr<DataSource> data_source)
     {
         m_data_sources[name] = std::move(data_source);
     }
 
-    static void unregister_data_source(const std::string& name)
-    {
-        m_data_sources.erase(name);
-    }
+    static void unregister_data_source(const std::string& name) { m_data_sources.erase(name); }
 
     [[nodiscard]] TypedDataArray map(const MapArguments& arguments) const override;
 
