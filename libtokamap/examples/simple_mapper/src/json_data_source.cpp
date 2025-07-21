@@ -1,6 +1,4 @@
 #include "json_data_source.hpp"
-#include "map_types/map_arguments.hpp"
-#include "utils/algorithm.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -11,11 +9,14 @@
 #include <fstream>
 #include <libtokamap.hpp>
 #include <nlohmann/json.hpp>
-#include <ranges>
 #include <stdexcept>
 #include <string>
-#include <string_view>
 #include <vector>
+
+#include "map_types/map_arguments.hpp"
+#include "utils/algorithm.hpp"
+
+using namespace std::string_literals;
 
 namespace
 {
@@ -49,7 +50,7 @@ libtokamap::TypedDataArray parse(const nlohmann::json& value)
         }
         // returning a vector of strings so we can count them using a DIMENSION map type
         std::vector<std::string> vector(value.size());
-        std::ranges::fill(vector.begin(), vector.end(), std::string{"<object>"});
+        std::ranges::fill(vector.begin(), vector.end(), "<object>"s);
         return libtokamap::TypedDataArray{vector};
     }
     throw std::runtime_error{"invalid json value"};
