@@ -10,8 +10,6 @@ set( CMAKE_CXX_STANDARD 20 )
 set( CMAKE_CXX_STANDARD_REQUIRED ON )
 set( CMAKE_CXX_EXTENSIONS OFF )
 
-find_package( Boost REQUIRED )
-
 set( TEST_SOURCES
     src/data_source_mapping_test.cpp
     src/indices_test.cpp
@@ -46,7 +44,6 @@ target_link_libraries( libtokamap_tests
     Catch2::Catch2WithMain
     test_helpers
     LibTokaMap::libtokamap
-    Boost::boost
 )
 
 # Test helpers library

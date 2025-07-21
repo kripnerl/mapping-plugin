@@ -12,3 +12,5 @@
 - [ ] Add C++20 template constraints
 - [ ] Replace std::string{} with string_literals
 - [ ] Fix logging
+- [ ] Add tests for parse_slices
+- [ ] Replace gsl::span with std::span

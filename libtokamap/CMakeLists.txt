@@ -5,8 +5,6 @@
 #     LANGUAGES CXX
 # )
 
-find_package( Boost REQUIRED )
-
 # Specify C++ standard for all targets
 set( CMAKE_CXX_STANDARD 20 )
 set( CMAKE_CXX_STANDARD_REQUIRED ON )
@@ -73,7 +71,6 @@ configure_file(
 )
 
 add_library( libtokamap ${SOURCES} )
-target_link_libraries( libtokamap PUBLIC Boost::boost )
 target_include_directories( libtokamap
     PRIVATE
       ${CMAKE_CURRENT_SOURCE_DIR}/src

@@ -4,6 +4,7 @@
 #include <vector>
 #include <deque>
 #include <string>
+#include <string_view>
 #include <ctre/ctre.hpp>
 
 static constexpr auto indices_re = ctll::fixed_string{ R"(\[(\d+)\])" };
@@ -15,18 +16,18 @@ static constexpr auto indices_re = ctll::fixed_string{ R"(\[(\d+)\])" };
  * @return {indices, processed_tokens} pair of the indices vector and tokens
  */
 std::pair<std::vector<int>, std::deque<std::string>>
-libtokamap::extract_indices(const std::deque<std::string>& path_tokens)
+libtokamap::extract_indices(const std::deque<std::string_view>& path_tokens)
 {
     std::vector<int> indices;
     std::deque<std::string> processed_tokens;
 
     for (const auto& token : path_tokens) {
         std::string result;
-        auto last_pos = token.begin();
+        const auto* last_pos = token.begin();
 
         for (auto match : ctre::search_all<indices_re>(token)) {
-            auto start = match.get<0>().begin();
-            auto end = match.get<0>().end();
+            const auto* start = match.get<0>().begin();
+            const auto* end = match.get<0>().end();
 
             auto num = match.get<1>().to_string();
             indices.push_back(std::stoi(num));

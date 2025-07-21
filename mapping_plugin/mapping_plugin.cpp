@@ -1,6 +1,5 @@
 #include "mapping_plugin.h"
 
-#include <boost/algorithm/string.hpp>
 #include <chrono>
 #include <cstdint>
 #include <cstdlib>
@@ -15,6 +14,7 @@
 #include <string>
 #include <string_view>
 #include <typeindex>
+#include <utility>
 
 // LibTokaMap includes
 #include <handlers/mapping_handler.hpp>

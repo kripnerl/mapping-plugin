@@ -1,6 +1,5 @@
 #include "syntax_parser.hpp"
 
-#include <boost/algorithm/string.hpp>
 #include <ctre/ctre.hpp>
 #include <nlohmann/json.hpp>
 #include <stack>

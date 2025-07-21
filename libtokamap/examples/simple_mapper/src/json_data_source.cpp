@@ -1,19 +1,21 @@
 #include "json_data_source.hpp"
 #include "map_types/map_arguments.hpp"
+#include "utils/algorithm.hpp"
 
 #include <algorithm>
-#include <boost/algorithm/string.hpp>
 #include <cstddef>
 #include <cstdlib>
+#include <ctre/ctre.hpp>
 #include <deque>
 #include <filesystem>
 #include <fstream>
 #include <libtokamap.hpp>
 #include <nlohmann/json.hpp>
+#include <ranges>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
-#include <ctre/ctre.hpp>
 
 namespace
 {
@@ -84,7 +86,7 @@ libtokamap::TypedDataArray JSONDataSource::get(const libtokamap::DataSourceArgs&
     std::string signal = map_args.at("signal");
 
     std::deque<std::string> tokens;
-    boost::split(tokens, signal, boost::is_any_of("/"));
+    libtokamap::split(tokens, signal, "/");
 
     nlohmann::json& value = data;
     while (!tokens.empty()) {

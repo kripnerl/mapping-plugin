@@ -1,6 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include <boost/range/algorithm_ext/iota.hpp>
 #include <utils/subset.hpp>
 #include <vector>
 #include <cstddef>

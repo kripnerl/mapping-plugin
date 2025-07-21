@@ -1,7 +1,7 @@
 #include "mapping_handler.hpp"
 
-#include <boost/algorithm/string.hpp>
-#include <boost/algorithm/string/case_conv.hpp>
+#include <algorithm>
+#include <cctype>
 #include <cstddef>
 #include <cstdint>
 #include <cxxabi.h>
@@ -15,9 +15,11 @@
 #include <nlohmann/json.hpp>
 #include <optional>
 #include <ostream>
+#include <ranges>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <typeindex>
 #include <unordered_map>
@@ -32,6 +34,7 @@
 #include "map_types/expr_mapping.hpp"
 #include "map_types/map_arguments.hpp"
 #include "map_types/value_mapping.hpp"
+#include "utils/algorithm.hpp"
 #include "utils/indices.hpp"
 #include "utils/ram_cache.hpp"
 #include "utils/syntax_parser.hpp"
@@ -176,8 +179,8 @@ libtokamap::TypedDataArray libtokamap::MappingHandler::map(const std::string& ma
                                                            std::type_index data_type, int rank,
                                                            const nlohmann::json& extra_attributes)
 {
-    std::deque<std::string> path_tokens;
-    boost::split(path_tokens, path, boost::is_any_of("/"));
+    std::deque<std::string_view> path_tokens;
+    libtokamap::split(path_tokens, path, "/");
     if (path_tokens.empty()) {
         throw std::runtime_error{"IDS path could not be split"};
     }
@@ -189,7 +192,7 @@ libtokamap::TypedDataArray libtokamap::MappingHandler::map(const std::string& ma
 
     // Use lowercase machine name for find mapping files
     std::string machine_string = mapping;
-    boost::to_lower(machine_string);
+    to_lower(machine_string);
 
     // Load mappings based off IDS name
     // Returns a reference to IDS map objects and corresponding globals
@@ -456,7 +459,7 @@ std::string find_mapping(libtokamap::IDSMapRegister& mappings, const std::string
     }
 
     // Check for last # replaced with index
-    std::string new_path = boost::replace_last_copy(path, "#", std::to_string(indices.back()));
+    std::string new_path = libtokamap::replace_last_copy(path, "#", std::to_string(indices.back()));
     if (mappings.contains(new_path)) {
         return new_path;
     }
@@ -477,8 +480,8 @@ void init_data_source_mapping(libtokamap::IDSMapRegister& map_reg, const std::st
     if (!value.contains("DATA_SOURCE")) {
         throw std::runtime_error{"required DATA_SOURCE argument not provided in DATA_SOURCE mapping '" + key + "'"};
     }
-    auto data_source_name = value["DATA_SOURCE"].get<std::string>();
-    boost::to_upper(data_source_name);
+    std::string data_source_name = value["DATA_SOURCE"].get<std::string>();
+    libtokamap::to_upper(data_source_name);
 
     if (!value.contains("ARGS")) {
         throw std::runtime_error{"required ARGS argument not provided in DATA_SOURCE mapping '" + key + "'"};
@@ -565,13 +568,13 @@ std::string libtokamap::generate_map_path(std::deque<std::string>& path_tokens, 
         return {}; // Don't throw, go gentle into that good night
     }
 
-    std::string map_path = boost::algorithm::join(path_tokens, "/");
+    std::string map_path = libtokamap::join(path_tokens, "/");
     std::string found_path;
 
     if (!mappings.contains(map_path)) {
         if (sig_type == SignalType::TIME or sig_type == SignalType::DATA) {
             path_tokens.pop_back();
-            map_path = boost::algorithm::join(path_tokens, "/");
+            map_path = libtokamap::join(path_tokens, "/");
         }
         found_path = find_mapping(mappings, map_path, indices, full_path);
     } else {
