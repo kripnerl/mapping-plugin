@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <cstdlib>
 #include <ctre/ctre.hpp>
-#include <gsl/gsl-lite.hpp>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -156,7 +155,7 @@ void apply_scale_offset(libtokamap::TypedDataArray& input, std::optional<float> 
 } // namespace
 
 void libtokamap::subset::update_array(libtokamap::TypedDataArray& input, const std::optional<std::string>& slice,
-                                        std::optional<float> scale_factor, std::optional<float> offset)
+                                      std::optional<float> scale_factor, std::optional<float> offset)
 {
     apply_subset(input, slice);
     apply_scale_offset(input, scale_factor, offset);

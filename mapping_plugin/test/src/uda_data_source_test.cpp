@@ -150,7 +150,7 @@ TEST_CASE("Slicing and offsetting returned data", "[plugin_mapping][uda_data_sou
         REQUIRE(array.shape() == std::vector<size_t>{array_size});
         std::vector<float> expected(array_size);
         boost::range::iota(expected, 0);
-        REQUIRE(array.span<float>() == gsl::span<float>{expected});
+        REQUIRE(array.as_vector<float>() == expected);
     }
 
     SECTION("Subset returned array")
@@ -176,6 +176,6 @@ TEST_CASE("Slicing and offsetting returned data", "[plugin_mapping][uda_data_sou
         std::vector<float> expected(range_len);
         boost::range::iota(expected, 0.0);
         boost::range::transform(expected, expected.begin(), [](float val) { return (val * scale) + offset; });
-        REQUIRE(array.span<float>() == gsl::span<float>{expected});
+        REQUIRE(array.as_vector<float>() == expected);
     }
 }

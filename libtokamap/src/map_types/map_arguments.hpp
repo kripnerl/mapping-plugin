@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include <gsl/gsl-lite.hpp>
 #include <limits>
 #include <memory>
 #include <nlohmann/json.hpp>
@@ -22,7 +21,21 @@ namespace libtokamap
 
 enum class SignalType : uint8_t { DEFAULT, DATA, TIME, ERROR, DIM, INVALID };
 
-enum class DataType : uint8_t { Unknown, Char, Short, Int, Long, Int64, UChar, UShort, UInt, ULong, UInt64, Float, Double };
+enum class DataType : uint8_t {
+    Unknown,
+    Char,
+    Short,
+    Int,
+    Long,
+    Int64,
+    UChar,
+    UShort,
+    UInt,
+    ULong,
+    UInt64,
+    Float,
+    Double
+};
 
 inline DataType type_index_map(std::type_index type_index)
 {
@@ -162,10 +175,10 @@ class TypedDataArray
             throw std::runtime_error{"invalid type given to apply"};
         }
 
-        gsl::span<T> data{reinterpret_cast<T*>(m_buffer), m_size};
-        for (T& element : data) {
-            element *= scale_factor;
-            element += offset;
+        auto* data = reinterpret_cast<T*>(m_buffer);
+        for (size_t idx = 0; idx < m_size; ++idx) {
+            data[idx] *= scale_factor;
+            data[idx] += offset;
         }
     }
 
@@ -194,16 +207,16 @@ class TypedDataArray
             new_size *= len;
         }
 
-        gsl::span<T> array{reinterpret_cast<T*>(m_buffer), m_size};
+        auto* array = reinterpret_cast<T*>(m_buffer);
 
         auto* new_buffer = new char[sizeof(T) * new_size];
-        gsl::span<T> new_array{reinterpret_cast<T*>(new_buffer), new_size};
+        auto* new_array = reinterpret_cast<T*>(new_buffer);
 
         auto offsets = compute_offsets(m_shape, subsets);
-        size_t n = 0;
+        size_t idx = 0;
         for (const auto offset : offsets) {
-            new_array[n] = array[offset];
-            ++n;
+            new_array[idx] = array[offset];
+            ++idx;
         }
 
         if (m_owning) {
@@ -227,12 +240,23 @@ class TypedDataArray
 
     [[nodiscard]] char* buffer() const { return m_buffer; }
 
-    template <typename T> [[nodiscard]] gsl::span<T> span() const
+#if __cplusplus >= 202002L
+    template <typename T> [[nodiscard]] std::span<T> span() const
     {
         if (m_type_index != std::type_index{typeid(T)}) {
             throw std::runtime_error{"invalid type given to span"};
         }
-        return gsl::span<T>{reinterpret_cast<T*>(m_buffer), m_size};
+        return std::span<T>{reinterpret_cast<T*>(m_buffer), m_size};
+    }
+#endif
+
+    template <typename T> [[nodiscard]] std::vector<T> as_vector() const
+    {
+        if (m_type_index != std::type_index{typeid(T)}) {
+            throw std::runtime_error{"invalid type given to span"};
+        }
+        const T* ptr = reinterpret_cast<T*>(m_buffer);
+        return std::vector<T>{ptr, ptr + m_size};
     }
 
     [[nodiscard]] size_t element_size()

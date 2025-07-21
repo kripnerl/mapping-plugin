@@ -1,16 +1,16 @@
-#include <algorithm>
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <cstddef>
-#include <gsl/gsl-lite.hpp>
 #include <iterator>
 #include <ranges>
+#include <span>
 #include <typeindex>
-#include <utils/subset.hpp>
 #include <vector>
 
 #include "map_types/map_arguments.hpp"
 #include "utils/algorithm.hpp"
+#include "utils/subset.hpp"
 
 TEST_CASE("Test create array")
 {
@@ -35,7 +35,7 @@ TEST_CASE("Test create array")
         REQUIRE(array.size() == len);
         REQUIRE(array.shape() == std::vector<size_t>{len});
         REQUIRE(array.type_index() == std::type_index{typeid(float)});
-        REQUIRE(array.span<float>() == gsl::span{vec});
+        REQUIRE(array.as_vector<float>() == vec);
     }
 
     SECTION("2d array")
@@ -50,7 +50,7 @@ TEST_CASE("Test create array")
         REQUIRE(array.size() == len);
         REQUIRE(array.shape() == std::vector<size_t>{dim1, dim2});
         REQUIRE(array.type_index() == std::type_index{typeid(float)});
-        REQUIRE(array.span<float>() == gsl::span{vec});
+        REQUIRE(array.as_vector<float>() == vec);
     }
 }
 
@@ -99,7 +99,7 @@ TEST_CASE("Test array slice")
 
             std::vector<float> expected(range_len);
             libtokamap::iota(expected, 0);
-            REQUIRE(array.span<float>() == gsl::span<float>{expected});
+            REQUIRE(array.as_vector<float>() == expected);
         }
 
         SECTION("select strided range")
@@ -119,7 +119,7 @@ TEST_CASE("Test array slice")
             std::vector<float> expected(range_len);
             libtokamap::iota(expected, 0);
             libtokamap::transform_inplace(expected, [](float val) { return val * stride; });
-            REQUIRE(array.span<float>() == gsl::span<float>{expected});
+            REQUIRE(array.as_vector<float>() == expected);
         }
     }
 
@@ -165,7 +165,7 @@ TEST_CASE("Test array slice")
 
             std::vector<float> expected(dim2);
             libtokamap::iota(expected, dim1 * element1);
-            REQUIRE(array.span<float>() == gsl::span{expected});
+            REQUIRE(array.as_vector<float>() == expected);
         }
 
         SECTION("select range slice in first dimension")
@@ -187,7 +187,7 @@ TEST_CASE("Test array slice")
 
             std::vector<float> expected(dim2 * range_len);
             libtokamap::iota(expected, 0);
-            REQUIRE(array.span<float>() == gsl::span{expected});
+            REQUIRE(array.as_vector<float>() == expected);
         }
 
         SECTION("select range slice in second dimension")
@@ -215,7 +215,7 @@ TEST_CASE("Test array slice")
                     ++idx;
                 }
             }
-            REQUIRE(array.span<float>() == gsl::span{expected});
+            REQUIRE(array.as_vector<float>() == expected);
         }
 
         SECTION("select range slice in both dimensions")
@@ -249,7 +249,7 @@ TEST_CASE("Test array slice")
                     ++idx;
                 }
             }
-            REQUIRE(array.span<float>() == gsl::span{expected});
+            REQUIRE(array.as_vector<float>() == expected);
         }
     }
 }
@@ -299,7 +299,7 @@ TEST_CASE("Test array apply scale and offset")
             array.apply<float>(2.0, 0.0);
             std::vector<float> expected;
             libtokamap::transform(vec, expected, [](float value) { return value * 2.0; });
-            REQUIRE(array.span<float>() == gsl::span{expected});
+            REQUIRE(array.as_vector<float>() == expected);
         }
 
         SECTION("offset")
@@ -307,7 +307,7 @@ TEST_CASE("Test array apply scale and offset")
             array.apply<float>(1.0, 1.0);
             std::vector<float> expected;
             libtokamap::transform(vec, expected, [](float value) { return value + 1.0; });
-            REQUIRE(array.span<float>() == gsl::span{expected});
+            REQUIRE(array.as_vector<float>() == expected);
         }
 
         SECTION("scale and offset")
@@ -315,7 +315,7 @@ TEST_CASE("Test array apply scale and offset")
             array.apply<float>(2.0, 1.0);
             std::vector<float> expected;
             libtokamap::transform(vec, expected, [](float value) { return (value * 2.0) + 1.0; });
-            REQUIRE(array.span<float>() == gsl::span{expected});
+            REQUIRE(array.as_vector<float>() == expected);
         }
     }
 
@@ -333,7 +333,7 @@ TEST_CASE("Test array apply scale and offset")
             array.apply<float>(2.0, 0.0);
             std::vector<float> expected;
             libtokamap::transform(vec, expected, [](float value) { return value * 2.0; });
-            REQUIRE(array.span<float>() == gsl::span{expected});
+            REQUIRE(array.as_vector<float>() == expected);
         }
 
         SECTION("offset")
@@ -341,7 +341,7 @@ TEST_CASE("Test array apply scale and offset")
             array.apply<float>(1.0, 1.0);
             std::vector<float> expected;
             libtokamap::transform(vec, expected, [](float value) { return value + 1.0; });
-            REQUIRE(array.span<float>() == gsl::span{expected});
+            REQUIRE(array.as_vector<float>() == expected);
         }
 
         SECTION("scale and offset")
@@ -349,7 +349,7 @@ TEST_CASE("Test array apply scale and offset")
             array.apply<float>(2.0, 1.0);
             std::vector<float> expected;
             libtokamap::transform(vec, expected, [](float value) { return (value * 2.0) + 1.0; });
-            REQUIRE(array.span<float>() == gsl::span{expected});
+            REQUIRE(array.as_vector<float>() == expected);
         }
     }
 }

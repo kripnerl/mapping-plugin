@@ -1,6 +1,5 @@
 #include "mapping_handler.hpp"
 
-#include <algorithm>
 #include <cctype>
 #include <cstddef>
 #include <cstdint>
@@ -16,6 +15,7 @@
 #include <optional>
 #include <ostream>
 #include <ranges>
+#include <span>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -26,7 +26,6 @@
 #include <utility>
 #include <vector>
 
-#include "gsl/gsl-lite.hpp"
 #include "map_types/base_mapping.hpp"
 #include "map_types/custom_mapping.hpp"
 #include "map_types/data_source_mapping.hpp"
@@ -68,7 +67,7 @@ std::ostream& operator<<(std::ostream& out, const std::vector<size_t>& shape)
 
 template <typename T>
     requires(std::is_arithmetic_v<T>)
-std::ostream& operator<<(std::ostream& out, const gsl::span<const T>& data)
+std::ostream& operator<<(std::ostream& out, const std::span<const T>& data)
 {
     out << "[";
     out << std::setprecision(3);
@@ -90,7 +89,7 @@ std::ostream& operator<<(std::ostream& out, const gsl::span<const T>& data)
 
 template <typename T> void print(std::ostream& out, const char* buffer, size_t size)
 {
-    gsl::span<const T> data{reinterpret_cast<const T*>(buffer), size};
+    std::span<const T> data{std::bit_cast<const T*>(buffer), size};
     out << ", data=" << data;
 }
 } // namespace

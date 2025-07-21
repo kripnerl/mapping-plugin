@@ -1,7 +1,7 @@
 - [ ] Make mapping values case insensitive
 - [ ] Remove references to IDSs
-- [ ] Replace reinterpret_cast with bit_cast
-- [ ] Replace boost::split with std::views::split
+- [x] ~~Replace reinterpret_cast with bit_cast~~ (still exist in map_arguments.hpp)
+- [x] ~~Replace boost::split with std::views::split~~
 - [ ] Switch from using std::type_index to DataType enum?
 - [ ] Add exception types
 - [ ] Add README and docs for library
@@ -13,4 +13,4 @@
 - [ ] Replace std::string{} with string_literals
 - [ ] Fix logging
 - [ ] Add tests for parse_slices
-- [ ] Replace gsl::span with std::span
+- [x] ~~Replace gsl::span with std::span~~

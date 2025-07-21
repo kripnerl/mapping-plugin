@@ -82,7 +82,7 @@ template <typename T> TypedDataArray ExprMapping::eval_expr(const MapArguments& 
             return array;
         }
 
-        const T* raw_data = reinterpret_cast<const T*>(array.buffer());
+        const T* raw_data = std::bit_cast<const T*>(array.buffer());
         size_t data_size = array.size();
 
         if (data_size > 1) {
