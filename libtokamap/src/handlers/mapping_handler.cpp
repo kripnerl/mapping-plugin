@@ -208,7 +208,6 @@ libtokamap::TypedDataArray libtokamap::MappingHandler::map(const std::string& ma
     // magnetics/coil/#/current -> coil/#/current
     new_tokens.pop_front();
 
-    const auto sig_type = deduce_signal_type(new_tokens.back());
     std::string const map_path = generate_map_path(new_tokens, indices, mappings, path);
     if (map_path.empty()) {
         throw std::runtime_error{"failed to find mapping for '" + path + "'"};
@@ -221,7 +220,7 @@ libtokamap::TypedDataArray libtokamap::MappingHandler::map(const std::string& ma
         attributes[key] = value;
     }
 
-    const libtokamap::MapArguments map_arguments{mappings, attributes, sig_type, data_type, rank};
+    const libtokamap::MapArguments map_arguments{mappings, attributes, data_type, rank};
 
     return mappings.at(map_path)->map(map_arguments);
 }
@@ -562,19 +561,10 @@ void libtokamap::MappingHandler::init_mappings(const MachineName& machine, const
 std::string libtokamap::generate_map_path(std::deque<std::string>& path_tokens, const std::vector<int>& indices,
                                           IDSMapRegister& mappings, const std::string& full_path)
 {
-    const auto sig_type = deduce_signal_type(path_tokens.back());
-    if (sig_type == SignalType::INVALID) {
-        return {}; // Don't throw, go gentle into that good night
-    }
-
     std::string map_path = libtokamap::join(path_tokens, "/");
     std::string found_path;
 
     if (!mappings.contains(map_path)) {
-        if (sig_type == SignalType::TIME or sig_type == SignalType::DATA) {
-            path_tokens.pop_back();
-            map_path = libtokamap::join(path_tokens, "/");
-        }
         found_path = find_mapping(mappings, map_path, indices, full_path);
     } else {
         found_path = map_path;

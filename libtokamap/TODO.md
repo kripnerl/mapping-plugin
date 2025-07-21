@@ -8,7 +8,7 @@
 - [ ] Tidy up DataSource get(...) arguments
 - [ ] Adding system packaging to CMake
 - [ ] Make mapping directory nesting configurable
-- [ ] Remove SignalType logic
+- [x] ~~Remove SignalType logic~~
 - [ ] Add C++20 template constraints
 - [ ] Replace std::string{} with string_literals
 - [ ] Fix logging

@@ -37,13 +37,12 @@ namespace
 {
 
 MapArguments
-make_map_arguments(const std::type_index data_type, const int rank,
-                   const SignalType sig_type = SignalType::DEFAULT)
+make_map_arguments(const std::type_index data_type, const int rank)
 {
     static std::unordered_map<std::string, std::unique_ptr<Mapping>> empty_entries;
     static nlohmann::json empty_global_data = nlohmann::json::object();
 
-    return MapArguments(empty_entries, empty_global_data, sig_type, data_type, rank);
+    return MapArguments(empty_entries, empty_global_data, data_type, rank);
 }
 
 int plugin_return_scalar(IDAM_PLUGIN_INTERFACE* interface)

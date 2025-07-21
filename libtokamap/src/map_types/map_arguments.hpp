@@ -19,8 +19,6 @@
 namespace libtokamap
 {
 
-enum class SignalType : uint8_t { DEFAULT, DATA, TIME, ERROR, DIM, INVALID };
-
 enum class DataType : uint8_t {
     Unknown,
     Char,
@@ -328,30 +326,14 @@ class Mapping;
 struct MapArguments {
     const std::unordered_map<std::string, std::unique_ptr<Mapping>>& entries;
     const nlohmann::json& global_data;
-    SignalType sig_type;
     std::type_index data_type;
     int rank;
 
     explicit MapArguments(const std::unordered_map<std::string, std::unique_ptr<Mapping>>& entries,
-                          const nlohmann::json& global_data, const SignalType sig_type, const std::type_index data_type,
-                          const int rank)
-        : entries{entries}, global_data{global_data}, sig_type{sig_type}, data_type{data_type}, rank{rank}
+                          const nlohmann::json& global_data, const std::type_index data_type, const int rank)
+        : entries{entries}, global_data{global_data}, data_type{data_type}, rank{rank}
     {
     }
 };
-
-/**
- * @brief Deduce the type of signal being requested/mapped,
- * currently using string comparisons
- *
- * The final_path_element for error can be either be error_upper
- * or error_lower so search for substring error.
- *
- * @param element_back_str requested IDS path suffix (eg. data, time, error).
- * @note if no string is supplied, SignalType set to invalid
- * @return SignalType Enum class containing the current signal type
- * [DEFAULT, INVALID, DATA, TIME, ERROR]
- */
-SignalType deduce_signal_type(std::string_view final_path_element);
 
 } // namespace libtokamap

@@ -80,28 +80,13 @@ std::string json_plugin::UDADataSource::get_request_str(const libtokamap::DataSo
 }
 
 bool json_plugin::UDADataSource::copy_from_cache(libtokamap::RamCache* ram_cache, DATA_BLOCK* data_block,
-                                                 const libtokamap::MapArguments& arguments,
+                                                 const libtokamap::MapArguments& /*arguments*/,
                                                  const std::string& request_str) const
 {
     if (!m_cache_enabled) {
         return false;
     }
-
-    auto signal_type = arguments.sig_type;
-
-    using libtokamap::SignalType;
-    switch (signal_type) {
-        case SignalType::DATA:
-            return json_plugin::copy_data_from_cache(*ram_cache, request_str, data_block);
-        case SignalType::ERROR:
-            return json_plugin::copy_error_high_from_cache(*ram_cache, request_str, data_block);
-        case SignalType::TIME:
-            return json_plugin::copy_time_from_cache(*ram_cache, request_str, data_block);
-        case SignalType::DIM:
-            return json_plugin::copy_dim_from_cache(*ram_cache, request_str, 1, data_block);
-        default:
-            return json_plugin::copy_from_cache(*ram_cache, request_str, data_block);
-    }
+    return json_plugin::copy_from_cache(*ram_cache, request_str, data_block);
 }
 
 int json_plugin::UDADataSource::call_plugins(DATA_BLOCK* data_block, const libtokamap::DataSourceArgs& data_source_args,
