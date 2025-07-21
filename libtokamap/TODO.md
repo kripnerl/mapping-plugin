@@ -5,3 +5,10 @@
 - [ ] Switch from using std::type_index to DataType enum?
 - [ ] Add exception types
 - [ ] Add README and docs for library
+- [ ] Tidy up DataSource get(...) arguments
+- [ ] Adding system packaging to CMake
+- [ ] Make mapping directory nesting configurable
+- [ ] Remove SignalType logic
+- [ ] Add C++20 template constraints
+- [ ] Replace std::string{} with string_literals
+- [ ] Fix logging

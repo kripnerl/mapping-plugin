@@ -3,57 +3,96 @@
 #include <boost/algorithm/string.hpp>
 #include <ctre/ctre.hpp>
 #include <nlohmann/json.hpp>
+#include <stack>
 #include <string>
+#include <string_view>
 
-static constexpr auto indices_re = ctll::fixed_string{R"(\{\{\s*(#\d+|.*\[#\d+\](\.\S+)?)\s*\}\})"};
-static constexpr auto simple_index_re = ctll::fixed_string{R"(#(\d+))"};
-static constexpr auto array_index_re = ctll::fixed_string{R"((.*)\[#(\d+)\](\.\S+)?)"};
-static constexpr auto subindices_re = ctll::fixed_string{R"(\((.*\[#(\d+)\](\.\S+))\))"};
+using namespace std::string_literals;
 
 namespace
 {
 
+constexpr auto indices_re = ctll::fixed_string{R"(\{\{\s*(#\d+|.*\[#\d+\](\.\S+)?)\s*\}\})"};
+constexpr auto simple_index_re = ctll::fixed_string{R"(#(\d+))"};
+constexpr auto array_index_re = ctll::fixed_string{R"((.*)\[#(\d+)\](\.\S+)?)"};
+constexpr auto subindices_re = ctll::fixed_string{R"(\((.*\[#(\d+)\](\.\S+))\))"};
+
 std::string expand_indices(const std::string& input)
 {
+    // Handle simple index directly
     if (auto match = ctre::match<simple_index_re>(input)) {
         return "indices." + match.get<1>().to_string();
     }
+
+    // Handle array index with possible nesting
     if (auto match = ctre::match<array_index_re>(input)) {
         std::string array = match.get<1>().to_string();
-        std::string index = match.get<2>().to_string();
-        std::string field = match.get<3>().to_string();
-        if (auto submatch = ctre::match<subindices_re>(array)) {
-            array = expand_indices(submatch.get<1>().to_string());
+        const std::string_view index = match.get<2>();
+        const std::string_view field = match.get<3>();
+
+        // Iteratively unwrap nested array indices
+        while (true) {
+            if (auto submatch = ctre::match<subindices_re>(array)) {
+                array = submatch.get<1>().to_string();
+            } else if (auto nested_array = ctre::match<array_index_re>(array)) {
+                const std::string_view subarray = nested_array.get<1>();
+                const std::string_view subindex = nested_array.get<2>();
+                const std::string subfield = nested_array.get<3>().to_string();
+
+                array = "at("s.append(subarray).append(", indices.").append(subindex).append(")");
+                if (!subfield.empty()) {
+                    array += subfield;
+                }
+            } else {
+                break;
+            }
         }
-        std::string result;
-        result.append("at(").append(array).append(", indices.").append(index).append(")");
+
+        std::string result = "at("s.append(array).append(", indices.").append(index).append(")");
         if (!field.empty()) {
-            result.append(field);
+            result += field;
         }
         return result;
     }
+
+    // Fallback if no match
     return input;
 }
 
-void walk_json(nlohmann::json& json)
+std::string process_string_node(std::string value) {
+    std::string result;
+    auto iter = value.begin();
+
+    for (const auto& match : ctre::search_all<indices_re>(value)) {
+        std::string prefix{iter, match.begin()};
+        auto expression = match.get<1>().to_string();
+        result.append(prefix).append("{{ ").append(expand_indices(expression)).append(" }}");
+        iter = match.end();
+    }
+
+    result.append(std::string{iter, value.end()});
+    return result;
+}
+
+void walk_json(nlohmann::json& root)
 {
-    for (const auto& element : json.items()) {
-        // skip MAP_TYPE elements
-        if (element.key() != "MAP_TYPE") {
-            if (element.value().is_string()) {
-                std::string value = element.value();
-                std::string result;
-                auto iter = value.begin();
-                for (const auto& match : ctre::search_all<indices_re>(value)) {
-                    std::string prefix{iter, match.begin()};
-                    auto expression = match.get<1>().to_string();
-                    result.append(prefix).append("{{ ").append(expand_indices(expression)).append(" }}");
-                    iter = match.end();
-                }
-                result.append(std::string{iter, value.end()});
-                element.value() = result;
-            } else if (element.value().is_object()) {
-                walk_json(element.value());
+    std::stack<nlohmann::json*> stack;
+    stack.push(&root);
+
+    while (!stack.empty()) {
+        nlohmann::json* current = stack.top();
+        stack.pop();
+
+        for (const auto& element : current->items()) {
+            if (element.key() == "MAP_TYPE") {
+                continue; // Skip MAP_TYPE elements
+            }
+
+            auto& node = element.value();
+            if (node.is_string()) {
+                node = process_string_node(node);
+            } else if (node.is_object()) {
+                stack.push(&node);
             }
         }
     }
@@ -79,14 +118,6 @@ nlohmann::json libtokamap::parse(nlohmann::json input)
 
     // walk object looking for strings with #N
     walk_json(input);
-
-    // @path => { "MAP_TYPE": "FORWARD", "VALUE": "path" }
-    // X (number, string) => { "MAP_TYPE": "VALUE", "VALUE": X }
-
-    // walk for strings
-    // "{{ #N }}" => "{{ indices.N }}"
-    // "{{ A[#N].B }}" => "{{ at(A, indices.N).B }}"
-    // "{{ (A)[#N].B }}" => parse(A) + "[#N].B"
 
     return input;
 }
