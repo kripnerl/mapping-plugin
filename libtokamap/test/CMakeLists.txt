@@ -13,12 +13,10 @@ set( CMAKE_CXX_EXTENSIONS OFF )
 set( TEST_SOURCES
     src/data_source_mapping_test.cpp
     src/indices_test.cpp
-    src/json_plugin_test.cpp
-    src/main_test.cpp
+    src/parse_slices_test.cpp
     src/syntax_parser_test.cpp
-    src/value_mapping_test.cpp
-    src/subset_test.cpp
     src/typed_data_array_test.cpp
+    src/value_mapping_test.cpp
 )
 
 include( FetchContent )

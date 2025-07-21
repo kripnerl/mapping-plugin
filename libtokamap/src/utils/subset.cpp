@@ -51,27 +51,13 @@ template <typename T> libtokamap::SubsetInfo parse_slice(const T& slice, size_t 
     throw std::runtime_error{"invalid subset: " + slice.to_string()};
 }
 
-std::vector<libtokamap::SubsetInfo> parse_slices(const std::string& slice, const std::vector<size_t>& shape)
-{
-    size_t dim_idx = 0;
-    std::vector<libtokamap::SubsetInfo> subsets;
-    for (const auto& token : ctre::search_all<token_re>(slice)) {
-        if (dim_idx == shape.size()) {
-            throw std::runtime_error{"to many slices provided"};
-        }
-        subsets.push_back(parse_slice(token.get<1>(), shape[dim_idx]));
-        ++dim_idx;
-    }
-    return subsets;
-}
-
 void apply_subset(libtokamap::TypedDataArray& input, const std::optional<std::string>& slice)
 {
     if (!slice) {
         return;
     }
 
-    std::vector<libtokamap::SubsetInfo> subset_info = parse_slices(slice.value(), input.shape());
+    std::vector<libtokamap::SubsetInfo> subset_info = libtokamap::parse_slices(slice.value(), input.shape());
     using libtokamap::DataType;
     switch (libtokamap::type_index_map(input.type_index())) {
         case DataType::Short:
@@ -154,8 +140,22 @@ void apply_scale_offset(libtokamap::TypedDataArray& input, std::optional<float> 
 
 } // namespace
 
-void libtokamap::subset::update_array(libtokamap::TypedDataArray& input, const std::optional<std::string>& slice,
-                                      std::optional<float> scale_factor, std::optional<float> offset)
+std::vector<libtokamap::SubsetInfo> libtokamap::parse_slices(const std::string& slice, const std::vector<size_t>& shape)
+{
+    size_t dim_idx = 0;
+    std::vector<libtokamap::SubsetInfo> subsets;
+    for (const auto& token : ctre::search_all<token_re>(slice)) {
+        if (dim_idx == shape.size()) {
+            throw std::runtime_error{"to many slices provided"};
+        }
+        subsets.push_back(parse_slice(token.get<1>(), shape[dim_idx]));
+        ++dim_idx;
+    }
+    return subsets;
+}
+
+void libtokamap::update_array(libtokamap::TypedDataArray& input, const std::optional<std::string>& slice,
+                              std::optional<float> scale_factor, std::optional<float> offset)
 {
     apply_subset(input, slice);
     apply_scale_offset(input, scale_factor, offset);

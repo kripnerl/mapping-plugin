@@ -10,7 +10,7 @@
 - [ ] Make mapping directory nesting configurable
 - [x] ~~Remove SignalType logic~~
 - [ ] Add C++20 template constraints
-- [ ] Replace std::string{} with string_literals
+- [x] ~~Replace std::string{} with string_literals~~
 - [ ] Fix logging
-- [ ] Add tests for parse_slices
+- [x] ~~Add tests for parse_slices~~
 - [x] ~~Replace gsl::span with std::span~~

@@ -24,7 +24,7 @@ libtokamap::TypedDataArray libtokamap::DataSourceMapping::map(const MapArguments
         }
     }
     TypedDataArray array = m_data_source->get(args, arguments, m_ram_cache.get());
-    subset::update_array(array, m_slice, m_scale, m_offset);
+    update_array(array, m_slice, m_scale, m_offset);
     return array;
 }
 

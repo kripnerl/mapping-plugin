@@ -1,7 +1,6 @@
 #pragma once
 
 #include <chrono>
-#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <ctime>
@@ -11,11 +10,14 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "map_types/map_arguments.hpp"
 
-namespace libtokamap::subset
+namespace libtokamap
 {
+
+std::vector<libtokamap::SubsetInfo> parse_slices(const std::string& slice, const std::vector<size_t>& shape);
 
 void update_array(TypedDataArray& input, const std::optional<std::string>& slice, std::optional<float> scale_factor,
                   std::optional<float> offset);
@@ -62,4 +64,4 @@ inline int log(LogLevel log_level, std::string_view log_msg)
     return 0;
 }
 
-} // namespace libtokamap::subset
+} // namespace libtokamap
