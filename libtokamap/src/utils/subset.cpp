@@ -7,6 +7,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include "exceptions/exceptions.hpp"
 #include <vector>
 
 #include "map_types/map_arguments.hpp"
@@ -33,7 +34,7 @@ template <typename T> libtokamap::SubsetInfo parse_slice(const T& slice, size_t 
         int64_t index = to_int(index_match.template get<1>().to_optional_string(), 0);
         auto subset = libtokamap::SubsetInfo{index, index + 1, 1, dimension};
         if (!subset.validate()) {
-            throw std::runtime_error{"invalid subset: " + slice.to_string()};
+            throw libtokamap::ProcessingError{"invalid subset: " + slice.to_string()};
         }
         return subset;
     }
@@ -44,11 +45,11 @@ template <typename T> libtokamap::SubsetInfo parse_slice(const T& slice, size_t 
         int64_t stride = to_int(slice_match.template get<5>().to_optional_string(), 1);
         auto subset = libtokamap::SubsetInfo{start, stop, stride, dimension};
         if (!subset.validate()) {
-            throw std::runtime_error{"invalid subset: " + slice.to_string()};
+            throw libtokamap::ProcessingError{"invalid subset: " + slice.to_string()};
         }
         return subset;
     }
-    throw std::runtime_error{"invalid subset: " + slice.to_string()};
+    throw libtokamap::ProcessingError{"invalid subset: " + slice.to_string()};
 }
 
 void apply_subset(libtokamap::TypedDataArray& input, const std::optional<std::string>& slice)
@@ -91,7 +92,7 @@ void apply_subset(libtokamap::TypedDataArray& input, const std::optional<std::st
             input.slice<double>(subset_info);
             break;
         default:
-            throw std::runtime_error{"unsupported data type"};
+            throw libtokamap::DataTypeError{"unsupported data type"};
     }
 }
 
@@ -134,7 +135,7 @@ void apply_scale_offset(libtokamap::TypedDataArray& input, std::optional<float> 
             input.apply<double>(scale_factor.value_or(1.0), offset.value_or(0.0));
             break;
         default:
-            throw std::runtime_error{"unsupported data type"};
+            throw libtokamap::DataTypeError{"unsupported data type"};
     }
 }
 
@@ -146,7 +147,7 @@ std::vector<libtokamap::SubsetInfo> libtokamap::parse_slices(const std::string& 
     std::vector<libtokamap::SubsetInfo> subsets;
     for (const auto& token : ctre::search_all<token_re>(slice)) {
         if (dim_idx == shape.size()) {
-            throw std::runtime_error{"to many slices provided"};
+            throw libtokamap::ParameterError{"to many slices provided"};
         }
         subsets.push_back(parse_slice(token.get<1>(), shape[dim_idx]));
         ++dim_idx;

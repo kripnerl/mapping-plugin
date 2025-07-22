@@ -26,6 +26,7 @@
 #include <utility>
 #include <vector>
 
+#include "exceptions/exceptions.hpp"
 #include "map_types/base_mapping.hpp"
 #include "map_types/custom_mapping.hpp"
 #include "map_types/data_source_mapping.hpp"
@@ -136,7 +137,7 @@ std::string libtokamap::TypedDataArray::to_string() const
             print<double>(out, m_buffer, m_size);
             break;
         default:
-            throw std::runtime_error{"unhandled data type: '" + ::to_string(m_type_index) + "'"};
+            throw libtokamap::DataTypeError{"unhandled data type: '" + ::to_string(m_type_index) + "'"};
     }
     out << " }";
     return out.str();
@@ -156,7 +157,7 @@ void libtokamap::MappingHandler::init(const nlohmann::json& config)
     }
 
     if (!config.contains("mapping_directory")) {
-        throw std::runtime_error{"mapping_directory not specified in config"};
+        throw libtokamap::ConfigurationError{"mapping_directory not specified in config"};
     }
     m_mapping_dir = config.at("mapping_directory").get<std::string>();
 
@@ -181,7 +182,7 @@ libtokamap::TypedDataArray libtokamap::MappingHandler::map(const std::string& ma
     std::deque<std::string_view> path_tokens;
     libtokamap::split(path_tokens, path, "/");
     if (path_tokens.empty()) {
-        throw std::runtime_error{"IDS path could not be split"};
+        throw libtokamap::PathError{"IDS path could not be split"};
     }
 
     auto [indices, new_tokens] = extract_indices(path_tokens);
@@ -199,7 +200,8 @@ libtokamap::TypedDataArray libtokamap::MappingHandler::map(const std::string& ma
     const auto maybe_mappings = read_mappings(machine_string, ids_name, extra_attributes);
 
     if (!maybe_mappings) {
-        throw std::runtime_error{"no mappings found for machine '" + machine_string + "' and IDS '" + ids_name + "'"};
+        throw libtokamap::MappingError{"no mappings found for machine '" + machine_string + "' and IDS '" + ids_name +
+                                       "'"};
     }
 
     const auto& [attributes, mappings] = maybe_mappings.value();
@@ -210,7 +212,7 @@ libtokamap::TypedDataArray libtokamap::MappingHandler::map(const std::string& ma
 
     std::string const map_path = generate_map_path(new_tokens, indices, mappings, path);
     if (map_path.empty()) {
-        throw std::runtime_error{"failed to find mapping for '" + path + "'"};
+        throw libtokamap::MappingError{"failed to find mapping for '" + path + "'"};
     }
 
     // Add request indices to globals
@@ -306,7 +308,7 @@ void libtokamap::MappingHandler::load_machine(const MachineName& machine)
     if (map_cfg_file) {
         map_cfg_file >> m_mapping_config;
     } else {
-        throw std::runtime_error{"Cannot open JSON mapping config file"};
+        throw libtokamap::FileError{"Cannot open JSON mapping config file"};
     }
 
     m_machine_register[machine] = {.mappings = {}, .attributes = {}};
@@ -329,10 +331,10 @@ nlohmann::json libtokamap::MappingHandler::load_toplevel(const MachineName& mach
         try {
             globals_file >> toplevel_globals;
         } catch (nlohmann::json::exception& ex) {
-            throw std::runtime_error{ex.what()};
+            throw libtokamap::JsonError{ex.what()};
         }
     } else {
-        throw std::runtime_error{"Cannot open top-level globals file"};
+        throw libtokamap::FileError{"Cannot open top-level globals file"};
     }
     return toplevel_globals;
 }
@@ -348,13 +350,13 @@ void libtokamap::MappingHandler::load_shot_globals(const MachineName& machine, c
         try {
             globals_file >> temp_globals;
         } catch (nlohmann::json::exception& ex) {
-            throw std::runtime_error{ex.what()};
+            throw libtokamap::JsonError{ex.what()};
         }
 
         temp_globals.update(load_toplevel(machine));
         m_machine_register[machine].attributes[ids_name].map[shot] = temp_globals; // Record globals
     } else {
-        throw std::runtime_error{"Cannot open JSON globals file"};
+        throw libtokamap::FileError{"Cannot open JSON globals file"};
     }
 }
 
@@ -380,12 +382,12 @@ void libtokamap::MappingHandler::load_shot_mappings(const MachineName& machine, 
         try {
             map_file >> temp_mappings;
         } catch (nlohmann::json::exception& ex) {
-            throw std::runtime_error{ex.what()};
+            throw libtokamap::JsonError{ex.what()};
         }
 
         init_mappings(machine, ids_name, temp_mappings, shot);
     } else {
-        throw std::runtime_error{"Cannot open JSON mapping file"};
+        throw libtokamap::FileError{"Cannot open JSON mapping file"};
     }
 }
 
@@ -476,13 +478,15 @@ void init_data_source_mapping(libtokamap::IDSMapRegister& map_reg, const std::st
                               const nlohmann::json& ids_attributes, std::shared_ptr<libtokamap::RamCache>& ram_cache)
 {
     if (!value.contains("DATA_SOURCE")) {
-        throw std::runtime_error{"required DATA_SOURCE argument not provided in DATA_SOURCE mapping '" + key + "'"};
+        throw libtokamap::ConfigurationError{"required DATA_SOURCE argument not provided in DATA_SOURCE mapping '" +
+                                             key + "'"};
     }
     std::string data_source_name = value["DATA_SOURCE"].get<std::string>();
     libtokamap::to_upper(data_source_name);
 
     if (!value.contains("ARGS")) {
-        throw std::runtime_error{"required ARGS argument not provided in DATA_SOURCE mapping '" + key + "'"};
+        throw libtokamap::ConfigurationError{"required ARGS argument not provided in DATA_SOURCE mapping '" + key +
+                                             "'"};
     }
     auto args = value["ARGS"].get<libtokamap::DataSourceArgs>();
     auto offset = get_float_value("OFFSET", value, ids_attributes);
@@ -529,7 +533,7 @@ void libtokamap::MappingHandler::init_mappings(const MachineName& machine, const
         auto parsed_value = libtokamap::parse(value);
 
         if (!parsed_value.contains("MAP_TYPE")) {
-            throw std::runtime_error{"required MAP_TYPE argument not found in mapping '" + key + "'"};
+            throw libtokamap::MappingError{"required MAP_TYPE argument not found in mapping '" + key + "'"};
         }
 
         // TODO: make this case insensitive?

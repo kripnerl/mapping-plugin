@@ -3,7 +3,7 @@
 - [x] ~~Replace reinterpret_cast with bit_cast~~ (still exist in map_arguments.hpp)
 - [x] ~~Replace boost::split with std::views::split~~
 - [ ] Switch from using std::type_index to DataType enum?
-- [ ] Add exception types
+- [x] ~~Add exception types~~
 - [ ] Add README and docs for library
 - [ ] Tidy up DataSource get(...) arguments
 - [ ] Adding system packaging to CMake

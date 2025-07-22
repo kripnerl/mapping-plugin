@@ -253,10 +253,18 @@ class TypedDataArray
     }
 #endif
 
-    template <typename T> [[nodiscard]] std::vector<T> as_vector() const
+    template <typename T> [[nodiscard]] const T* data() const
     {
         if (m_type_index != std::type_index{typeid(T)}) {
-            throw libtokamap::DataTypeError{"invalid type given to span"};
+            throw libtokamap::DataTypeError{"invalid type given to data"};
+        }
+        return reinterpret_cast<T*>(m_buffer);
+    }
+
+    template <typename T> [[nodiscard]] std::vector<T> to_vector() const
+    {
+        if (m_type_index != std::type_index{typeid(T)}) {
+            throw libtokamap::DataTypeError{"invalid type given to to_vector"};
         }
         const T* ptr = reinterpret_cast<T*>(m_buffer);
         return std::vector<T>{ptr, ptr + m_size};

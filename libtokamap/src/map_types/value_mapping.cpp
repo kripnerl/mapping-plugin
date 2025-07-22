@@ -4,13 +4,13 @@
 #include <cstddef>
 #include <cstdint>
 #include <inja/inja.hpp>
-#include <map_types/data_source_mapping.hpp>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <typeindex>
 #include <vector>
 
+#include "exceptions/exceptions.hpp"
 #include "map_types/map_arguments.hpp"
 
 using namespace inja;
@@ -103,7 +103,7 @@ std::string render_string(const std::string& input, const json& global_data)
 }
 
 libtokamap::TypedDataArray type_deduce_primitive(const json& temp_val, const json& global_data,
-                                                   std::type_index data_type, int rank)
+                                                 std::type_index data_type, int rank)
 {
     switch (temp_val.type()) {
         case json::value_t::number_float:
@@ -157,7 +157,7 @@ libtokamap::TypedDataArray type_deduce_primitive(const json& temp_val, const jso
             break;
         }
         default:
-            throw std::runtime_error{"unknown json type"};
+            throw libtokamap::JsonError{"unknown json type"};
     }
 
     return {};
@@ -169,7 +169,7 @@ libtokamap::TypedDataArray libtokamap::ValueMapping::map(const MapArguments& arg
 {
     const auto temp_val = m_value;
     if (temp_val.is_discarded() or temp_val.is_binary() or temp_val.is_null()) {
-        throw std::runtime_error{"map unrecognised json value type"};
+        throw libtokamap::JsonError{"map unrecognised json value type"};
     }
 
     if (temp_val.is_array()) {
@@ -186,7 +186,7 @@ libtokamap::TypedDataArray libtokamap::ValueMapping::map(const MapArguments& arg
     } else if (temp_val.is_primitive()) {
         return type_deduce_primitive(temp_val, arguments.global_data, arguments.data_type, arguments.rank);
     } else {
-        throw std::runtime_error{"map not structured or primitive"};
+        throw libtokamap::ProcessingError{"map not structured or primitive"};
     }
 
     return {};
