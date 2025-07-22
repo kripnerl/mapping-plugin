@@ -15,6 +15,6 @@ namespace json_plugin
 
 std::unordered_map<std::string, UDA_TYPE> uda_type_map();
 std::unordered_map<std::type_index, UDA_TYPE> uda_type_index_map();
-void set_data_block(DATA_BLOCK* data_block, const libtokamap::TypedDataArray& array);
+void set_data_block(DATA_BLOCK* data_block, libtokamap::TypedDataArray& array);
 
 } // namespace json_plugin

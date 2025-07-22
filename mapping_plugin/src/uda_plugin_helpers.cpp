@@ -38,13 +38,13 @@ std::unordered_map<std::type_index, UDA_TYPE> json_plugin::uda_type_index_map()
     return type_map;
 }
 
-void json_plugin::set_data_block(DATA_BLOCK* data_block, const libtokamap::TypedDataArray& array)
+void json_plugin::set_data_block(DATA_BLOCK* data_block, libtokamap::TypedDataArray& array)
 {
     initDataBlock(data_block);
 
     data_block->rank = array.rank();
     data_block->data_type = uda_type_index_map().at(array.type_index());
-    data_block->data = const_cast<char*>(array.buffer());
+    data_block->data = array.release();
     data_block->data_n = static_cast<int>(array.size());
 
     data_block->dims = static_cast<DIMS*>(malloc(data_block->rank * sizeof(DIMS)));

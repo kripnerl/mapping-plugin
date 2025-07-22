@@ -7,7 +7,6 @@
 #include <limits>
 #include <memory>
 #include <nlohmann/json.hpp>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -15,6 +14,8 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
+#include "exceptions/exceptions.hpp"
 
 namespace libtokamap
 {
@@ -77,7 +78,7 @@ class SubsetInfo
         : m_start{start}, m_stop{stop}, m_stride{stride}, m_dim_size{static_cast<int64_t>(size)}
     {
         if (size > std::numeric_limits<int64_t>::max()) {
-            throw std::runtime_error{"dimension size too large"};
+            throw libtokamap::ProcessingError{"dimension size too large"};
         }
         // negative indexes mean that many elements from the end
         if (start < 0) {
@@ -124,7 +125,7 @@ class TypedDataArray
         : m_type_index{typeid(T)}, m_size{array.size()}, m_shape{std::move(shape)}, m_owning{owning}
     {
         if (m_owning) {
-            m_buffer = new char[m_size * sizeof(T)];
+            m_buffer = static_cast<char*>(malloc(m_size * sizeof(T)));
             std::memcpy(m_buffer, reinterpret_cast<const char*>(array.data()), m_size * sizeof(T));
         } else {
             m_buffer = reinterpret_cast<char*>(const_cast<T*>(array.data()));
@@ -139,7 +140,7 @@ class TypedDataArray
         : m_type_index{typeid(T)}, m_size{size}, m_shape{std::move(shape)}, m_owning{owning}
     {
         if (m_owning) {
-            m_buffer = new char[m_size * sizeof(T)];
+            m_buffer = static_cast<char*>(malloc(m_size * sizeof(T)));
             std::memcpy(m_buffer, reinterpret_cast<const char*>(array), m_size * sizeof(T));
         } else {
             m_buffer = reinterpret_cast<char*>(array);
@@ -149,14 +150,14 @@ class TypedDataArray
     template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, bool> = true>
     explicit TypedDataArray(const T value) : m_type_index{typeid(T)}, m_size{1}, m_owning{true}
     {
-        m_buffer = new char[sizeof(T)];
+        m_buffer = static_cast<char*>(malloc(sizeof(T)));
         std::memcpy(m_buffer, reinterpret_cast<const char*>(&value), sizeof(T));
     }
 
     explicit TypedDataArray(const std::string& value)
         : m_type_index{typeid(char)}, m_size{value.size()}, m_shape{value.size()}, m_owning{true}
     {
-        m_buffer = new char[m_size * sizeof(char)];
+        m_buffer = static_cast<char*>(malloc(m_size * sizeof(char)));
         std::memcpy(m_buffer, value.data(), m_size);
     }
 
@@ -170,7 +171,7 @@ class TypedDataArray
     template <typename T> void apply(double scale_factor, double offset)
     {
         if (m_type_index != std::type_index{typeid(T)}) {
-            throw std::runtime_error{"invalid type given to apply"};
+            throw libtokamap::DataTypeError{"invalid type given to apply"};
         }
 
         auto* data = reinterpret_cast<T*>(m_buffer);
@@ -183,10 +184,10 @@ class TypedDataArray
     template <typename T> void slice(const std::vector<SubsetInfo>& subsets)
     {
         if (m_type_index != std::type_index{typeid(T)}) {
-            throw std::runtime_error{"invalid type given to slice"};
+            throw libtokamap::DataTypeError{"invalid type given to slice"};
         }
         if (subsets.size() != m_shape.size()) {
-            throw std::runtime_error{"invalid number of subsets given"};
+            throw libtokamap::ParameterError{"invalid number of subsets given"};
         }
 
         if (subsets.empty()) {
@@ -207,7 +208,7 @@ class TypedDataArray
 
         auto* array = reinterpret_cast<T*>(m_buffer);
 
-        auto* new_buffer = new char[sizeof(T) * new_size];
+        auto* new_buffer = static_cast<char*>(malloc(sizeof(T) * new_size));
         auto* new_array = reinterpret_cast<T*>(new_buffer);
 
         auto offsets = compute_offsets(m_shape, subsets);
@@ -238,11 +239,18 @@ class TypedDataArray
 
     [[nodiscard]] char* buffer() const { return m_buffer; }
 
+    [[nodiscard]] char* release() {
+        char* ptr = m_buffer;
+        m_buffer = nullptr;
+        m_owning = false;
+        return ptr;
+    }
+
 #if __cplusplus >= 202002L
     template <typename T> [[nodiscard]] std::span<T> span() const
     {
         if (m_type_index != std::type_index{typeid(T)}) {
-            throw std::runtime_error{"invalid type given to span"};
+            throw libtokamap::DataTypeError{"invalid type given to span"};
         }
         return std::span<T>{reinterpret_cast<T*>(m_buffer), m_size};
     }
@@ -251,7 +259,7 @@ class TypedDataArray
     template <typename T> [[nodiscard]] std::vector<T> as_vector() const
     {
         if (m_type_index != std::type_index{typeid(T)}) {
-            throw std::runtime_error{"invalid type given to span"};
+            throw libtokamap::DataTypeError{"invalid type given to span"};
         }
         const T* ptr = reinterpret_cast<T*>(m_buffer);
         return std::vector<T>{ptr, ptr + m_size};
@@ -261,7 +269,7 @@ class TypedDataArray
     {
         switch (type_index_map(m_type_index)) {
             case DataType::Unknown:
-                throw std::runtime_error{"unknown data type"};
+                throw libtokamap::DataTypeError{"unknown data type"};
             case DataType::Char:
                 return sizeof(char);
             case DataType::Short:
