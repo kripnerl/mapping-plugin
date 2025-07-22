@@ -146,7 +146,7 @@ int JSONMappingPlugin::init(IDAM_PLUGIN_INTERFACE* plugin_interface)
         config["use_cache"] = bool(std::stoi(std::string{use_cache}));
     }
 
-    const char* cache_size = getenv("UDA_MAPPING_USE_CACHE");
+    const char* cache_size = getenv("UDA_MAPPING_CACHE_SIZE");
     if (use_cache != nullptr) {
         config["cache_size"] = std::stoi(std::string{cache_size});
     }
