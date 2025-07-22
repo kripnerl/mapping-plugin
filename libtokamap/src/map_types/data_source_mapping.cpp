@@ -3,11 +3,11 @@
 #include <inja/inja.hpp>
 #include <memory>
 #include <optional>
-#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <utility>
 
+#include "exceptions/exceptions.hpp"
 #include "map_types/map_arguments.hpp"
 #include "utils/ram_cache.hpp"
 #include "utils/subset.hpp"
@@ -36,7 +36,7 @@ libtokamap::DataSourceMapping::DataSourceMapping(const std::string& data_source_
       m_ram_cache{std::move(ram_cache)}, m_cache_enabled(m_ram_cache != nullptr)
 {
     if (!m_data_sources.contains(data_source_name)) {
-        throw std::runtime_error{"data source " + data_source_name + " not registered"};
+        throw libtokamap::DataSourceError{"data source " + data_source_name + " not registered"};
     }
     m_data_source = m_data_sources[data_source_name].get();
 }

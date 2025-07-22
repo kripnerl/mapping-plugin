@@ -179,6 +179,7 @@ template <typename T>
 libtokamap::TypedDataArray set_return_data(DataBlock& data_block, size_t size, std::vector<size_t>&& shape)
 {
     auto array = libtokamap::TypedDataArray{reinterpret_cast<T*>(data_block.data), size, std::move(shape), false};
+    // we set the data_block.data to nullptr to avoid double deletion
     data_block.data = nullptr;
     return array;
 }

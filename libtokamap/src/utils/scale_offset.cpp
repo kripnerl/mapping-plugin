@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <span>
 #include <stdexcept>
+#include "exceptions/exceptions.hpp"
 
 #include "map_types/map_arguments.hpp"
 
@@ -78,7 +79,7 @@ int libtokamap::map_transform::transform_offset(TypedDataArray& array, float off
                 break;
             }
             default:
-                throw std::runtime_error{"unrecognised type"};
+                throw libtokamap::DataTypeError{"unrecognised type"};
         }
     } else {
         switch (type_index_map(array.type_index())) {
@@ -108,7 +109,7 @@ int libtokamap::map_transform::transform_offset(TypedDataArray& array, float off
                 break;
             }
             default:
-                throw std::runtime_error{"unrecognised type"};
+                throw libtokamap::DataTypeError{"unrecognised type"};
         }
     }
 
@@ -147,7 +148,7 @@ int libtokamap::map_transform::transform_scale(TypedDataArray& array, float scal
                 break;
             }
             default:
-                throw std::runtime_error{"unrecognised type"};
+                throw libtokamap::DataTypeError{"unrecognised type"};
         }
     } else {
         switch (type_index_map(array.type_index())) {
@@ -177,7 +178,7 @@ int libtokamap::map_transform::transform_scale(TypedDataArray& array, float scal
                 break;
             }
             default:
-                throw std::runtime_error{"unrecognised type"};
+                throw libtokamap::DataTypeError{"unrecognised type"};
         }
     }
 

@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <fstream>
 #include <libtokamap.hpp>
+#include "exceptions/exceptions.hpp"
 #include <nlohmann/json.hpp>
 #include <stdexcept>
 #include <string>
@@ -53,7 +54,7 @@ libtokamap::TypedDataArray parse(const nlohmann::json& value)
         std::ranges::fill(vector.begin(), vector.end(), "<object>"s);
         return libtokamap::TypedDataArray{vector};
     }
-    throw std::runtime_error{"invalid json value"};
+    throw libtokamap::JsonError{"invalid json value"};
 }
 
 constexpr auto number_re = ctll::fixed_string{R"(\d+)"};
@@ -65,10 +66,10 @@ libtokamap::TypedDataArray JSONDataSource::get(const libtokamap::DataSourceArgs&
                                                libtokamap::RamCache* /*ram_cache*/)
 {
     if (!map_args.contains("file_name")) {
-        throw std::runtime_error{"required argument 'shot' not provided"};
+        throw libtokamap::ParameterError{"required argument 'shot' not provided"};
     }
     if (!map_args.contains("signal")) {
-        throw std::runtime_error{"required argument 'signal' not provided"};
+        throw libtokamap::ParameterError{"required argument 'signal' not provided"};
     }
 
     std::string file_name = map_args.at("file_name");
@@ -77,7 +78,7 @@ libtokamap::TypedDataArray JSONDataSource::get(const libtokamap::DataSourceArgs&
     if (!m_data.contains(path)) {
         std::ifstream file{path};
         if (!file) {
-            throw std::runtime_error{"failed to open data file '" + path.string() + "'"};
+            throw libtokamap::FileError{"failed to open data file '" + path.string() + "'"};
         }
         m_data[path] = nlohmann::json::parse(file);
     }
