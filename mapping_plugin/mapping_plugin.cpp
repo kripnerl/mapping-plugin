@@ -256,7 +256,13 @@ int JSONMappingPlugin::get(IDAM_PLUGIN_INTERFACE* plugin_interface)
             break;
     }
 
-    auto array = m_mapping_handler.map(mapping, path, type_index, rank, extra_attributes);
+    libtokamap::TypedDataArray array;
+    try {
+        array = m_mapping_handler.map(mapping, path, type_index, rank, extra_attributes);
+    } catch (const libtokamap::MappingError& e) {
+        // Do nothing
+        // When we get logging, will debug log
+    }
     json_plugin::set_data_block(data_block, array);
 
     return 0;
