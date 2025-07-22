@@ -30,7 +30,7 @@ TEST_CASE("Test create array")
         constexpr size_t len = 100;
         std::vector<float> vec(len);
         libtokamap::iota(vec, 0);
-        libtokamap::TypedDataArray array{vec, {len}, false};
+        libtokamap::TypedDataArray array{vec, {len}};
         REQUIRE(array.rank() == 1);
         REQUIRE(array.size() == len);
         REQUIRE(array.shape() == std::vector<size_t>{len});
@@ -45,7 +45,7 @@ TEST_CASE("Test create array")
         constexpr size_t len = dim1 * dim2;
         std::vector<float> vec(len);
         libtokamap::iota(vec, 0);
-        libtokamap::TypedDataArray array{vec, {dim1, dim2}, false};
+        libtokamap::TypedDataArray array{vec, {dim1, dim2}};
         REQUIRE(array.rank() == 2);
         REQUIRE(array.size() == len);
         REQUIRE(array.shape() == std::vector<size_t>{dim1, dim2});
@@ -68,7 +68,7 @@ TEST_CASE("Test array slice")
         constexpr size_t len = 100;
         std::vector<float> vec(len);
         libtokamap::iota(vec, 0);
-        libtokamap::TypedDataArray array{vec, {len}, true};
+        libtokamap::TypedDataArray array{vec, {len}};
 
         SECTION("select one element")
         {
@@ -130,7 +130,7 @@ TEST_CASE("Test array slice")
         constexpr size_t len = dim1 * dim2;
         std::vector<float> vec(len);
         libtokamap::iota(vec, 0);
-        libtokamap::TypedDataArray array{vec, {dim1, dim2}, true};
+        libtokamap::TypedDataArray array{vec, {dim1, dim2}};
 
         SECTION("select one element")
         {
@@ -292,7 +292,7 @@ TEST_CASE("Test array apply scale and offset")
         constexpr size_t len = 100;
         std::vector<float> vec(len);
         libtokamap::iota(vec, 0);
-        libtokamap::TypedDataArray array{vec, {len}, true};
+        libtokamap::TypedDataArray array{vec, {len}};
 
         SECTION("scale")
         {
@@ -326,7 +326,7 @@ TEST_CASE("Test array apply scale and offset")
         constexpr size_t len = dim1 * dim2;
         std::vector<float> vec(len);
         libtokamap::iota(vec, 0);
-        libtokamap::TypedDataArray array{vec, {dim1, dim2}, true};
+        libtokamap::TypedDataArray array{vec, {dim1, dim2}};
 
         SECTION("scale")
         {

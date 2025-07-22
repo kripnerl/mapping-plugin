@@ -121,22 +121,18 @@ class TypedDataArray
     TypedDataArray() : m_type_index{typeid(void)}, m_size{0}, m_owning{false} {}
 
     template <typename T>
-    explicit TypedDataArray(const std::vector<T>& array, std::vector<size_t> shape = {}, bool owning = true)
-        : m_type_index{typeid(T)}, m_size{array.size()}, m_shape{std::move(shape)}, m_owning{owning}
+    explicit TypedDataArray(const std::vector<T>& array, std::vector<size_t> shape = {})
+        : m_type_index{typeid(T)}, m_size{array.size()}, m_shape{std::move(shape)}, m_owning{true}
     {
-        if (m_owning) {
-            m_buffer = static_cast<char*>(malloc(m_size * sizeof(T)));
-            std::memcpy(m_buffer, reinterpret_cast<const char*>(array.data()), m_size * sizeof(T));
-        } else {
-            m_buffer = reinterpret_cast<char*>(const_cast<T*>(array.data()));
-        }
+        m_buffer = static_cast<char*>(malloc(m_size * sizeof(T)));
+        std::memcpy(m_buffer, reinterpret_cast<const char*>(array.data()), m_size * sizeof(T));
         if (m_shape.empty()) {
             m_shape.push_back(m_size);
         }
     }
 
     template <typename T>
-    explicit TypedDataArray(T* array, size_t size, std::vector<size_t> shape, bool owning = false)
+    explicit TypedDataArray(T* array, size_t size, std::vector<size_t> shape, bool owning = true)
         : m_type_index{typeid(T)}, m_size{size}, m_shape{std::move(shape)}, m_owning{owning}
     {
         if (m_owning) {
@@ -239,7 +235,8 @@ class TypedDataArray
 
     [[nodiscard]] char* buffer() const { return m_buffer; }
 
-    [[nodiscard]] char* release() {
+    [[nodiscard]] char* release()
+    {
         char* ptr = m_buffer;
         m_buffer = nullptr;
         m_owning = false;
