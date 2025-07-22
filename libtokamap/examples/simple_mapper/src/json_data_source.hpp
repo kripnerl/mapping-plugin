@@ -1,16 +1,15 @@
+#include <filesystem>
 #include <libtokamap.hpp>
 #include <nlohmann/json.hpp>
-#include <stdexcept>
-#include "exceptions/exceptions.hpp"
 #include <string>
 #include <unordered_map>
 #include <utility>
-#include <filesystem>
 
 class JSONDataSource : public libtokamap::DataSource
 {
   public:
-    explicit JSONDataSource(std::filesystem::path data_root) : m_data_root{std::move(data_root)} {
+    explicit JSONDataSource(std::filesystem::path data_root) : m_data_root{std::move(data_root)}
+    {
         if (!std::filesystem::exists(m_data_root)) {
             throw libtokamap::FileError{"data root does not exist"};
         }

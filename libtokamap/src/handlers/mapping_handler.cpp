@@ -200,8 +200,8 @@ libtokamap::TypedDataArray libtokamap::MappingHandler::map(const std::string& ma
     const auto maybe_mappings = read_mappings(machine_string, ids_name, extra_attributes);
 
     if (!maybe_mappings) {
-        throw libtokamap::MappingError{"no mappings found for machine '" + machine_string + "' and IDS '" + ids_name +
-                                       "'"};
+        auto msg = "no mappings found for machine '" + machine_string + "' and IDS '" + ids_name + "'";
+        throw libtokamap::ParameterError{msg};
     }
 
     const auto& [attributes, mappings] = maybe_mappings.value();

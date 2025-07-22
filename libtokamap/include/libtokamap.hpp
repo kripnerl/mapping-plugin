@@ -7,6 +7,7 @@
 #include <map_types/expr_mapping.hpp>        // IWYU pragma: export.
 #include <map_types/map_arguments.hpp>       // IWYU pragma: export.
 #include <map_types/value_mapping.hpp>       // IWYU pragma: export.
+#include <utils/algorithm.hpp>               // IWYU pragma: export.
 #include <utils/indices.hpp>                 // IWYU pragma: export.
 #include <utils/ram_cache.hpp>               // IWYU pragma: export.
 #include <utils/scale_offset.hpp>            // IWYU pragma: export.
