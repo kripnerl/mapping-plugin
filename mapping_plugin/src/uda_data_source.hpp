@@ -12,7 +12,8 @@
 #include <clientserver/udaStructs.h>
 #include <plugins/pluginStructs.h>
 
-namespace json_plugin {
+namespace json_plugin
+{
 
 class UDADataSource : public libtokamap::DataSource
 {
@@ -24,8 +25,7 @@ class UDADataSource : public libtokamap::DataSource
     {
     }
     libtokamap::TypedDataArray get(const libtokamap::DataSourceArgs& data_source_args,
-                                     const libtokamap::MapArguments& arguments,
-                                     libtokamap::RamCache* ram_cache) override;
+                                   const libtokamap::MapArguments& arguments, libtokamap::RamCache* ram_cache) override;
 
   private:
     std::string m_plugin_name;
@@ -36,8 +36,7 @@ class UDADataSource : public libtokamap::DataSource
     [[nodiscard]] std::string get_request_str(const libtokamap::DataSourceArgs& data_source_args,
                                               const libtokamap::MapArguments& arguments) const;
     [[nodiscard]] bool copy_from_cache(libtokamap::RamCache* ram_cache, DATA_BLOCK* data_block,
-                                       const libtokamap::MapArguments& arguments,
-                                       const std::string& request_str) const;
+                                       const libtokamap::MapArguments& arguments, const std::string& request_str) const;
     [[nodiscard]] int call_plugins(DATA_BLOCK* data_block, const libtokamap::DataSourceArgs& data_source_args,
                                    const libtokamap::MapArguments& arguments, libtokamap::RamCache* ram_cache) const;
 };

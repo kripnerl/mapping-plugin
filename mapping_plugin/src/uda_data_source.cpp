@@ -126,7 +126,7 @@ int json_plugin::UDADataSource::call_plugins(DATA_BLOCK* data_block, const libto
     // check cache for request string and only get data if it's not already there
     // currently copies whole datablock (data, error, and dims)
     // if (m_cache_enabled) {
-    //     ram_cache->log(libtokamap:LogLevel::DEBUG, "caching disbaled");
+    //     ram_cache->log(libtokamap::LogLevel::DEBUG, "caching disabled");
     // }
 
     bool cache_hit = copy_from_cache(ram_cache, data_block, arguments, request_str);
@@ -173,6 +173,17 @@ int json_plugin::UDADataSource::call_plugins(DATA_BLOCK* data_block, const libto
     return err;
 }
 
+namespace
+{
+template <typename T>
+libtokamap::TypedDataArray set_return_data(DataBlock& data_block, size_t size, std::vector<size_t>&& shape)
+{
+    auto array = libtokamap::TypedDataArray{reinterpret_cast<T*>(data_block.data), size, std::move(shape), false};
+    data_block.data = nullptr;
+    return array;
+}
+} // namespace
+
 libtokamap::TypedDataArray json_plugin::UDADataSource::get(const libtokamap::DataSourceArgs& data_source_args,
                                                            const libtokamap::MapArguments& arguments,
                                                            libtokamap::RamCache* ram_cache)
@@ -193,11 +204,11 @@ libtokamap::TypedDataArray json_plugin::UDADataSource::get(const libtokamap::Dat
 
     switch (data_block.data_type) {
         case UDA_TYPE_INT:
-            return libtokamap::TypedDataArray{reinterpret_cast<int*>(data_block.data), size, shape};
+            return set_return_data<int>(data_block, size, std::move(shape));
         case UDA_TYPE_FLOAT:
-            return libtokamap::TypedDataArray{reinterpret_cast<float*>(data_block.data), size, shape};
+            return set_return_data<float>(data_block, size, std::move(shape));
         case UDA_TYPE_DOUBLE:
-            return libtokamap::TypedDataArray{reinterpret_cast<double*>(data_block.data), size, shape};
+            return set_return_data<double>(data_block, size, std::move(shape));
         default:
             throw std::runtime_error{"unknown data type"};
     }

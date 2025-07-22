@@ -90,7 +90,7 @@ inline void log_datablock_status(DATA_BLOCK* data_block, const std::string& mess
 
 void set_logging_option()
 {
-    const char* log_env_option = getenv("UDA_libtokamap_CACHE_LOGGING");
+    const char* log_env_option = getenv("UDA_MAPPING_CACHE_LOGGING");
     logging_active = (log_env_option != nullptr) and (std::stoi(log_env_option) > 0);
 }
 

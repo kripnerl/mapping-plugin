@@ -14,3 +14,5 @@
 - [ ] Fix logging
 - [x] ~~Add tests for parse_slices~~
 - [x] ~~Replace gsl::span with std::span~~
+- [ ] Handle mismatch of request data type and returned data type, i.e. type conversions?
+- [ ] Check returned data against expected rank
