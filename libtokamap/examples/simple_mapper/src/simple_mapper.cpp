@@ -26,7 +26,7 @@ unsigned long map(libtokamap::MappingHandler& mapping_handler, const std::string
 
     constexpr int64_t key_length = 35;
     std::string padding;
-    padding.resize(std::max(key_length - static_cast<int64_t>(path.size()), 0LL), ' ');
+    padding.resize(std::max(key_length - static_cast<int64_t>(path.size()), int64_t{0}), ' ');
     std::cout << path << padding << " -> " << result.to_string() << "\n";
 
     if (result.type_index() == std::type_index{typeid(unsigned long)}) {
