@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <bit>
 #include <cstddef>
 #include <cstdint>
@@ -10,7 +11,6 @@
 #include <string>
 #include <typeindex>
 #include <utility>
-#include <algorithm>
 
 #include "json_data_source.hpp"
 

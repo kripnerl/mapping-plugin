@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "/schemas/toplevel",
+  "description": "JSON Schema for v1.0 of default top-level globals",
+  "type": "object",
+  "patternProperties": {
+    "^((?!DATA_SOURCE_CONFIG).)*$": {
+      "type": "string"
+    },
+    "^DATA_SOURCE_CONFIG$": {
+      "type": "object",
+      "patternProperties": {
+        "^.*$": {
+          "ARGS": { "$ref": "#/$defs/args" }
+        }
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "args": {
+      "patternProperties": {
+        "^.*$": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
