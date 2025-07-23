@@ -390,6 +390,11 @@ void libtokamap::MappingHandler::load_shot_globals(const MachineName& machine, c
     auto globals = load_json_file(file_path);
     validate(globals, m_globals_schema);
     globals.update(load_toplevel(machine));
+    for (const auto& [key, value] : globals.items()) {
+        if (value.is_string()) {
+            value = process_string_node(value);
+        }
+    }
     m_machine_register[machine].attributes[ids_name].map[shot] = globals;
 }
 
