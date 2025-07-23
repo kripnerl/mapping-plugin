@@ -73,7 +73,7 @@ std::ostream& operator<<(std::ostream& out, const std::span<const T>& data)
     out << "[";
     out << std::setprecision(3);
     const char* delim = "";
-    constexpr size_t max = 5;
+    constexpr size_t max = 10;
     size_t count = 0;
     for (const auto element : data) {
         if (count == max) {
