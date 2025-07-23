@@ -41,7 +41,7 @@ jobs:
 
       - name: Configure CMake
         run: >
-          cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=${{ matrix.release }} -DENABLE_TESTING=ON
+          cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=${{ matrix.release }} -DENABLE_TESTING=ON -DENABLE_EXAMPLES=ON
 
       - name: Build
         run: cmake --build build --config ${{ matrix.release }}
@@ -56,3 +56,6 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build --output-on-failure
+
+      - name: Examples
+        run: ./build/libtokamap/examples/simple_mapper/simple_mapper

@@ -1,5 +1,7 @@
 #include "syntax_parser.hpp"
 
+#include <format>
+#include <iostream>
 #include <ctre/ctre.hpp>
 #include <nlohmann/json.hpp>
 #include <stack>
@@ -11,51 +13,37 @@ using namespace std::string_literals;
 namespace
 {
 
-constexpr auto indices_re = ctll::fixed_string{R"(\{\{\s*(#\d+|.*\[#\d+\](\.\S+)?)\s*\}\})"};
-constexpr auto simple_index_re = ctll::fixed_string{R"(#(\d+))"};
-constexpr auto array_index_re = ctll::fixed_string{R"((.*)\[#(\d+)\](\.\S+)?)"};
-constexpr auto subindices_re = ctll::fixed_string{R"(\((.*\[#(\d+)\](\.\S+))\))"};
+constexpr auto indices_re = ctll::fixed_string{R"(\{\{(.*?)\}\})"};
+constexpr auto simple_index_re = ctll::fixed_string{R"((.*)#(\d+)(.*))"};
+constexpr auto array_index_re = ctll::fixed_string{R"(([^\[\]]*?)\[([^\[\]]*?)\](\.[^\[\]]*)?)"};
 
-std::string expand_indices(const std::string& input)
-{
-    // Handle simple index directly
-    if (auto match = ctre::match<simple_index_re>(input)) {
-        return "indices." + match.get<1>().to_string();
-    }
-
-    // Handle array index with possible nesting
-    if (auto match = ctre::match<array_index_re>(input)) {
-        std::string array = match.get<1>().to_string();
-        const std::string_view index = match.get<2>();
-        const std::string_view field = match.get<3>();
-
-        // Iteratively unwrap nested array indices
-        while (true) {
-            if (auto submatch = ctre::match<subindices_re>(array)) {
-                array = submatch.get<1>().to_string();
-            } else if (auto nested_array = ctre::match<array_index_re>(array)) {
-                const std::string_view subarray = nested_array.get<1>();
-                const std::string_view subindex = nested_array.get<2>();
-                const std::string subfield = nested_array.get<3>().to_string();
-
-                array = "at("s.append(subarray).append(", indices.").append(subindex).append(")");
-                if (!subfield.empty()) {
-                    array += subfield;
-                }
-            } else {
-                break;
-            }
+std::string expand_array(std::string input) {
+    while (const auto& match = ctre::search<array_index_re>(input)) {
+        std::string_view name = match.get<1>();
+        std::string_view index = match.get<2>();
+        std::string_view post = match.get<3>();
+        if (name.starts_with('(')) {
+            name = name.substr(1, name.size() - 1);
         }
-
-        std::string result = "at("s.append(array).append(", indices.").append(index).append(")");
-        if (!field.empty()) {
-            result += field;
+        if (post.ends_with(')')) {
+            post = post.substr(0, post.size() - 1);
         }
-        return result;
+        std::string result = std::format("at({}, {}){}", name, index, post);
+        input = input.replace(match.begin() - input.begin(), match.size(), result);
     }
-
-    // Fallback if no match
     return input;
+}
+
+std::string expand_indices(std::string input)
+{
+    while (const auto& match = ctre::search<simple_index_re>(input)) {
+        std::string_view pre = match.get<1>();
+        std::string_view index = match.get<2>();
+        std::string_view post = match.get<3>();
+        input = std::format("{}indices.{}{}", pre, index, post);
+    }
+
+    return expand_array(input);
 }
 
 void walk_json(nlohmann::json& root)
@@ -82,6 +70,14 @@ void walk_json(nlohmann::json& root)
     }
 }
 
+std::string trim(const std::string& line)
+{
+    constexpr const char* white_space = " \t\v\r\n";
+    std::size_t start = line.find_first_not_of(white_space);
+    std::size_t end = line.find_last_not_of(white_space);
+    return start == end ? std::string() : line.substr(start, end - start + 1);
+}
+
 } // namespace
 
 std::string libtokamap::process_string_node(std::string value) {
@@ -91,6 +87,7 @@ std::string libtokamap::process_string_node(std::string value) {
     for (const auto& match : ctre::search_all<indices_re>(value)) {
         std::string prefix{iter, match.begin()};
         auto expression = match.get<1>().to_string();
+        expression = trim(expression);
         result.append(prefix).append("{{ ").append(expand_indices(expression)).append(" }}");
         iter = match.end();
     }
