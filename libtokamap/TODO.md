@@ -16,5 +16,5 @@
 - [x] ~~Replace gsl::span with std::span~~
 - [ ] Handle mismatch of request data type and returned data type, i.e. type conversions?
 - [ ] Check returned data against expected rank
-- [ ] Add JSON schema files into repo (from IMAS MASTU mapping)
-- [ ] Validate JSON mappings on read
+- [x] ~~Add JSON schema files into repo (from IMAS MASTU mapping)~~
+- [x] ~~Validate JSON mappings on read~~

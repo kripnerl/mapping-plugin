@@ -65,7 +65,10 @@ int main()
         auto data_source = std::make_unique<JSONDataSource>(data_root);
         libtokamap::DataSourceMapping::register_data_source("JSON", std::move(data_source));
 
-        nlohmann::json config = {{"mapping_directory", (root / "mappings").string()}};
+        auto schema_root = root.parent_path().parent_path() / "schemas";
+        nlohmann::json config = {{"mapping_directory", (root / "mappings").string()},
+                                 {"mapping_schema", (schema_root / "mappings.schema.json").string()},
+                                 {"globals_schema", (schema_root / "globals.schema.json").string()}};
         mapping_handler.init(config);
 
         const char* mapping = "EXAMPLE";

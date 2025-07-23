@@ -15,6 +15,7 @@
 #include "map_types/base_mapping.hpp"
 #include "map_types/map_arguments.hpp"
 #include "utils/ram_cache.hpp"
+#include "valijson_nlohmann_bundled.hpp"
 
 struct PluginList;
 
@@ -91,6 +92,8 @@ class MappingHandler
     nlohmann::json m_mapping_config;
     std::shared_ptr<libtokamap::RamCache> m_ram_cache;
     bool m_cache_enabled;
+    valijson::Schema m_mappings_schema;
+    valijson::Schema m_globals_schema;
 };
 
 std::string generate_map_path(std::deque<std::string>& path_tokens, const std::vector<int>& indices,

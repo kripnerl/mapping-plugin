@@ -24,6 +24,7 @@
 #include <typeindex>
 #include <unordered_map>
 #include <utility>
+#include <valijson_nlohmann_bundled.hpp>
 #include <vector>
 
 #include "exceptions/exceptions.hpp"
@@ -93,6 +94,66 @@ template <typename T> void print(std::ostream& out, const char* buffer, size_t s
     std::span<const T> data{std::bit_cast<const T*>(buffer), size};
     out << ", data=" << data;
 }
+
+nlohmann::json load_json_file(const std::string& path)
+{
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        throw libtokamap::FileError{"Failed to open file: " + path};
+    }
+    nlohmann::json json;
+    try {
+        file >> json;
+    } catch (nlohmann::json::exception& ex) {
+        throw libtokamap::JsonError{ex.what()};
+    }
+    return json;
+}
+
+void load_validation_schema(const nlohmann::json& config, const std::string& name, valijson::Schema& mapping_schema)
+{
+    if (!config.contains(name)) {
+        throw libtokamap::ConfigurationError{name + " not specified in config"};
+    }
+
+    auto schema_path = config.at(name).get<std::string>();
+    auto schema_json = load_json_file(schema_path);
+
+    valijson::adapters::NlohmannJsonAdapter schema_adapter(schema_json);
+
+    valijson::SchemaParser parser;
+    parser.populateSchema(schema_adapter, mapping_schema);
+}
+
+void load_validation_schemas(const nlohmann::json& config, valijson::Schema& mapping_schema,
+                             valijson::Schema& globals_schema)
+{
+    load_validation_schema(config, "mapping_schema", mapping_schema);
+    load_validation_schema(config, "globals_schema", globals_schema);
+}
+
+void validate(const nlohmann::json& json, const valijson::Schema& schema)
+{
+    valijson::Validator validator;
+    valijson::ValidationResults results;
+    valijson::adapters::NlohmannJsonAdapter json_adapter{json};
+
+    if (!validator.validate(schema, json_adapter, &results)) {
+        std::stringstream msg;
+        size_t error_num = 0;
+        for (const auto& error : results) {
+            msg << "Error #" << error_num << "\n ";
+            for (const auto& message : error.context) {
+                msg << message << " ";
+            }
+            msg << "\n";
+            msg << " - " << error.description << "\n\n";
+            ++error_num;
+        }
+        throw libtokamap::PathError{msg.str()};
+    }
+}
+
 } // namespace
 
 std::string libtokamap::TypedDataArray::to_string() const
@@ -160,6 +221,8 @@ void libtokamap::MappingHandler::init(const nlohmann::json& config)
         throw libtokamap::ConfigurationError{"mapping_directory not specified in config"};
     }
     m_mapping_dir = config.at("mapping_directory").get<std::string>();
+
+    load_validation_schemas(config, m_mappings_schema, m_globals_schema);
 
     bool enable_caching = config.contains("use_cache") && config.at("use_cache").get<bool>();
 
@@ -303,13 +366,7 @@ void libtokamap::MappingHandler::load_machine(const MachineName& machine)
     }
 
     const auto file_path = mapping_path(machine, "", 0, "mappings.cfg.json");
-
-    std::ifstream map_cfg_file(file_path);
-    if (map_cfg_file) {
-        map_cfg_file >> m_mapping_config;
-    } else {
-        throw libtokamap::FileError{"Cannot open JSON mapping config file"};
-    }
+    m_mapping_config = load_json_file(file_path);
 
     m_machine_register[machine] = {.mappings = {}, .attributes = {}};
 
@@ -322,42 +379,18 @@ void libtokamap::MappingHandler::load_machine(const MachineName& machine)
 nlohmann::json libtokamap::MappingHandler::load_toplevel(const MachineName& machine) const
 {
     auto file_path = mapping_path(machine, "", 0, "globals.json");
-
-    nlohmann::json toplevel_globals;
-
-    std::ifstream globals_file;
-    globals_file.open(file_path);
-    if (globals_file) {
-        try {
-            globals_file >> toplevel_globals;
-        } catch (nlohmann::json::exception& ex) {
-            throw libtokamap::JsonError{ex.what()};
-        }
-    } else {
-        throw libtokamap::FileError{"Cannot open top-level globals file"};
-    }
-    return toplevel_globals;
+    auto json = load_json_file(file_path);
+    validate(json, m_globals_schema);
+    return json;
 }
 
 void libtokamap::MappingHandler::load_shot_globals(const MachineName& machine, const IDSName& ids_name, int shot)
 {
     auto file_path = mapping_path(machine, ids_name, shot, "globals.json");
-
-    std::ifstream globals_file;
-    globals_file.open(file_path);
-    if (globals_file) {
-        nlohmann::json temp_globals;
-        try {
-            globals_file >> temp_globals;
-        } catch (nlohmann::json::exception& ex) {
-            throw libtokamap::JsonError{ex.what()};
-        }
-
-        temp_globals.update(load_toplevel(machine));
-        m_machine_register[machine].attributes[ids_name].map[shot] = temp_globals; // Record globals
-    } else {
-        throw libtokamap::FileError{"Cannot open JSON globals file"};
-    }
+    auto globals = load_json_file(file_path);
+    validate(globals, m_globals_schema);
+    globals.update(load_toplevel(machine));
+    m_machine_register[machine].attributes[ids_name].map[shot] = globals;
 }
 
 void libtokamap::MappingHandler::load_globals(const MachineName& machine, const IDSName& ids_name)
@@ -374,21 +407,9 @@ void libtokamap::MappingHandler::load_globals(const MachineName& machine, const 
 void libtokamap::MappingHandler::load_shot_mappings(const MachineName& machine, const IDSName& ids_name, int shot)
 {
     auto file_path = mapping_path(machine, ids_name, shot, "mappings.json");
-
-    std::ifstream map_file;
-    map_file.open(file_path);
-    if (map_file) {
-        nlohmann::json temp_mappings;
-        try {
-            map_file >> temp_mappings;
-        } catch (nlohmann::json::exception& ex) {
-            throw libtokamap::JsonError{ex.what()};
-        }
-
-        init_mappings(machine, ids_name, temp_mappings, shot);
-    } else {
-        throw libtokamap::FileError{"Cannot open JSON mapping file"};
-    }
+    auto mappings = load_json_file(file_path);
+    validate(mappings, m_mappings_schema);
+    init_mappings(machine, ids_name, mappings, shot);
 }
 
 void libtokamap::MappingHandler::load_mappings(const MachineName& machine, const IDSName& ids_name)
