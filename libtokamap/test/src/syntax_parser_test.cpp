@@ -153,5 +153,27 @@ TEST_CASE("Parse indices expansion", "[syntax_parser]") {
         };
         REQUIRE(result == expected);
     }
+}
 
+TEST_CASE("indices expansion and bracket matching", "[process_string_node]") {
+    SECTION("indices replace without syntactic sugar") {
+        nlohmann::json input = "{{ #0 }}";
+        nlohmann::json result = libtokamap::process_string_node(input);
+        nlohmann::json expected = "{{ indices.0 }}";
+        REQUIRE(result == expected);
+    }
+    SECTION("indices replace for arithmetic templating") {
+        SKIP("FIXME");
+        nlohmann::json input = "{{ #0 + 1 }}";
+        nlohmann::json result = libtokamap::process_string_node(input);
+        nlohmann::json expected = "{{ indices.0 + 1 }}";
+        REQUIRE(result == expected);
+    }
+    SECTION("nested bracket replace (bracket matching)") {
+        SKIP("FIXME");
+        nlohmann::json input = "{{ foo[bar[#0].TYPE] }}";
+        nlohmann::json result = libtokamap::process_string_node(input);
+        nlohmann::json expected = "{{ at(foo, at(bar, indices.0).TYPE) }}";
+        REQUIRE(result == expected);
+    }
 }
