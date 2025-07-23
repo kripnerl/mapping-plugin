@@ -160,7 +160,7 @@ class TypedDataArray
     ~TypedDataArray()
     {
         if (m_owning) {
-            delete[] m_buffer;
+            free(m_buffer);
         }
     }
 
@@ -215,7 +215,7 @@ class TypedDataArray
         }
 
         if (m_owning) {
-            delete[] m_buffer;
+            free(m_buffer);
         }
         m_size = new_size;
         m_shape = new_shape;
