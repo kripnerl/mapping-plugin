@@ -354,6 +354,11 @@ void libtokamap::MappingHandler::load_shot_globals(const MachineName& machine, c
         }
 
         temp_globals.update(load_toplevel(machine));
+        for (const auto& [key, value] : temp_globals.items()) {
+            if (value.is_string()) {
+                value = process_string_node(value);
+            }
+        }
         m_machine_register[machine].attributes[ids_name].map[shot] = temp_globals; // Record globals
     } else {
         throw libtokamap::FileError{"Cannot open JSON globals file"};

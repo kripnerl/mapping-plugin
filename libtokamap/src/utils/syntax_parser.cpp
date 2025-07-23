@@ -58,21 +58,6 @@ std::string expand_indices(const std::string& input)
     return input;
 }
 
-std::string process_string_node(std::string value) {
-    std::string result;
-    auto iter = value.begin();
-
-    for (const auto& match : ctre::search_all<indices_re>(value)) {
-        std::string prefix{iter, match.begin()};
-        auto expression = match.get<1>().to_string();
-        result.append(prefix).append("{{ ").append(expand_indices(expression)).append(" }}");
-        iter = match.end();
-    }
-
-    result.append(std::string{iter, value.end()});
-    return result;
-}
-
 void walk_json(nlohmann::json& root)
 {
     std::stack<nlohmann::json*> stack;
@@ -89,7 +74,7 @@ void walk_json(nlohmann::json& root)
 
             auto& node = element.value();
             if (node.is_string()) {
-                node = process_string_node(node);
+                node = libtokamap::process_string_node(node);
             } else if (node.is_object()) {
                 stack.push(&node);
             }
@@ -98,6 +83,21 @@ void walk_json(nlohmann::json& root)
 }
 
 } // namespace
+
+std::string libtokamap::process_string_node(std::string value) {
+    std::string result;
+    auto iter = value.begin();
+
+    for (const auto& match : ctre::search_all<indices_re>(value)) {
+        std::string prefix{iter, match.begin()};
+        auto expression = match.get<1>().to_string();
+        result.append(prefix).append("{{ ").append(expand_indices(expression)).append(" }}");
+        iter = match.end();
+    }
+
+    result.append(std::string{iter, value.end()});
+    return result;
+}
 
 nlohmann::json libtokamap::parse(nlohmann::json input)
 {
