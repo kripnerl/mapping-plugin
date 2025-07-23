@@ -151,7 +151,7 @@ class TypedDataArray
     }
 
     explicit TypedDataArray(const std::string& value)
-        : m_type_index{typeid(char)}, m_size{value.size()}, m_shape{value.size()}, m_owning{true}
+        : m_type_index{typeid(char)}, m_size{value.size() + 1}, m_shape{value.size() + 1}, m_owning{true}
     {
         m_buffer = static_cast<char*>(malloc(m_size * sizeof(char)));
         std::memcpy(m_buffer, value.data(), m_size);
@@ -160,7 +160,7 @@ class TypedDataArray
     ~TypedDataArray()
     {
         if (m_owning) {
-            delete[] m_buffer;
+            free(m_buffer);
         }
     }
 
@@ -215,7 +215,7 @@ class TypedDataArray
         }
 
         if (m_owning) {
-            delete[] m_buffer;
+            free(m_buffer);
         }
         m_size = new_size;
         m_shape = new_shape;

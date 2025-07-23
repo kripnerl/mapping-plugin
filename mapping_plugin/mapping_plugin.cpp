@@ -250,7 +250,7 @@ int JSONMappingPlugin::get(IDAM_PLUGIN_INTERFACE* plugin_interface)
             type_index = std::type_index{typeid(double)};
             break;
         case UDA_TYPE_STRING:
-            type_index = std::type_index{typeid(const char)};
+            type_index = std::type_index{typeid(char)};
             break;
         default:
             break;
