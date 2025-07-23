@@ -210,6 +210,8 @@ libtokamap::TypedDataArray json_plugin::UDADataSource::get(const libtokamap::Dat
             return set_return_data<float>(data_block, size, std::move(shape));
         case UDA_TYPE_DOUBLE:
             return set_return_data<double>(data_block, size, std::move(shape));
+        case UDA_TYPE_STRING:
+            return set_return_data<char>(data_block, size, std::move(shape));
         default:
             throw std::runtime_error{"unknown data type"};
     }
