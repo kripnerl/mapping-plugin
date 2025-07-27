@@ -50,26 +50,26 @@ make
 
 int main() {
     libtokamap::MappingHandler mapping_handler;
-    
+
     // Initialize with configuration
     nlohmann::json config = {
         {"mapping_directory", "/path/to/mappings"}
     };
     mapping_handler.init(config);
-    
+
     // Perform mapping
     std::type_index data_type = std::type_index{typeid(double)};
     int rank = 1;
     nlohmann::json extra_attributes = {{"shot", 12345}};
-    
+
     auto result = mapping_handler.map(
-        "my_mapping", 
-        "path/to/data", 
-        data_type, 
-        rank, 
+        "my_mapping",
+        "path/to/data",
+        data_type,
+        rank,
         extra_attributes
     );
-    
+
     return 0;
 }
 ```
@@ -79,8 +79,8 @@ int main() {
 ```cpp
 class MyDataSource : public libtokamap::DataSource {
 public:
-    TypedDataArray get(const DataSourceArgs& map_args, 
-                      const MapArguments& arguments, 
+    TypedDataArray get(const DataSourceArgs& map_args,
+                      const MapArguments& arguments,
                       RamCache* ram_cache) override {
         // Implement your data retrieval logic
         // Return TypedDataArray with your data
@@ -165,15 +165,16 @@ User-defined mapping logic.
 
 ```
 mappings/
-├── machine1/
-│   ├── toplevel.json
-│   └── ids_name1/
+├── experiment1/
+│   ├── mappings.cfg.json
+│   ├── globals.json
+│   └── group_name1/
 │       ├── globals.json
 │       ├── mappings.json
 │       └── shot_12345/
 │           ├── globals.json
 │           └── mappings.json
-└── machine2/
+└── experiment2/
     └── ...
 ```
 
@@ -262,16 +263,26 @@ Current version: 0.1.0
 
 ### TODO Items
 - [ ] Make mapping values case insensitive
-- [ ] Remove references to IDSs
-- [ ] Switch from using std::type_index to DataType enum
-- [ ] Add exception types
+- [x] ~~Remove references to IDSs~~
+- [x] ~~Replace reinterpret_cast with bit_cast~~ (still exist in map_arguments.hpp)
+- [x] ~~Replace boost::split with std::views::split~~
+- [ ] Switch from using std::type_index to DataType enum?
+- [x] ~~Add exception types~~
+- [ ] Add README and docs for library
 - [ ] Tidy up DataSource get(...) arguments
-- [ ] Add system packaging to CMake
+- [ ] Adding system packaging to CMake
 - [ ] Make mapping directory nesting configurable
+- [x] ~~Remove SignalType logic~~
 - [ ] Add C++20 template constraints
+- [x] ~~Replace std::string{} with string_literals~~
 - [ ] Fix logging
-- [ ] Handle mismatch of request data type and returned data type
+- [x] ~~Add tests for parse_slices~~
+- [x] ~~Replace gsl::span with std::span~~
+- [ ] Handle mismatch of request data type and returned data type, i.e. type conversions?
 - [ ] Check returned data against expected rank
+- [x] ~~Add JSON schema files into repo (from IMAS MASTU mapping)~~
+- [x] ~~Validate JSON mappings on read~~
+- [ ] Use std::format instead of string concatenation
 
 ## License
 

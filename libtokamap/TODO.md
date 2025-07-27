@@ -1,5 +1,5 @@
 - [ ] Make mapping values case insensitive
-- [ ] Remove references to IDSs
+- [x] ~~Remove references to IDSs~~
 - [x] ~~Replace reinterpret_cast with bit_cast~~ (still exist in map_arguments.hpp)
 - [x] ~~Replace boost::split with std::views::split~~
 - [ ] Switch from using std::type_index to DataType enum?
@@ -8,6 +8,9 @@
 - [ ] Tidy up DataSource get(...) arguments
 - [ ] Adding system packaging to CMake
 - [ ] Make mapping directory nesting configurable
+    - use metadata/source name rather than directory
+    - remove version nesting
+    - handle config/mapping_partitions
 - [x] ~~Remove SignalType logic~~
 - [ ] Add C++20 template constraints
 - [x] ~~Replace std::string{} with string_literals~~
@@ -18,3 +21,4 @@
 - [ ] Check returned data against expected rank
 - [x] ~~Add JSON schema files into repo (from IMAS MASTU mapping)~~
 - [x] ~~Validate JSON mappings on read~~
+- [ ] Use std::format instead of string concatenation

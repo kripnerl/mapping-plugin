@@ -2,25 +2,20 @@
 
 #include <cctype>
 #include <cstddef>
-#include <cstdint>
 #include <cxxabi.h>
 #include <deque>
 #include <filesystem>
 #include <fstream>
-#include <functional>
 #include <inja/inja.hpp>
-#include <iomanip>
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <optional>
 #include <ostream>
 #include <ranges>
-#include <span>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
-#include <type_traits>
 #include <typeindex>
 #include <unordered_map>
 #include <utility>
@@ -37,63 +32,13 @@
 #include "map_types/value_mapping.hpp"
 #include "utils/algorithm.hpp"
 #include "utils/indices.hpp"
+#include "utils/mapping_locator.hpp"
 #include "utils/ram_cache.hpp"
 #include "utils/syntax_parser.hpp"
+#include "utils/types.hpp"
 
 namespace
 {
-std::string to_string(const std::type_index& value)
-{
-    int status = 0;
-    return abi::__cxa_demangle(value.name(), nullptr, nullptr, &status);
-}
-
-std::ostream& operator<<(std::ostream& out, const std::type_index& value)
-{
-    int status = 0;
-    out << abi::__cxa_demangle(value.name(), nullptr, nullptr, &status);
-    return out;
-}
-
-std::ostream& operator<<(std::ostream& out, const std::vector<size_t>& shape)
-{
-    out << "[";
-    const char* delim = "";
-    for (const auto element : shape) {
-        out << delim << element;
-        delim = ",";
-    }
-    out << "]";
-    return out;
-}
-
-template <typename T>
-    requires(std::is_arithmetic_v<T>)
-std::ostream& operator<<(std::ostream& out, const std::span<const T>& data)
-{
-    out << "[";
-    out << std::setprecision(3);
-    const char* delim = "";
-    constexpr size_t max = 10;
-    size_t count = 0;
-    for (const auto element : data) {
-        if (count == max) {
-            out << ",...";
-            break;
-        }
-        out << delim << element;
-        delim = ",";
-        ++count;
-    }
-    out << "]";
-    return out;
-}
-
-template <typename T> void print(std::ostream& out, const char* buffer, size_t size)
-{
-    std::span<const T> data{std::bit_cast<const T*>(buffer), size};
-    out << ", data=" << data;
-}
 
 nlohmann::json load_json_file(const std::string& path)
 {
@@ -126,10 +71,11 @@ void load_validation_schema(const nlohmann::json& config, const std::string& nam
 }
 
 void load_validation_schemas(const nlohmann::json& config, valijson::Schema& mapping_schema,
-                             valijson::Schema& globals_schema)
+                             valijson::Schema& globals_schema, valijson::Schema& mapping_config_schema)
 {
     load_validation_schema(config, "mapping_schema", mapping_schema);
     load_validation_schema(config, "globals_schema", globals_schema);
+    load_validation_schema(config, "mapping_config_schema", mapping_config_schema);
 }
 
 void validate(const nlohmann::json& json, const valijson::Schema& schema)
@@ -154,320 +100,61 @@ void validate(const nlohmann::json& json, const valijson::Schema& schema)
     }
 }
 
-} // namespace
-
-std::string libtokamap::TypedDataArray::to_string() const
+nlohmann::json load_json(const std::filesystem::path& file_path, const valijson::Schema& schema)
 {
-    std::stringstream out;
-    out << "{ type=" << m_type_index << ", size=" << m_size << ", shape=" << m_shape;
-    switch (type_index_map(m_type_index)) {
-        case DataType::Char:
-            print<char>(out, m_buffer, m_size);
-            break;
-        case DataType::Short:
-            print<short>(out, m_buffer, m_size);
-            break;
-        case DataType::Int:
-            print<int>(out, m_buffer, m_size);
-            break;
-        case DataType::Long:
-            print<long>(out, m_buffer, m_size);
-            break;
-        case DataType::Int64:
-            print<int64_t>(out, m_buffer, m_size);
-            break;
-        case DataType::UChar:
-            print<unsigned char>(out, m_buffer, m_size);
-            break;
-        case DataType::UShort:
-            print<unsigned short>(out, m_buffer, m_size);
-            break;
-        case DataType::UInt:
-            print<unsigned int>(out, m_buffer, m_size);
-            break;
-        case DataType::ULong:
-            print<unsigned long>(out, m_buffer, m_size);
-            break;
-        case DataType::UInt64:
-            print<uint64_t>(out, m_buffer, m_size);
-            break;
-        case DataType::Float:
-            print<float>(out, m_buffer, m_size);
-            break;
-        case DataType::Double:
-            print<double>(out, m_buffer, m_size);
-            break;
-        default:
-            throw libtokamap::DataTypeError{"unhandled data type: '" + ::to_string(m_type_index) + "'"};
-    }
-    out << " }";
-    return out.str();
-}
-
-void libtokamap::MappingHandler::reset()
-{
-    m_machine_register.clear();
-    m_mapping_config.clear();
-    m_init = false;
-}
-
-void libtokamap::MappingHandler::init(const nlohmann::json& config)
-{
-    if (m_init || !m_machine_register.empty()) {
-        return;
-    }
-
-    if (!config.contains("mapping_directory")) {
-        throw libtokamap::ConfigurationError{"mapping_directory not specified in config"};
-    }
-    m_mapping_dir = config.at("mapping_directory").get<std::string>();
-
-    load_validation_schemas(config, m_mappings_schema, m_globals_schema);
-
-    bool enable_caching = config.contains("use_cache") && config.at("use_cache").get<bool>();
-
-    if (enable_caching) {
-        const std::size_t cache_size =
-            config.contains("cache_size") ? config.at("cache_size").get<int>() : libtokamap::default_size;
-        m_ram_cache = std::make_shared<libtokamap::RamCache>(cache_size);
-    } else {
-        m_ram_cache = nullptr;
-    }
-
-    m_cache_enabled = m_ram_cache != nullptr;
-    m_init = true;
-}
-
-libtokamap::TypedDataArray libtokamap::MappingHandler::map(const std::string& mapping, const std::string& path,
-                                                           std::type_index data_type, int rank,
-                                                           const nlohmann::json& extra_attributes)
-{
-    std::deque<std::string_view> path_tokens;
-    libtokamap::split(path_tokens, path, "/");
-    if (path_tokens.empty()) {
-        throw libtokamap::PathError{"IDS path could not be split"};
-    }
-
-    auto [indices, new_tokens] = extract_indices(path_tokens);
-
-    // Use first hash of the IDS path as the IDS name
-    std::string const ids_name{new_tokens.front()};
-
-    // Use lowercase machine name for find mapping files
-    std::string machine_string = mapping;
-    to_lower(machine_string);
-
-    // Load mappings based off IDS name
-    // Returns a reference to IDS map objects and corresponding globals
-    // Mapping object lifetime owned by mapping_handler
-    const auto maybe_mappings = read_mappings(machine_string, ids_name, extra_attributes);
-
-    if (!maybe_mappings) {
-        auto msg = "no mappings found for machine '" + machine_string + "' and IDS '" + ids_name + "'";
-        throw libtokamap::ParameterError{msg};
-    }
-
-    const auto& [attributes, mappings] = maybe_mappings.value();
-
-    // Remove IDS name from path and rejoin for hash map key
-    // magnetics/coil/#/current -> coil/#/current
-    new_tokens.pop_front();
-
-    std::string const map_path = generate_map_path(new_tokens, indices, mappings, path);
-    if (map_path.empty()) {
-        throw libtokamap::MappingError{"failed to find mapping for '" + path + "'"};
-    }
-
-    // Add request indices to globals
-    attributes["indices"] = indices;
-
-    for (const auto& [key, value] : extra_attributes.items()) {
-        attributes[key] = value;
-    }
-
-    const libtokamap::MapArguments map_arguments{mappings, attributes, data_type, rank};
-
-    return mappings.at(map_path)->map(map_arguments);
-}
-
-std::optional<libtokamap::MappingPair> libtokamap::MappingHandler::read_mappings(const MachineName& machine,
-                                                                                 const std::string& request_ids,
-                                                                                 const nlohmann::json& extra_attributes)
-{
-    int shot = 0;
-    const bool shot_found = extra_attributes.contains("shot");
-    if (shot_found) {
-        shot = extra_attributes["shot"];
-    }
-
-    load_machine(machine);
-    if (!m_machine_register.contains(machine)) {
-        return {};
-    }
-
-    auto& [mappings, attributes] = m_machine_register[machine];
-    if (!mappings.contains(request_ids) || !attributes.contains(request_ids)) {
-        return {};
-    }
-
-    int attr_shot = -1;
-    int map_shot = -1;
-
-    if (shot_found) {
-        attr_shot = select_shot(attributes[request_ids], shot);
-        map_shot = select_shot(attributes[request_ids], shot);
-    }
-
-    if (!attributes[request_ids].map.contains(attr_shot) || !mappings[request_ids].map.contains(attr_shot)) {
-        return {};
-    }
-
-    nlohmann::json& attr = attributes[request_ids].map[attr_shot];
-    IDSMapRegister& map = mappings[request_ids].map[map_shot];
-
-    // AJP :: Safety check if ids request not in mapping json (and typo obviously)
-    return {std::make_pair(std::ref(attr), std::ref(map))};
-}
-
-std::vector<int> libtokamap::MappingHandler::find_mapping_dirs(const MachineName& machine,
-                                                               const IDSName& ids_name) const
-{
-    auto path = m_mapping_dir / machine / ids_name;
-    std::vector<int> mapping_dirs;
-
-    for (const auto& entry : std::filesystem::directory_iterator(path)) {
-        if (entry.is_directory()) {
-            mapping_dirs.push_back(std::stoi(entry.path().filename().string()));
-        }
-    }
-
-    return mapping_dirs;
-}
-
-std::filesystem::path libtokamap::MappingHandler::mapping_path(const MachineName& machine, const IDSName& ids_name,
-                                                               const int shot, const std::string& file_name) const
-{
-    if (ids_name.empty()) {
-        return m_mapping_dir / machine / file_name;
-    }
-
-    if (shot < 0) {
-        return m_mapping_dir / machine / ids_name / file_name;
-    }
-
-    return m_mapping_dir / machine / ids_name / std::to_string(shot) / file_name;
-}
-
-void libtokamap::MappingHandler::load_machine(const MachineName& machine)
-{
-    if (m_machine_register.count(machine) == 1) {
-        // machine already loaded
-        return;
-    }
-
-    const auto file_path = mapping_path(machine, "", 0, "mappings.cfg.json");
-    m_mapping_config = load_json_file(file_path);
-
-    m_machine_register[machine] = {.mappings = {}, .attributes = {}};
-
-    for (const auto& ids_name : m_mapping_config[m_dd_version].get<std::vector<std::string>>()) {
-        load_globals(machine, ids_name);
-        load_mappings(machine, ids_name);
-    }
-}
-
-nlohmann::json libtokamap::MappingHandler::load_toplevel(const MachineName& machine) const
-{
-    auto file_path = mapping_path(machine, "", 0, "globals.json");
-    auto json = load_json_file(file_path);
-    validate(json, m_globals_schema);
-    return json;
-}
-
-void libtokamap::MappingHandler::load_shot_globals(const MachineName& machine, const IDSName& ids_name, int shot)
-{
-    auto file_path = mapping_path(machine, ids_name, shot, "globals.json");
     auto globals = load_json_file(file_path);
-    validate(globals, m_globals_schema);
-    globals.update(load_toplevel(machine));
-    for (const auto& [key, value] : globals.items()) {
-        if (value.is_string()) {
-            value = process_string_node(value);
-        }
-    }
-    m_machine_register[machine].attributes[ids_name].map[shot] = globals;
+    validate(globals, schema);
+    return globals;
 }
 
-void libtokamap::MappingHandler::load_globals(const MachineName& machine, const IDSName& ids_name)
+struct MappingConfigMetadata {
+    std::string experiment;
+    std::string author;
+    std::string version;
+};
+
+// inline void to_json(nlohmann::json& json, const MappingConfigMetadata& metadata)
+// {
+//     json["source"] = metadata.source;
+//     json["author"] = metadata.author;
+//     json["version"] = metadata.version;
+// }
+
+inline void from_json(const nlohmann::json& json, MappingConfigMetadata& metadata)
 {
-    const auto mapping_dirs = find_mapping_dirs(machine, ids_name);
-    if (mapping_dirs.empty()) {
-        load_shot_globals(machine, ids_name, -1);
-    }
-    for (const int shot : mapping_dirs) {
-        load_shot_globals(machine, ids_name, shot);
-    }
+    json.at("experiment").get_to(metadata.experiment);
+    json.at("author").get_to(metadata.author);
+    json.at("version").get_to(metadata.version);
 }
 
-void libtokamap::MappingHandler::load_shot_mappings(const MachineName& machine, const IDSName& ids_name, int shot)
+std::pair<libtokamap::ExperimentName, libtokamap::ExperimentMappings>
+load_mapping_config(const std::filesystem::path& mapping_dir, const valijson::Schema& mapping_config_schema)
 {
-    auto file_path = mapping_path(machine, ids_name, shot, "mappings.json");
-    auto mappings = load_json_file(file_path);
-    validate(mappings, m_mappings_schema);
-    init_mappings(machine, ids_name, mappings, shot);
+    auto file_path = mapping_dir / "mappings.cfg.json";
+    auto mapping_config = load_json_file(file_path);
+    validate(mapping_config, mapping_config_schema);
+
+    auto metadata = mapping_config["metadata"].get<MappingConfigMetadata>();
+    auto partition_list = mapping_config["partitions"].get<std::vector<libtokamap::MappingPartition>>();
+    auto groups = mapping_config["groups"].get<std::vector<libtokamap::GroupName>>();
+
+    libtokamap::ExperimentMappings experiment_mappings{partition_list, groups};
+    return {metadata.experiment, std::move(experiment_mappings)};
 }
 
-void libtokamap::MappingHandler::load_mappings(const MachineName& machine, const IDSName& ids_name)
+libtokamap::ExperimentRegisterStore locate_mappings(const std::filesystem::path& mapping_dir,
+                                                    const valijson::Schema& mapping_config_schema)
 {
-    const auto mapping_dirs = find_mapping_dirs(machine, ids_name);
-    if (mapping_dirs.empty()) {
-        load_shot_mappings(machine, ids_name, -1);
+    libtokamap::ExperimentRegisterStore experiment_register_store;
+    for (const auto& directory : std::filesystem::directory_iterator{mapping_dir}) {
+        auto [name, mapping] = load_mapping_config(directory, mapping_config_schema);
+        experiment_register_store.emplace(name, std::move(mapping));
     }
-    for (const int shot : mapping_dirs) {
-        load_shot_mappings(machine, ids_name, shot);
-    }
+    return experiment_register_store;
 }
 
-namespace
-{
-
-void apply_config(std::unordered_map<std::string, nlohmann::json>& args, nlohmann::json plugin_config_map,
-                  const std::string& plugin_name)
-{
-    if (plugin_config_map.contains(plugin_name)) {
-        const auto& plugin_config = plugin_config_map[plugin_name].get<nlohmann::json>();
-        const auto& plugin_args = plugin_config["ARGS"].get<nlohmann::json>();
-        for (const auto& [name, arg] : plugin_args.items()) {
-            if (!args.contains(name)) {
-                // don't overwrite mapping arguments with global values
-                args[name] = arg;
-            }
-        }
-    }
-}
-
-std::optional<float> get_float_value(const std::string& name, const nlohmann::json& value,
-                                     const nlohmann::json& ids_attributes)
-{
-    std::optional<float> opt_float{std::nullopt};
-    if (value.contains(name) and !value[name].is_null()) {
-        if (value[name].is_number()) {
-            opt_float = value[name].get<float>();
-        } else if (value[name].is_string()) {
-            try {
-                const auto post_inja_str = inja::render(value[name].get<std::string>(), ids_attributes);
-                opt_float = std::stof(post_inja_str);
-            } catch (const std::invalid_argument&) {
-                // const std::string message = "\nCannot convert " + name + " string to float\n";
-                // UDA_LOG(UDA_LOG_DEBUG, "%s", message.c_str());
-            }
-        }
-    }
-    return opt_float;
-}
-
-std::string find_mapping(libtokamap::IDSMapRegister& mappings, const std::string& path, const std::vector<int>& indices,
-                         const std::string& full_path)
+std::string find_mapping(const libtokamap::MappingStore& mappings, const std::string& path,
+                         const std::vector<int>& indices, const std::string& full_path)
 {
     // If mapping is found we are good
     if (mappings.contains(path)) {
@@ -494,102 +181,8 @@ std::string find_mapping(libtokamap::IDSMapRegister& mappings, const std::string
     return "";
 }
 
-void init_value_mapping(libtokamap::IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value)
-{
-    const auto& value_json = value.at("VALUE");
-    map_reg.try_emplace(key, std::make_unique<libtokamap::ValueMapping>(value_json));
-}
-
-void init_data_source_mapping(libtokamap::IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value,
-                              const nlohmann::json& ids_attributes, std::shared_ptr<libtokamap::RamCache>& ram_cache)
-{
-    if (!value.contains("DATA_SOURCE")) {
-        throw libtokamap::ConfigurationError{"required DATA_SOURCE argument not provided in DATA_SOURCE mapping '" +
-                                             key + "'"};
-    }
-    std::string data_source_name = value["DATA_SOURCE"].get<std::string>();
-    libtokamap::to_upper(data_source_name);
-
-    if (!value.contains("ARGS")) {
-        throw libtokamap::ConfigurationError{"required ARGS argument not provided in DATA_SOURCE mapping '" + key +
-                                             "'"};
-    }
-    auto args = value["ARGS"].get<libtokamap::DataSourceArgs>();
-    auto offset = get_float_value("OFFSET", value, ids_attributes);
-    auto scale = get_float_value("SCALE", value, ids_attributes);
-    auto slice = value.contains("SLICE") ? std::optional<std::string>{value.at("SLICE").get<std::string>()}
-                                         : std::optional<std::string>{};
-
-    if (ids_attributes.contains("DATA_SOURCE_CONFIG")) {
-        const auto& plugin_config_map = ids_attributes.at("DATA_SOURCE_CONFIG");
-        apply_config(args, plugin_config_map, data_source_name);
-    }
-
-    map_reg.try_emplace(
-        key, std::make_unique<libtokamap::DataSourceMapping>(data_source_name, args, offset, scale, slice, ram_cache));
-}
-
-void init_dim_mapping(libtokamap::IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value)
-{
-    map_reg.try_emplace(key, std::make_unique<libtokamap::DimMapping>(value["DIM_PROBE"].get<std::string>()));
-}
-
-void init_expr_mapping(libtokamap::IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value)
-{
-    map_reg.try_emplace(key, std::make_unique<libtokamap::ExprMapping>(
-                                 value["EXPR"].get<std::string>(),
-                                 value["PARAMETERS"].get<std::unordered_map<std::string, std::string>>()));
-}
-
-void init_custom_mapping(libtokamap::IDSMapRegister& map_reg, const std::string& key, const nlohmann::json& value)
-{
-    map_reg.try_emplace(
-        key, std::make_unique<libtokamap::CustomMapping>(value["CUSTOM_TYPE"].get<libtokamap::CustomMapType_t>()));
-}
-
-} // namespace
-
-void libtokamap::MappingHandler::init_mappings(const MachineName& machine, const IDSName& ids_name,
-                                               const nlohmann::json& data, int shot)
-{
-    const auto& attributes = m_machine_register[machine].attributes;
-    IDSMapRegister temp_map_reg;
-    for (const auto& [key, value] : data.items()) {
-        // Parse syntactic sugar
-        auto parsed_value = libtokamap::parse(value);
-
-        if (!parsed_value.contains("MAP_TYPE")) {
-            throw libtokamap::MappingError{"required MAP_TYPE argument not found in mapping '" + key + "'"};
-        }
-
-        // TODO: make this case insensitive?
-        switch (parsed_value["MAP_TYPE"].get<MappingType>()) {
-            case MappingType::VALUE:
-                init_value_mapping(temp_map_reg, key, parsed_value);
-                break;
-            case MappingType::DATA_SOURCE:
-                init_data_source_mapping(temp_map_reg, key, parsed_value, attributes.at(ids_name).map.at(shot),
-                                         m_ram_cache);
-                break;
-            case MappingType::DIM:
-                init_dim_mapping(temp_map_reg, key, parsed_value);
-                break;
-            case MappingType::EXPR:
-                init_expr_mapping(temp_map_reg, key, parsed_value);
-                break;
-            case MappingType::CUSTOM:
-                init_custom_mapping(temp_map_reg, key, parsed_value);
-                break;
-            default:
-                break;
-        }
-    }
-
-    m_machine_register[machine].mappings[ids_name].map[shot] = std::move(temp_map_reg);
-}
-
-std::string libtokamap::generate_map_path(std::deque<std::string>& path_tokens, const std::vector<int>& indices,
-                                          IDSMapRegister& mappings, const std::string& full_path)
+std::string generate_map_path(const std::deque<std::string>& path_tokens, const std::vector<int>& indices,
+                              const libtokamap::MappingStore& mappings, const std::string& full_path)
 {
     std::string map_path = libtokamap::join(path_tokens, "/");
     std::string found_path;
@@ -601,4 +194,276 @@ std::string libtokamap::generate_map_path(std::deque<std::string>& path_tokens, 
     }
 
     return found_path;
+}
+
+} // namespace
+
+void libtokamap::MappingHandler::reset()
+{
+    m_experiment_register.clear();
+    m_init = false;
+}
+
+libtokamap::TypedDataArray libtokamap::MappingHandler::map(const ExperimentName& experiment, const std::string& path,
+                                                           std::type_index data_type, int rank,
+                                                           const nlohmann::json& extra_attributes)
+{
+    std::deque<std::string_view> path_tokens;
+    libtokamap::split(path_tokens, path, "/");
+    if (path_tokens.empty()) {
+        throw libtokamap::PathError{"Mapping path could not be split"};
+    }
+
+    auto [indices, new_tokens] = extract_indices(path_tokens);
+
+    // Use first token of the mapping path as the group name
+    const std::string group_name{new_tokens.front()};
+    new_tokens.pop_front();
+
+    // Use lowercase experiment name for find mapping files
+    ExperimentName experiment_string = experiment;
+    to_lower(experiment_string);
+
+    if (!m_experiment_register.contains(experiment_string)) {
+        auto msg = "no mappings found for experiment '" + experiment_string + "'";
+        throw libtokamap::ParameterError{msg};
+    }
+    auto& experiment_mappings = m_experiment_register.at(experiment_string);
+    load_experiment(experiment_string, extra_attributes);
+
+    if (!experiment_mappings.group_mappings.contains(group_name)) {
+        auto msg = "no mappings found for group '" + group_name + "'";
+        throw libtokamap::ParameterError{msg};
+    }
+    auto& group_mappings = experiment_mappings.group_mappings.at(group_name);
+
+    auto partition_attributes = find_partition_attributes(experiment_mappings.partition_list, extra_attributes);
+    if (!group_mappings.contains(partition_attributes)) {
+        auto msg = "no mappings found for partition " + partition_attributes.dump();
+        throw libtokamap::ParameterError{msg};
+    }
+    auto& partition_mappings = group_mappings.at(partition_attributes);
+
+    auto& [attributes, mappings] = partition_mappings;
+
+    const std::string map_path = generate_map_path(new_tokens, indices, mappings, path);
+    if (map_path.empty()) {
+        throw libtokamap::MappingError{"failed to find mapping for '" + path + "'"};
+    }
+
+    // Add request indices to globals
+    attributes["indices"] = indices;
+
+    for (const auto& [key, value] : extra_attributes.items()) {
+        attributes[key] = value;
+    }
+
+    const libtokamap::MapArguments map_arguments{mappings, attributes, data_type, rank};
+
+    return mappings.at(map_path)->map(map_arguments);
+}
+
+namespace
+{
+
+void apply_config(std::unordered_map<std::string, nlohmann::json>& args, nlohmann::json plugin_config_map,
+                  const std::string& plugin_name)
+{
+    if (plugin_config_map.contains(plugin_name)) {
+        const auto& plugin_config = plugin_config_map[plugin_name].get<nlohmann::json>();
+        const auto& plugin_args = plugin_config["ARGS"].get<nlohmann::json>();
+        for (const auto& [name, arg] : plugin_args.items()) {
+            if (!args.contains(name)) {
+                // don't overwrite mapping arguments with global values
+                args[name] = arg;
+            }
+        }
+    }
+}
+
+std::optional<float> get_float_value(const std::string& name, const nlohmann::json& value,
+                                     const nlohmann::json& group_attributes)
+{
+    std::optional<float> opt_float{std::nullopt};
+    if (value.contains(name) and !value[name].is_null()) {
+        if (value[name].is_number()) {
+            opt_float = value[name].get<float>();
+        } else if (value[name].is_string()) {
+            try {
+                const auto post_inja_str = inja::render(value[name].get<std::string>(), group_attributes);
+                opt_float = std::stof(post_inja_str);
+            } catch (const std::invalid_argument&) {
+                // const std::string message = "\nCannot convert " + name + " string to float\n";
+                // UDA_LOG(UDA_LOG_DEBUG, "%s", message.c_str());
+            }
+        }
+    }
+    return opt_float;
+}
+
+void init_value_mapping(libtokamap::MappingStore& map_store, const libtokamap::MappingName& mapping_name,
+                        const nlohmann::json& value)
+{
+    const auto& value_json = value.at("VALUE");
+    map_store.try_emplace(mapping_name, std::make_unique<libtokamap::ValueMapping>(value_json));
+}
+
+void init_data_source_mapping(libtokamap::MappingStore& map_store, const libtokamap::MappingName& mapping_name,
+                              const nlohmann::json& value, const nlohmann::json& group_attributes,
+                              std::shared_ptr<libtokamap::RamCache>& ram_cache)
+{
+    if (!value.contains("DATA_SOURCE")) {
+        throw libtokamap::ConfigurationError{"required DATA_SOURCE argument not provided in DATA_SOURCE mapping '" +
+                                             mapping_name + "'"};
+    }
+    std::string data_source_name = value["DATA_SOURCE"].get<std::string>();
+    libtokamap::to_upper(data_source_name);
+
+    if (!value.contains("ARGS")) {
+        throw libtokamap::ConfigurationError{"required ARGS argument not provided in DATA_SOURCE mapping '" +
+                                             mapping_name + "'"};
+    }
+    auto args = value["ARGS"].get<libtokamap::DataSourceArgs>();
+    auto offset = get_float_value("OFFSET", value, group_attributes);
+    auto scale = get_float_value("SCALE", value, group_attributes);
+    auto slice = value.contains("SLICE") ? std::optional<std::string>{value.at("SLICE").get<std::string>()}
+                                         : std::optional<std::string>{};
+
+    if (group_attributes.contains("DATA_SOURCE_CONFIG")) {
+        const auto& plugin_config_map = group_attributes.at("DATA_SOURCE_CONFIG");
+        apply_config(args, plugin_config_map, data_source_name);
+    }
+
+    map_store.try_emplace(mapping_name, std::make_unique<libtokamap::DataSourceMapping>(data_source_name, args, offset,
+                                                                                        scale, slice, ram_cache));
+}
+
+void init_dim_mapping(libtokamap::MappingStore& map_store, const libtokamap::MappingName& mapping_name,
+                      const nlohmann::json& value)
+{
+    map_store.try_emplace(mapping_name,
+                          std::make_unique<libtokamap::DimMapping>(value["DIM_PROBE"].get<std::string>()));
+}
+
+void init_expr_mapping(libtokamap::MappingStore& map_store, const libtokamap::MappingName& mapping_name,
+                       const nlohmann::json& value)
+{
+    map_store.try_emplace(mapping_name, std::make_unique<libtokamap::ExprMapping>(
+                                            value["EXPR"].get<std::string>(),
+                                            value["PARAMETERS"].get<std::unordered_map<std::string, std::string>>()));
+}
+
+void init_custom_mapping(libtokamap::MappingStore& map_store, const libtokamap::MappingName& mapping_name,
+                         const nlohmann::json& value)
+{
+    map_store.try_emplace(mapping_name, std::make_unique<libtokamap::CustomMapping>(
+                                            value["CUSTOM_TYPE"].get<libtokamap::CustomMapType_t>()));
+}
+
+libtokamap::MappingStore init_mappings(const nlohmann::json& data, const nlohmann::json& group_attributes,
+                                       std::shared_ptr<libtokamap::RamCache> ram_cache)
+{
+    // const auto& attributes = m_experiment_register[experiment].group_globals[group_name];
+    libtokamap::MappingStore map_store;
+    for (const auto& [mapping_name, value] : data.items()) {
+        // Parse syntactic sugar
+        auto parsed_value = libtokamap::parse(value);
+
+        if (!parsed_value.contains("MAP_TYPE")) {
+            throw libtokamap::MappingError{"required MAP_TYPE argument not found in mapping '" + mapping_name + "'"};
+        }
+
+        // TODO: make this case insensitive?
+        using libtokamap::MappingType;
+        switch (parsed_value["MAP_TYPE"].get<MappingType>()) {
+            case MappingType::VALUE:
+                init_value_mapping(map_store, mapping_name, parsed_value);
+                break;
+            case MappingType::DATA_SOURCE:
+                init_data_source_mapping(map_store, mapping_name, parsed_value, group_attributes, ram_cache);
+                break;
+            case MappingType::DIM:
+                init_dim_mapping(map_store, mapping_name, parsed_value);
+                break;
+            case MappingType::EXPR:
+                init_expr_mapping(map_store, mapping_name, parsed_value);
+                break;
+            case MappingType::CUSTOM:
+                init_custom_mapping(map_store, mapping_name, parsed_value);
+                break;
+            default:
+                break;
+        }
+    }
+    return map_store;
+}
+
+} // namespace
+
+void libtokamap::MappingHandler::init(const nlohmann::json& config)
+{
+    if (m_init || !m_experiment_register.empty()) {
+        return;
+    }
+
+    load_validation_schemas(config, m_mappings_schema, m_globals_schema, m_mapping_config_schema);
+
+    if (!config.contains("mapping_directory")) {
+        throw libtokamap::ConfigurationError{"mapping_directory not specified in config"};
+    }
+    m_mapping_dir = config.at("mapping_directory").get<std::string>();
+    m_experiment_register = locate_mappings(m_mapping_dir, m_mapping_config_schema);
+
+    bool enable_caching = config.contains("use_cache") && config.at("use_cache").get<bool>();
+
+    if (enable_caching) {
+        const std::size_t cache_size =
+            config.contains("cache_size") ? config.at("cache_size").get<int>() : libtokamap::default_size;
+        m_ram_cache = std::make_shared<libtokamap::RamCache>(cache_size);
+    } else {
+        m_ram_cache = nullptr;
+    }
+
+    m_cache_enabled = m_ram_cache != nullptr;
+    m_init = true;
+}
+
+void libtokamap::MappingHandler::load_experiment(const ExperimentName& experiment, const nlohmann::json& attributes)
+{
+    if (!m_experiment_register.contains(experiment)) {
+        throw MappingError{"Experiment '" + experiment + "' not found in mappings"};
+    }
+
+    if (m_experiment_register[experiment].is_loaded) {
+        // experiment already loaded
+        return;
+    }
+
+    auto& experiment_mapping = m_experiment_register[experiment];
+
+    auto top_level_globals = load_json(m_mapping_dir / experiment / "globals.json", m_globals_schema);
+    validate(top_level_globals, m_globals_schema);
+    experiment_mapping.top_level_globals = top_level_globals;
+
+    auto& partition_list = experiment_mapping.partition_list;
+
+    for (const auto& group_name : experiment_mapping.groups) {
+        auto group_directory = m_mapping_dir / experiment / group_name;
+        auto partition_directory = find_partition_directory(group_directory, partition_list, attributes);
+        auto partition_attributes = find_partition_attributes(partition_list, attributes);
+
+        MappingPair mapping_pair;
+
+        mapping_pair.globals = load_json(partition_directory / "globals.json", m_globals_schema);
+        validate(mapping_pair.globals, m_globals_schema);
+        mapping_pair.globals.update(top_level_globals);
+
+        auto mappings_json = load_json(partition_directory / "mappings.json", m_mappings_schema);
+        validate(mappings_json, m_mappings_schema);
+        mapping_pair.mappings = init_mappings(mappings_json, mapping_pair.globals, m_ram_cache);
+
+        experiment_mapping.group_mappings[group_name][partition_attributes] = std::move(mapping_pair);
+    }
+
+    experiment_mapping.is_loaded = true;
 }

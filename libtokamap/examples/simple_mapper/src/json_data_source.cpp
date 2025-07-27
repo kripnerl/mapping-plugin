@@ -61,7 +61,7 @@ libtokamap::TypedDataArray JSONDataSource::get(const libtokamap::DataSourceArgs&
                                                libtokamap::RamCache* /*ram_cache*/)
 {
     if (!map_args.contains("file_name")) {
-        throw libtokamap::ParameterError{"required argument 'shot' not provided"};
+        throw libtokamap::ParameterError{"required argument 'file_name' not provided"};
     }
     if (!map_args.contains("signal")) {
         throw libtokamap::ParameterError{"required argument 'signal' not provided"};

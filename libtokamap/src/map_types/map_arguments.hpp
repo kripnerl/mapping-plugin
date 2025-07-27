@@ -302,7 +302,11 @@ class TypedDataArray
         }
     }
 
-    [[nodiscard]] std::string to_string() const;
+    constexpr static size_t default_max_elements = 10;
+    constexpr static int default_precision = 3;
+
+    [[nodiscard]] std::string to_string(size_t max_elements = default_max_elements,
+                                        int precision = default_precision) const;
 
     // Moveable but not copyable
     TypedDataArray(const TypedDataArray&) = delete;

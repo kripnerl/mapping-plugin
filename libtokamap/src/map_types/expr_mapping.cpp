@@ -11,7 +11,7 @@ template libtokamap::TypedDataArray libtokamap::ExprMapping::eval_expr<double>(c
  * @note expression is only of float type for testing purposes
  * @param interface IDAM_PLUGIN_INTERFACE for access to request and data_block
  * @param entries unordered map of all mappings loaded for this experiment and
- * IDS
+ * group
  * @param global_data global JSON object used in templating
  * @return int error_code
  */

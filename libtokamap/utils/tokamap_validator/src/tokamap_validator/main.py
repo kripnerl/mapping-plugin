@@ -38,7 +38,7 @@ def run():
         config = json.load(f)
 
     # TODO: Update once we've figured out how the config file is structured
-    mappings = config["3.39.0"]
+    mappings = config["mappings"]["3.39.0"]
 
     if args.verbose:
         print(f"Mappings found: {mappings}")
@@ -54,7 +54,7 @@ def run():
     if args.verbose:
         print("ok")
 
-    for mapping in config["3.39.0"]:
+    for mapping in config["mappings"]["3.39.0"]:
         if args.verbose:
             print(f"Validating mapping '{mapping}' ... ", end="")
         validate_mapping(root /mapping, mappings_validator, globals_validator, args.verbose)

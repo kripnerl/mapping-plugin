@@ -28,7 +28,7 @@ namespace libtokamap
  * The evaluation and computation of the expression is done using the expression
  * toolkit library exprtk, this is done in the templated function 'eval_expr'.
  * The needed parameters are required to be entries in the JSON mapping file for
- * the current IDS. Retrieval of the data is done as if the mapping was being
+ * the current group. Retrieval of the data is done as if the mapping was being
  * retrieved regardless of the expression operation.
  *
  */
@@ -61,7 +61,7 @@ class ExprMapping : public Mapping
  * @param out_interface IDAM_PLUGIN_INTERFACE for access to request and
  * data_block
  * @param entries unordered map of all mappings loaded for this experiment and
- * IDS
+ * group
  * @param global_data global JSON object used in templating
  * @return int error_code
  */

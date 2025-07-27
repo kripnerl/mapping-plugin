@@ -68,7 +68,8 @@ int main()
         auto schema_root = root.parent_path().parent_path() / "schemas";
         nlohmann::json config = {{"mapping_directory", (root / "mappings").string()},
                                  {"mapping_schema", (schema_root / "mappings.schema.json").string()},
-                                 {"globals_schema", (schema_root / "globals.schema.json").string()}};
+                                 {"globals_schema", (schema_root / "globals.schema.json").string()},
+                                 {"mapping_config_schema", (schema_root / "mappings.cfg.schema.json").string()}};
         mapping_handler.init(config);
 
         const char* mapping = "EXAMPLE";

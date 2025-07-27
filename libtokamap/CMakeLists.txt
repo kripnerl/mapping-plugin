@@ -17,6 +17,7 @@ set( UTIL_SOURCES
     src/utils/scale_offset.cpp
     src/utils/subset.cpp
     src/utils/syntax_parser.cpp
+    src/utils/mapping_locator.cpp
 )
 
 set( MAP_TYPE_SOURCES

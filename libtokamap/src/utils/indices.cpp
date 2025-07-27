@@ -10,9 +10,9 @@
 static constexpr auto indices_re = ctll::fixed_string{ R"(\[(\d+)\])" };
 
 /**
- * @brief Extract current indices and path tokens from IMAS/IDS path
+ * @brief Extract current indices and path tokens from the mapping path
  *
- * @param path_tokens deque of strings containing split IDS path tokens
+ * @param path_tokens deque of strings containing split mapping path tokens
  * @return {indices, processed_tokens} pair of the indices vector and tokens
  */
 std::pair<std::vector<int>, std::deque<std::string>>

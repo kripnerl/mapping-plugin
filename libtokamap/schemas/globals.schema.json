@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "/schemas/toplevel",
-  "description": "JSON Schema for v1.0 of default top-level globals",
+  "description": "JSON Schema for v1.0 of mapping globals",
   "type": "object",
   "patternProperties": {
     "^((?!DATA_SOURCE_CONFIG).)*$": {

@@ -17,6 +17,7 @@ set( TEST_SOURCES
     src/syntax_parser_test.cpp
     src/typed_data_array_test.cpp
     src/value_mapping_test.cpp
+    src/mapping_locator_test.cpp
 )
 
 include( FetchContent )

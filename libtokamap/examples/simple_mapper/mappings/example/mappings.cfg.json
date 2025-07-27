@@ -1,3 +1,9 @@
 {
-  "3.42.0": ["magnetics"]
+  "metadata": {
+    "experiment": "example",
+    "author": "John Doe",
+    "version": "1.0.1"
+  },
+  "partitions": [{ "attribute": "shot", "selector": "max_below" }],
+  "groups": ["magnetics"]
 }
