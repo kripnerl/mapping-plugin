@@ -73,10 +73,11 @@ struct ExperimentMappings {
     std::vector<GroupName> groups;
     GroupMappings group_mappings;
     nlohmann::json top_level_globals;
+    std::filesystem::path root_path;
 
     ExperimentMappings() = default;
-    ExperimentMappings(PartitionList partition_list, std::vector<GroupName> groups)
-        : partition_list(std::move(partition_list)), groups(std::move(groups))
+    ExperimentMappings(PartitionList partition_list, std::vector<GroupName> groups, std::filesystem::path root_path)
+        : partition_list(std::move(partition_list)), groups(std::move(groups)), root_path(std::move(root_path))
     {
     }
     ExperimentMappings(const ExperimentMappings& other) = delete;
@@ -88,6 +89,7 @@ struct ExperimentMappings {
         std::swap(groups, other.groups);
         std::swap(group_mappings, other.group_mappings);
         std::swap(top_level_globals, other.top_level_globals);
+        std::swap(root_path, other.root_path);
     }
     ExperimentMappings& operator=(ExperimentMappings&& other) noexcept
     {
@@ -96,6 +98,7 @@ struct ExperimentMappings {
         std::swap(groups, other.groups);
         std::swap(group_mappings, other.group_mappings);
         std::swap(top_level_globals, other.top_level_globals);
+        std::swap(root_path, other.root_path);
         return *this;
     }
     ~ExperimentMappings() = default;

@@ -138,7 +138,7 @@ load_mapping_config(const std::filesystem::path& mapping_dir, const valijson::Sc
     auto partition_list = mapping_config["partitions"].get<std::vector<libtokamap::MappingPartition>>();
     auto groups = mapping_config["groups"].get<std::vector<libtokamap::GroupName>>();
 
-    libtokamap::ExperimentMappings experiment_mappings{partition_list, groups};
+    libtokamap::ExperimentMappings experiment_mappings{partition_list, groups, mapping_dir};
     return {metadata.experiment, std::move(experiment_mappings)};
 }
 
@@ -441,14 +441,16 @@ void libtokamap::MappingHandler::load_experiment(const ExperimentName& experimen
 
     auto& experiment_mapping = m_experiment_register[experiment];
 
-    auto top_level_globals = load_json(m_mapping_dir / experiment / "globals.json", m_globals_schema);
+    const auto& mapping_dir = experiment_mapping.root_path;
+
+    auto top_level_globals = load_json(mapping_dir / "globals.json", m_globals_schema);
     validate(top_level_globals, m_globals_schema);
     experiment_mapping.top_level_globals = top_level_globals;
 
     auto& partition_list = experiment_mapping.partition_list;
 
     for (const auto& group_name : experiment_mapping.groups) {
-        auto group_directory = m_mapping_dir / experiment / group_name;
+        auto group_directory = mapping_dir / group_name;
         auto partition_directory = find_partition_directory(group_directory, partition_list, attributes);
         auto partition_attributes = find_partition_attributes(partition_list, attributes);
 
