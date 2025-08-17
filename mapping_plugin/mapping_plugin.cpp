@@ -154,7 +154,7 @@ int JSONMappingPlugin::init(IDAM_PLUGIN_INTERFACE* plugin_interface)
     m_mapping_handler.init(config);
 
     auto data_source = std::make_unique<json_plugin::UDADataSource>("UDA", "get", plugin_interface->pluginList, false);
-    libtokamap::DataSourceMapping::register_data_source("UDA", std::move(data_source));
+    m_mapping_handler.register_data_source("UDA", std::move(data_source));
 
     m_init = true;
 
@@ -172,7 +172,7 @@ int JSONMappingPlugin::reset(IDAM_PLUGIN_INTERFACE* /*plugin_interface*/) // sil
 {
     if (m_init) {
         // Free Heap & reset counters if initialised
-        libtokamap::DataSourceMapping::unregister_data_source("UDA");
+        m_mapping_handler.unregister_data_source("UDA");
         m_init = false;
     }
     return 0;

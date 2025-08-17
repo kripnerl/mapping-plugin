@@ -46,15 +46,20 @@ include( StandardSettings )
 include( StaticAnalyzers )
 include( Utils )
 
-add_clang_format_target()
+# add_clang_format_target()
 
 if( ENABLE_TESTING )
     enable_testing()
 endif()
 
-find_package( UDA QUIET )
+include( FetchContent )
+FetchContent_Declare(
+    libtokamap
+    GIT_REPOSITORY git@github.com:jholloc/libtokamap.git
+    GIT_TAG main
+)
 
-add_subdirectory( libtokamap )
-if( UDA_FOUND )
-    add_subdirectory( mapping_plugin )
-endif()
+FetchContent_MakeAvailable( libtokamap )
+
+find_package( UDA REQUIRED )
+add_subdirectory( mapping_plugin )
