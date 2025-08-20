@@ -129,8 +129,8 @@ class JSONMappingPlugin
  */
 int JSONMappingPlugin::init(IDAM_PLUGIN_INTERFACE* plugin_interface)
 {
-    if (!m_init || m_request_function == "init" || m_request_function == "initialise") {
-        reset(plugin_interface);
+    if (m_init) {
+        return 0;
     }
 
     const char* map_dir = getenv("UDA_MAPPING_DIR"); // NOLINT(concurrency-mt-unsafe)
