@@ -14,6 +14,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <utility>
 
 // LibTokaMap includes
 #include <utils/ram_cache.hpp>
@@ -350,6 +351,33 @@ bool json_plugin::copy_dim_from_cache(const libtokamap::RamCache& cache, const s
     return true;
 }
 
+void json_plugin::copy_to_cache(libtokamap::RamCache& ram_cache, const std::string& key, const DATA_BLOCK* data_block) {
+    auto entry = std::make_unique<UDACacheEntry>();
+
+    size_t data_size = data_block->data_n * size_of_uda_type(data_block->data_type);
+    entry->data.resize(data_size);
+    std::copy(data_block->data, data_block->data + data_size, entry->data.begin());
+
+    entry->error_high = {};
+    entry->error_low = {};
+
+    entry->dims.resize(data_block->rank);
+    entry->dim_types.resize(data_block->rank);
+    for (int i = 0; i < data_block->rank; i++) {
+        const DIMS* dim = &data_block->dims[i];
+        size_t dim_size = dim->dim_n * size_of_uda_type(dim->data_type);
+        entry->dims[i].resize(dim_size);
+        std::copy(dim->dim, dim->dim + dim_size, entry->dims[i].begin());
+        entry->dim_types[i] = dim->data_type;
+    }
+
+    entry->order = data_block->order;
+    entry->data_type = data_block->data_type;
+    entry->error_type = data_block->error_type;
+
+    ram_cache.add(key, std::move(entry));
+}
+
 bool json_plugin::copy_from_cache(const libtokamap::RamCache& cache, const std::string& key, DATA_BLOCK* data_block)
 {
     auto entry = cache.get(key);
@@ -366,38 +394,39 @@ bool json_plugin::copy_from_cache(const libtokamap::RamCache& cache, const std::
     // DATA_BLOCK* data_block = (DATA_BLOCK*) malloc(sizeof(DATA_BLOCK));
     initDataBlock(data_block);
     data_block->data_type = data_entry->data_type;
-    data_block->data_n = data_entry->data.size() / size_of_uda_type(data_entry->data_type);
+    data_block->data_n = static_cast<int>(data_entry->data.size()) / size_of_uda_type(data_entry->data_type);
 
     log(LogLevel::INFO, "data size is: " + std::to_string(data_block->data_n));
 
     data_block->data = (char*)malloc(data_entry->data.size());
-    std::copy(data_entry->data.data(), data_entry->data.data() + data_entry->data.size(), data_block->data);
+    std::copy(data_entry->data.begin(), data_entry->data.end(), data_block->data);
+
     if (!data_entry->error_high.empty()) {
         data_block->errhi = (char*)malloc(data_entry->error_high.size());
-        std::copy(data_entry->error_high.data(), data_entry->error_high.data() + data_entry->error_high.size(),
-                  data_block->errhi);
+        std::copy(data_entry->error_high.begin(), data_entry->error_high.end(), data_block->errhi);
     }
     if (!data_entry->error_low.empty()) {
         data_block->errlo = (char*)malloc(data_entry->error_low.size());
-        std::copy(data_entry->error_low.data(), data_entry->error_low.data() + data_entry->error_low.size(),
-                  data_block->errlo);
+        std::copy(data_entry->error_low.begin(), data_entry->error_low.end(), data_block->errlo);
     }
+
     data_block->rank = data_entry->dims.size();
     log(LogLevel::INFO, "data rank is: " + std::to_string(data_block->rank));
 
-    DIMS* dims = (DIMS*)malloc(data_block->rank * sizeof(DIMS));
+    data_block->dims = (DIMS*)malloc(data_block->rank * sizeof(DIMS));
     for (unsigned int i = 0; i < data_block->rank; ++i) {
-        initDimBlock(&dims[i]);
+        DIMS* dim = &data_block->dims[i];
+        initDimBlock(dim);
 
-        dims[i].data_type = data_entry->dim_types[i];
-        dims[i].dim_n = data_entry->dims[i].size() / size_of_uda_type(dims[i].data_type);
+        dim->data_type = data_entry->dim_types[i];
+        dim->dim_n = data_entry->dims[i].size() / size_of_uda_type(dim->data_type);
 
-        log(LogLevel::INFO, "dim " + std::to_string(i) + " length: " + std::to_string(dims[i].dim_n));
+        log(LogLevel::INFO, "dim " + std::to_string(i) + " length: " + std::to_string(dim->dim_n));
 
-        dims[i].dim = (char*)malloc(data_entry->dims[i].size());
-        std::copy(data_entry->dims[i].data(), data_entry->dims[i].data() + data_entry->dims[i].size(), dims[i].dim);
+        dim->dim = (char*)malloc(data_entry->dims[i].size());
+        std::copy(data_entry->dims[i].begin(), data_entry->dims[i].end(), dim->dim);
     }
-    data_block->dims = dims;
+
     data_block->order = data_entry->order;
 
     log_datablock_status(data_block, "data_block from cache");

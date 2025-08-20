@@ -1,8 +1,10 @@
 # Build & Install
-build*/*
-install/*
+build*
+install
 cmake-build-*
-Testing/*
+Testing
+venv
+.ropeproject
 
 # Machine dependent compile commands
 compile_commands.json

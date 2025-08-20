@@ -35,8 +35,6 @@ class UDADataSource : public libtokamap::DataSource
 
     [[nodiscard]] std::string get_request_str(const libtokamap::DataSourceArgs& data_source_args,
                                               const libtokamap::MapArguments& arguments) const;
-    [[nodiscard]] bool copy_from_cache(libtokamap::RamCache* ram_cache, DATA_BLOCK* data_block,
-                                       const libtokamap::MapArguments& arguments, const std::string& request_str) const;
     [[nodiscard]] int call_plugins(DATA_BLOCK* data_block, const libtokamap::DataSourceArgs& data_source_args,
                                    const libtokamap::MapArguments& arguments, libtokamap::RamCache* ram_cache) const;
 };

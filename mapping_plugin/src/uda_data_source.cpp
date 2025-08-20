@@ -79,16 +79,6 @@ std::string json_plugin::UDADataSource::get_request_str(const libtokamap::DataSo
     return request;
 }
 
-bool json_plugin::UDADataSource::copy_from_cache(libtokamap::RamCache* ram_cache, DATA_BLOCK* data_block,
-                                                 const libtokamap::MapArguments& /*arguments*/,
-                                                 const std::string& request_str) const
-{
-    if (!m_cache_enabled) {
-        return false;
-    }
-    return json_plugin::copy_from_cache(*ram_cache, request_str, data_block);
-}
-
 int json_plugin::UDADataSource::call_plugins(DATA_BLOCK* data_block, const libtokamap::DataSourceArgs& data_source_args,
                                              const libtokamap::MapArguments& arguments,
                                              libtokamap::RamCache* ram_cache) const
@@ -129,7 +119,10 @@ int json_plugin::UDADataSource::call_plugins(DATA_BLOCK* data_block, const libto
     //     ram_cache->log(libtokamap::LogLevel::DEBUG, "caching disabled");
     // }
 
-    bool cache_hit = copy_from_cache(ram_cache, data_block, arguments, request_str);
+    bool cache_hit = false;
+    if (m_cache_enabled) {
+        cache_hit = json_plugin::copy_from_cache(*ram_cache, request_str, data_block);
+    }
     if (cache_hit) {
         // ram_cache->log(libtokamap:LogLevel::INFO, "Adding cached datablock onto plugin_interface");
         // ram_cache->log(libtokamap:LogLevel::INFO,
@@ -165,9 +158,9 @@ int json_plugin::UDADataSource::call_plugins(DATA_BLOCK* data_block, const libto
 
         // Add retrieved datablock to cache. data is copied from datablock into a new libtokamap:data_entry. original
         // data remains on block (on plugin_interface structure) for return.
-        // if (m_cache_enabled) {
-        //     ram_cache->add(request_str, data_block);
-        // }
+        if (m_cache_enabled) {
+            json_plugin::copy_to_cache(*ram_cache, request_str, data_block);
+        }
     }
 
     return err;

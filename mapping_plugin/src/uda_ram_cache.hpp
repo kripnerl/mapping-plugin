@@ -37,6 +37,7 @@ class UDACacheEntry : public libtokamap::CacheEntry
     int error_type = UDA_TYPE_UNKNOWN;
 };
 
+void copy_to_cache(libtokamap::RamCache& ram_cache, const std::string& key, const DATA_BLOCK* data_block);
 bool copy_from_cache(const libtokamap::RamCache& cache, const std::string& key, DATA_BLOCK* data_block);
 bool copy_data_from_cache(const libtokamap::RamCache& cache, const std::string& key, DATA_BLOCK* data_block);
 bool copy_error_high_from_cache(const libtokamap::RamCache& cache, const std::string& key, DATA_BLOCK* data_block);
