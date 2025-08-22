@@ -185,6 +185,10 @@ libtokamap::TypedDataArray json_plugin::UDADataSource::get(const libtokamap::Dat
     DATA_BLOCK data_block;
     int err = call_plugins(&data_block, data_source_args, arguments, ram_cache);
 
+    if (err != 0) {
+        return {};
+    }
+
     // temporary solution to the slice functionality returning arrays of 1 element
     if (data_block.rank == 1 && data_block.data_n == 1) {
         data_block.rank = 0;

@@ -45,7 +45,7 @@ uda_plugin(
     EXAMPLE "IMAS_JSON_MAP::read()"
     LIBNAME mapping_plugin
     SOURCES mapping_plugin.cpp
-    CONFIG_FILE config/json_mapping.cfg
+    CONFIG_FILE config/json_mapping.cfg config/libtokamap_config.json
     EXTRA_INCLUDE_DIRS
         ${CMAKE_CURRENT_LIST_DIR}/src
         ${CMAKE_CURRENT_LIST_DIR}/ext_include

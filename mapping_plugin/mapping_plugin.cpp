@@ -133,28 +133,21 @@ int JSONMappingPlugin::init(IDAM_PLUGIN_INTERFACE* plugin_interface)
         return 0;
     }
 
-    const char* map_dir = getenv("UDA_MAPPING_DIR"); // NOLINT(concurrency-mt-unsafe)
-    if (map_dir == nullptr) {
-        log(LogLevel::ERROR, "JSONMappingPlugin::init: - JSON mapping locations not set");
-        RAISE_PLUGIN_ERROR("JSONMappingPlugin::init: - JSON mapping locations not set")
+    const char* config_path = getenv("UDA_MAPPING_CONFIG_PATH");
+    if (config_path != nullptr) {
+        m_mapping_handler.init(std::filesystem::path{config_path});
+    } else {
+        throw std::runtime_error{"UDA_MAPPING_CONFIG_PATH not specified"};
     }
 
-    nlohmann::json config = {{"mapping_directory", std::string{map_dir}}};
-
-    const char* use_cache = getenv("UDA_MAPPING_USE_CACHE");
-    if (use_cache != nullptr) {
-        config["use_cache"] = bool(std::stoi(std::string{use_cache}));
-    }
-
-    const char* cache_size = getenv("UDA_MAPPING_CACHE_SIZE");
-    if (use_cache != nullptr) {
-        config["cache_size"] = std::stoi(std::string{cache_size});
-    }
-
-    m_mapping_handler.init(config);
-
-    auto data_source = std::make_unique<json_plugin::UDADataSource>("UDA", "get", plugin_interface->pluginList, false);
+    auto data_source = std::make_unique<json_plugin::UDADataSource>("UDA", "get", plugin_interface->pluginList, true);
     m_mapping_handler.register_data_source("UDA", std::move(data_source));
+
+    auto mastu_data_source = std::make_unique<json_plugin::UDADataSource>("CUSTOM_MASTU", "get", plugin_interface->pluginList, true);
+    m_mapping_handler.register_data_source("CUSTOM_MASTU", std::move(mastu_data_source));
+
+    auto geom_data_source = std::make_unique<json_plugin::UDADataSource>("GEOMETRY", "get", plugin_interface->pluginList, true);
+    m_mapping_handler.register_data_source("GEOMETRY", std::move(geom_data_source));
 
     m_init = true;
 
@@ -173,6 +166,8 @@ int JSONMappingPlugin::reset(IDAM_PLUGIN_INTERFACE* /*plugin_interface*/) // sil
     if (m_init) {
         // Free Heap & reset counters if initialised
         m_mapping_handler.unregister_data_source("UDA");
+        m_mapping_handler.unregister_data_source("CUSTOM_MASTU");
+        m_mapping_handler.unregister_data_source("GEOMETRY");
         m_init = false;
     }
     return 0;
