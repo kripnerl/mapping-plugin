@@ -3,6 +3,6 @@
     "globals_schema": "@CMAKE_BINARY_DIR@/_deps/libtokamap-src/schemas/mappings.schema.json",
     "mapping_schema": "@CMAKE_BINARY_DIR@/_deps/libtokamap-src/schemas/globals.schema.json",
     "mapping_config_schema": "@CMAKE_BINARY_DIR@/_deps/libtokamap-src/schemas/mappings.cfg.schema.json",
-    "cache_enabled": true,
+    "cache_enabled": false,
     "cache_size": 100
 }
