@@ -120,7 +120,7 @@ int json_plugin::UDADataSource::call_plugins(DATA_BLOCK* data_block, const libto
     // }
 
     bool cache_hit = false;
-    if (m_cache_enabled) {
+    if (m_cache_enabled && ram_cache != nullptr) {
         cache_hit = json_plugin::copy_from_cache(*ram_cache, request_str, data_block);
     }
     if (cache_hit) {
@@ -158,7 +158,7 @@ int json_plugin::UDADataSource::call_plugins(DATA_BLOCK* data_block, const libto
 
         // Add retrieved datablock to cache. data is copied from datablock into a new libtokamap:data_entry. original
         // data remains on block (on plugin_interface structure) for return.
-        if (m_cache_enabled) {
+        if (m_cache_enabled && ram_cache != nullptr) {
             json_plugin::copy_to_cache(*ram_cache, request_str, data_block);
         }
     }
