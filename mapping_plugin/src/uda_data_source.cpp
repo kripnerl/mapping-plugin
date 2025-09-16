@@ -169,9 +169,10 @@ int json_plugin::UDADataSource::call_plugins(DATA_BLOCK* data_block, const libto
 namespace
 {
 template <typename T>
-libtokamap::TypedDataArray set_return_data(DataBlock& data_block, size_t size, std::vector<size_t>&& shape)
+libtokamap::TypedDataArray set_return_data(DataBlock& data_block, size_t size, std::vector<size_t>&& shape, bool is_time)
 {
-    auto array = libtokamap::TypedDataArray{reinterpret_cast<T*>(data_block.data), size, std::move(shape), false};
+    auto ptr = is_time ? data_block.dims[data_block.order].dim : data_block.data;
+    auto array = libtokamap::TypedDataArray{reinterpret_cast<T*>(ptr), size, std::move(shape), false};
     // we set the data_block.data to nullptr to avoid double deletion
     data_block.data = nullptr;
     return array;
@@ -199,16 +200,17 @@ libtokamap::TypedDataArray json_plugin::UDADataSource::get(const libtokamap::Dat
     for (int i = 0; i < data_block.rank; ++i) {
         shape[i] = data_block.dims[i].dim_n;
     }
+    bool is_time = data_source_args.count("time") != 0 && data_source_args.at("time").get<bool>();
 
     switch (data_block.data_type) {
         case UDA_TYPE_INT:
-            return set_return_data<int>(data_block, size, std::move(shape));
+            return set_return_data<int>(data_block, size, std::move(shape), is_time);
         case UDA_TYPE_FLOAT:
-            return set_return_data<float>(data_block, size, std::move(shape));
+            return set_return_data<float>(data_block, size, std::move(shape), is_time);
         case UDA_TYPE_DOUBLE:
-            return set_return_data<double>(data_block, size, std::move(shape));
+            return set_return_data<double>(data_block, size, std::move(shape), is_time);
         case UDA_TYPE_STRING:
-            return set_return_data<char>(data_block, size, std::move(shape));
+            return set_return_data<char>(data_block, size, std::move(shape), is_time);
         default:
             throw std::runtime_error{"unknown data type"};
     }
