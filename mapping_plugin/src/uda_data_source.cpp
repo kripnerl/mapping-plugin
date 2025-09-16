@@ -23,6 +23,7 @@
 #include <plugins/pluginStructs.h>
 #include <plugins/udaPlugin.h>
 #include <structures/struct.h>
+#include <clientserver/compressDim.h>
 
 #include "map_types/data_source_mapping.hpp"
 #include "map_types/map_arguments.hpp"
@@ -89,79 +90,38 @@ int json_plugin::UDADataSource::call_plugins(DATA_BLOCK* data_block, const libto
         return err;
     } // Return 1 if no request receieved
 
-    /*
-     *
-     * generate subset info then remove subset syntax from
-     *  request string
-     *
-     */
-
     REQUEST_DATA request = {0};
     strcpy(request.signal, request_str.c_str());
 
     ENVIRONMENT* environment = getIdamClientEnvironment();
     makeRequestData(&request, *m_plugin_list, environment);
 
-    // if (m_cache_enabled) {
-    //     std::string key_found = ram_cache->has_entry(request_str) ? "True" : "False";
-    //     ram_cache->log(libtokamap:LogLevel::DEBUG, "key, \"" + request_str + "\" in cache? " + key_found);
-    // }
+    IDAM_PLUGIN_INTERFACE interface = {0};
+    CLIENT_BLOCK client_block;
+    DATA_SOURCE data_source;
+    SIGNAL_DESC signal_desc;
+    initClientBlock(&client_block, 0, "");
+    initDataSource(&data_source);
+    initSignalDesc(&signal_desc);
 
-    /*
-     *
-     * CACHING GOES HERE
-     *
-     */
+    interface.request_data = &request;
+    interface.pluginList = m_plugin_list;
+    interface.data_block = data_block;
+    interface.environment = environment;
+    interface.client_block = &client_block;
+    interface.data_source = &data_source;
+    interface.signal_desc = &signal_desc;
 
-    // check cache for request string and only get data if it's not already there
-    // currently copies whole datablock (data, error, and dims)
-    // if (m_cache_enabled) {
-    //     ram_cache->log(libtokamap::LogLevel::DEBUG, "caching disabled");
-    // }
+    err = callPlugin(m_plugin_list, request_str.c_str(), &interface);
 
-    bool cache_hit = false;
-    if (m_cache_enabled && ram_cache != nullptr) {
-        cache_hit = json_plugin::copy_from_cache(*ram_cache, request_str, data_block);
-    }
-    if (cache_hit) {
-        // ram_cache->log(libtokamap:LogLevel::INFO, "Adding cached datablock onto plugin_interface");
-        // ram_cache->log(libtokamap:LogLevel::INFO,
-        //                  "data on plugin_interface (data_n): " + std::to_string(data_block->data_n));
-        err = 0;
-    } else {
-        IDAM_PLUGIN_INTERFACE interface = {0};
-        CLIENT_BLOCK client_block;
-        DATA_SOURCE data_source;
-        SIGNAL_DESC signal_desc;
-        initClientBlock(&client_block, 0, "");
-        initDataSource(&data_source);
-        initSignalDesc(&signal_desc);
-
-        interface.request_data = &request;
-        interface.pluginList = m_plugin_list;
-        interface.data_block = data_block;
-        interface.environment = environment;
-        interface.client_block = &client_block;
-        interface.data_source = &data_source;
-        interface.signal_desc = &signal_desc;
-
-        err = callPlugin(m_plugin_list, request_str.c_str(), &interface);
-
-        if (err != 0) {
-            // add check of int udaNumErrors() and if more than one, don't wipe
-            // 220 situation when UDA tries to get data and cannot find it
-            if (err == 220) {
-                closeUdaError();
-            }
-            return err;
-        } // return code if failure, no need to proceed
-
-        // Add retrieved datablock to cache. data is copied from datablock into a new libtokamap:data_entry. original
-        // data remains on block (on plugin_interface structure) for return.
-        if (m_cache_enabled && ram_cache != nullptr) {
-            json_plugin::copy_to_cache(*ram_cache, request_str, data_block);
+    if (err != 0) {
+        // add check of int udaNumErrors() and if more than one, don't wipe
+        // 220 situation when UDA tries to get data and cannot find it
+        if (err == 220) {
+            closeUdaError();
         }
-    }
+        return err;
+    } // return code if failure, no need to proceed
 
     return err;
 }
@@ -174,9 +134,105 @@ libtokamap::TypedDataArray set_return_data(DataBlock& data_block, size_t size, s
     auto array = libtokamap::TypedDataArray{reinterpret_cast<T*>(data_block.data), size, std::move(shape), false};
     // we set the data_block.data to nullptr to avoid double deletion
     data_block.data = nullptr;
+    freeDataBlock(&data_block);
     return array;
 }
+
+void expand_compressed_dim(DIMS& dim)
+{
+    if (dim.compressed == 0) 
+    {
+        return;
+    }
+    uncompressDim(&dim);
+    dim.compressed = 0;
+    dim.method = 0;
+    if (dim.sams != nullptr) {
+        free(dim.sams);
+        dim.sams = nullptr;
+    }
+    if (dim.offs != nullptr) {
+        free(dim.offs);
+        dim.offs = nullptr;
+    }
+    if (dim.ints != nullptr) {
+        free(dim.ints);
+        dim.ints = nullptr;
+    }
+    dim.udoms = 0;
+}
+
+void free_all_dims(DATA_BLOCK& data_block)
+{
+    if (data_block.dims == nullptr) {
+        return;
+    }
+
+    for (unsigned int i = 0; i<data_block.rank; i++) 
+    {
+        auto dim = data_block.dims[i];
+        if (dim.dim != nullptr) free(dim.dim);
+        if (dim.errhi != nullptr) free(dim.errhi);
+        if (dim.errlo != nullptr) free(dim.errlo);
+        if (dim.sams != nullptr) free(dim.sams);
+        if (dim.offs != nullptr) free(dim.offs);
+        if (dim.ints != nullptr) free(dim.ints);
+    }
+    free(data_block.dims);
+    data_block.dims = nullptr;
+    data_block.rank = 0;
+    data_block.order = -1;
+}
+
+void replace_data_with_dim(DATA_BLOCK& data_block, size_t index)
+{
+    if (data_block.rank == 0){
+        throw std::runtime_error{"Dims requested for data of rank 0. No dimension data exists"};
+    }
+    if (index >= data_block.rank){
+        throw std::runtime_error{"dimension index requested is out-of-bounds"};
+    }
+    if(data_block.dims == nullptr or data_block.dims[index].dim == nullptr){
+        throw std::runtime_error{"No dimension data exists for index requested"};
+    }
+
+    // just free the previous data for now
+    // can alter behaviour if we need to add caching later
+    if (data_block.data != nullptr){
+        free(data_block.data);
+        data_block.data = nullptr;
+    }
+
+    // copy dim data onto data_block
+    auto dim = data_block.dims[index]; 
+    expand_compressed_dim(dim);
+    data_block.data = dim.dim;
+    dim.dim = nullptr;
+    data_block.data_n = dim.dim_n;
+    data_block.data_type = dim.data_type;
+
+    // avoid any confusion during later cleaup
+    free_all_dims(data_block);
+
+    // "get" function just returns the data array to the calling scope
+    // no need to add compressed dims and set rank to 1 for normal return
+    // of this data_block.
+}
+
+void replace_data_with_time(DATA_BLOCK& data_block)
+{
+    if (data_block.order < 0){
+        throw std::runtime_error{"No time data exists on datablack where requested"};
+    }
+    if (data_block.order >= data_block.rank){
+        throw std::runtime_error{"corrupt datablock. time index is out-of-bounds"};
+    }
+
+    replace_data_with_dim(data_block, data_block.order);
+}
+
 } // namespace
+
 
 libtokamap::TypedDataArray json_plugin::UDADataSource::get(const libtokamap::DataSourceArgs& data_source_args,
                                                            const libtokamap::MapArguments& arguments,
@@ -189,9 +245,8 @@ libtokamap::TypedDataArray json_plugin::UDADataSource::get(const libtokamap::Dat
         return {};
     }
 
-    // temporary solution to the slice functionality returning arrays of 1 element
-    if (data_block.rank == 1 && data_block.data_n == 1) {
-        data_block.rank = 0;
+    if (data_source_args.count("time") != 0 && data_source_args.at("time").get<bool>()){
+        replace_data_with_time(data_block);
     }
 
     size_t size = data_block.data_n;
@@ -200,6 +255,7 @@ libtokamap::TypedDataArray json_plugin::UDADataSource::get(const libtokamap::Dat
         shape[i] = data_block.dims[i].dim_n;
     }
 
+    //note set_return_data destroys the data_block after moving the data out of it
     switch (data_block.data_type) {
         case UDA_TYPE_INT:
             return set_return_data<int>(data_block, size, std::move(shape));
