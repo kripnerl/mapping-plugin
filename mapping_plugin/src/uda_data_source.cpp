@@ -49,7 +49,15 @@ std::string json_plugin::UDADataSource::get_request_str(const libtokamap::DataSo
                                                         const libtokamap::MapArguments& arguments) const
 {
     std::stringstream string_stream;
-    string_stream << m_plugin_name << "::" << m_function.value_or("get") << "(";
+    // string_stream << m_plugin_name << "::" << m_function.value_or("get") << "(";
+    string_stream << m_plugin_name << "::";
+
+    if ( data_source_args.count("function") != 0 ) {
+        string_stream << data_source_args.at("function").get<std::string>();
+    } else {
+        string_stream << m_function.value_or("get");
+    }
+    string_stream << "(";
 
     // m_map_args 'field' currently nlohmann json
     // parse to string/bool
@@ -134,7 +142,21 @@ libtokamap::TypedDataArray set_return_data(DataBlock& data_block, size_t size, s
     auto array = libtokamap::TypedDataArray{reinterpret_cast<T*>(data_block.data), size, std::move(shape), false};
     // we set the data_block.data to nullptr to avoid double deletion
     data_block.data = nullptr;
-    freeDataBlock(&data_block);
+
+    // I think typically this datablock is just a shallow copy from the client-cached datablock list
+    // so will be cleaned up anyway later
+    // freeDataBlock(&data_block);
+    return array;
+}
+
+template <typename T>
+libtokamap::TypedDataArray set_return_dim(DataBlock& data_block, size_t index)
+{
+    auto dim = data_block.dims[index];
+    size_t size = dim.dim_n;
+    auto array = libtokamap::TypedDataArray{reinterpret_cast<T*>(dim.dim), size, {size}, false};
+    // we set the data_block.data to nullptr to avoid double deletion
+    dim.dim = nullptr;
     return array;
 }
 
@@ -162,77 +184,26 @@ void expand_compressed_dim(DIMS& dim)
     dim.udoms = 0;
 }
 
-void free_all_dims(DATA_BLOCK& data_block)
+libtokamap::TypedDataArray set_return_time(DataBlock& data_block)
 {
-    if (data_block.dims == nullptr) {
-        return;
-    }
-
-    for (unsigned int i = 0; i<data_block.rank; i++) 
-    {
-        auto dim = data_block.dims[i];
-        if (dim.dim != nullptr) free(dim.dim);
-        if (dim.errhi != nullptr) free(dim.errhi);
-        if (dim.errlo != nullptr) free(dim.errlo);
-        if (dim.sams != nullptr) free(dim.sams);
-        if (dim.offs != nullptr) free(dim.offs);
-        if (dim.ints != nullptr) free(dim.ints);
-    }
-    free(data_block.dims);
-    data_block.dims = nullptr;
-    data_block.rank = 0;
-    data_block.order = -1;
-}
-
-void replace_data_with_dim(DATA_BLOCK& data_block, size_t index)
-{
-    if (data_block.rank == 0){
-        throw std::runtime_error{"Dims requested for data of rank 0. No dimension data exists"};
-    }
-    if (index >= data_block.rank){
-        throw std::runtime_error{"dimension index requested is out-of-bounds"};
-    }
-    if(data_block.dims == nullptr or data_block.dims[index].dim == nullptr){
-        throw std::runtime_error{"No dimension data exists for index requested"};
-    }
-
-    // just free the previous data for now
-    // can alter behaviour if we need to add caching later
-    if (data_block.data != nullptr){
-        free(data_block.data);
-        data_block.data = nullptr;
-    }
-
-    // copy dim data onto data_block
-    auto dim = data_block.dims[index]; 
+    size_t index = data_block.order;
+    auto dim = data_block.dims[index];
     expand_compressed_dim(dim);
-    data_block.data = dim.dim;
-    dim.dim = nullptr;
-    data_block.data_n = dim.dim_n;
-    data_block.data_type = dim.data_type;
-
-    // avoid any confusion during later cleaup
-    free_all_dims(data_block);
-
-    // "get" function just returns the data array to the calling scope
-    // no need to add compressed dims and set rank to 1 for normal return
-    // of this data_block.
-}
-
-void replace_data_with_time(DATA_BLOCK& data_block)
-{
-    if (data_block.order < 0){
-        throw std::runtime_error{"No time data exists on datablack where requested"};
+    switch (dim.data_type) {
+        case UDA_TYPE_INT:
+            return set_return_dim<int>(data_block, index);
+        case UDA_TYPE_FLOAT:
+            return set_return_dim<float>(data_block, index);
+        case UDA_TYPE_DOUBLE:
+            return set_return_dim<double>(data_block, index);
+        case UDA_TYPE_STRING:
+            return set_return_dim<char>(data_block, index);
+        default:
+            throw std::runtime_error{"unknown data type"};
     }
-    if (data_block.order >= data_block.rank){
-        throw std::runtime_error{"corrupt datablock. time index is out-of-bounds"};
-    }
-
-    replace_data_with_dim(data_block, data_block.order);
 }
 
 } // namespace
-
 
 libtokamap::TypedDataArray json_plugin::UDADataSource::get(const libtokamap::DataSourceArgs& data_source_args,
                                                            const libtokamap::MapArguments& arguments,
@@ -246,11 +217,11 @@ libtokamap::TypedDataArray json_plugin::UDADataSource::get(const libtokamap::Dat
     }
 
     if (data_source_args.count("time") != 0 && data_source_args.at("time").get<bool>()){
-        replace_data_with_time(data_block);
+        return set_return_time(data_block);
     }
 
     size_t size = data_block.data_n;
-    std::vector<size_t> shape(data_block.rank);
+    std::vector<size_t> shape{data_block.rank};
     for (int i = 0; i < data_block.rank; ++i) {
         shape[i] = data_block.dims[i].dim_n;
     }
