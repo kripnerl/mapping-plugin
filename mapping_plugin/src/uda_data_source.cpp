@@ -136,73 +136,132 @@ int json_plugin::UDADataSource::call_plugins(DATA_BLOCK* data_block, const libto
 
 namespace
 {
-template <typename T>
-libtokamap::TypedDataArray set_return_data(DataBlock& data_block, size_t size, std::vector<size_t>&& shape)
-{
-    auto array = libtokamap::TypedDataArray{reinterpret_cast<T*>(data_block.data), size, std::move(shape), false};
-    // we set the data_block.data to nullptr to avoid double deletion
-    data_block.data = nullptr;
-
-    // I think typically this datablock is just a shallow copy from the client-cached datablock list
-    // so will be cleaned up anyway later
-    // freeDataBlock(&data_block);
-    return array;
-}
-
-template <typename T>
-libtokamap::TypedDataArray set_return_dim(DataBlock& data_block, size_t index)
-{
-    auto dim = data_block.dims[index];
-    size_t size = dim.dim_n;
-    auto array = libtokamap::TypedDataArray{reinterpret_cast<T*>(dim.dim), size, {size}, false};
-    // we set the data_block.data to nullptr to avoid double deletion
-    dim.dim = nullptr;
-    return array;
-}
-
-void expand_compressed_dim(DIMS& dim)
-{
-    if (dim.compressed == 0) 
+    class ArrayBuilder
     {
-        return;
-    }
-    uncompressDim(&dim);
-    dim.compressed = 0;
-    dim.method = 0;
-    if (dim.sams != nullptr) {
-        free(dim.sams);
-        dim.sams = nullptr;
-    }
-    if (dim.offs != nullptr) {
-        free(dim.offs);
-        dim.offs = nullptr;
-    }
-    if (dim.ints != nullptr) {
-        free(dim.ints);
-        dim.ints = nullptr;
-    }
-    dim.udoms = 0;
-}
+        private:
+        const char* m_data = nullptr;
+        size_t m_size = {};
+        std::vector<size_t> m_shape;
+        int m_data_type = UDA_TYPE_UNKNOWN;
+        bool m_owning = true;
+        bool m_ownership_locked = false;
+        bool m_buildable = false;
+        bool m_free_data_required = false;
 
-libtokamap::TypedDataArray set_return_time(DataBlock& data_block)
-{
-    size_t index = data_block.order;
-    auto dim = data_block.dims[index];
-    expand_compressed_dim(dim);
-    switch (dim.data_type) {
-        case UDA_TYPE_INT:
-            return set_return_dim<int>(data_block, index);
-        case UDA_TYPE_FLOAT:
-            return set_return_dim<float>(data_block, index);
-        case UDA_TYPE_DOUBLE:
-            return set_return_dim<double>(data_block, index);
-        case UDA_TYPE_STRING:
-            return set_return_dim<char>(data_block, index);
-        default:
-            throw std::runtime_error{"unknown data type"};
-    }
-}
+        public:
+        ArrayBuilder() = default;
+        ~ArrayBuilder() 
+        {
+            if (m_free_data_required and m_data != nullptr) {
+                free(const_cast<char*>(m_data));
+            }
+        }
 
+        ArrayBuilder(const ArrayBuilder&) = delete;
+        ArrayBuilder& operator=(const ArrayBuilder&) = delete;
+        ArrayBuilder(ArrayBuilder&& other) = delete;
+        ArrayBuilder& operator=(ArrayBuilder&& other) = delete;
+        
+        enum class OwnershipPolicy 
+        {
+            VIEW,
+            COPY
+        };
+         
+        void set_ownership(OwnershipPolicy policy)
+        {
+            bool is_owning = (policy == OwnershipPolicy::COPY);
+            if (m_ownership_locked and m_owning != is_owning) {
+                throw std::runtime_error("Ownership policy already enforced by a previous option");
+            }
+            m_owning = is_owning;
+        }
+        ArrayBuilder& ownership(OwnershipPolicy policy) 
+        {
+            set_ownership(policy);
+            return *this;
+        }
+
+        void set_data(const DATA_BLOCK& db)
+        {
+            m_data = db.data;
+            m_size = db.data_n;
+            m_shape.reserve(db.rank);
+            for (int i = 0; i < db.rank; ++i) {
+                m_shape[i] = db.dims[i].dim_n;
+            }
+            m_data_type = db.data_type;
+            m_buildable = true;
+        }
+        ArrayBuilder& data(const DATA_BLOCK& db)
+        {
+            set_data(db);
+            return *this;
+        }
+        
+        void set_dimension_data(const DIMS& dim)
+        {
+            if (dim.compressed > 0) {
+                DIMS tmp_dim = dim;
+
+                uncompressDim(&tmp_dim);
+                tmp_dim.compressed = 0;
+                tmp_dim.method = 0;
+
+                m_data = tmp_dim.dim;
+                tmp_dim.dim = nullptr;
+                m_free_data_required = true;
+
+                m_owning = true;
+                m_ownership_locked = true; // cannot guarantee sufficient object lifetime?
+            } else {
+                m_data = dim.dim;
+            }
+            m_size = dim.dim_n;
+            m_shape = {m_size};
+            m_data_type = dim.data_type;
+            m_buildable = true;
+        }
+        ArrayBuilder& dimension(const DIMS& dim)
+        {
+            set_dimension_data(dim);
+            return *this;
+        }
+
+        void set_time_data(const DATA_BLOCK& db)
+        {
+            auto index = db.order;
+            if (index < 0 or index > db.rank or db.rank < 1) {
+                throw std::runtime_error("No time data available for this signal");
+            }
+            set_dimension_data(db.dims[index]);
+        }
+        ArrayBuilder& time(const DATA_BLOCK& db)
+        {
+            set_time_data(db);
+            return *this;
+        }
+
+        libtokamap::TypedDataArray build()
+        {
+            switch (m_data_type) {
+                case UDA_TYPE_INT:
+                    return libtokamap::TypedDataArray(reinterpret_cast<int*>(const_cast<char*>(m_data)), 
+                            m_size, std::move(m_shape), m_owning);
+                case UDA_TYPE_FLOAT:
+                    return libtokamap::TypedDataArray(reinterpret_cast<float*>(const_cast<char*>(m_data)), 
+                            m_size, std::move(m_shape), m_owning);
+                case UDA_TYPE_DOUBLE:
+                    return libtokamap::TypedDataArray(reinterpret_cast<double*>(const_cast<char*>(m_data)), 
+                            m_size, std::move(m_shape), m_owning);
+                case UDA_TYPE_STRING:
+                    return libtokamap::TypedDataArray(const_cast<char*>(m_data), m_size, std::move(m_shape), m_owning);
+                default:
+                    throw std::runtime_error{"unknown data type"};
+            }
+        }
+
+    };
 } // namespace
 
 libtokamap::TypedDataArray json_plugin::UDADataSource::get(const libtokamap::DataSourceArgs& data_source_args,
@@ -216,27 +275,13 @@ libtokamap::TypedDataArray json_plugin::UDADataSource::get(const libtokamap::Dat
         return {};
     }
 
+    ArrayBuilder array_builder;
     if (data_source_args.count("time") != 0 && data_source_args.at("time").get<bool>()){
-        return set_return_time(data_block);
+        return array_builder.ownership(ArrayBuilder::OwnershipPolicy::VIEW)
+                            .time(data_block)
+                            .build();
     }
-
-    size_t size = data_block.data_n;
-    std::vector<size_t> shape{data_block.rank};
-    for (int i = 0; i < data_block.rank; ++i) {
-        shape[i] = data_block.dims[i].dim_n;
-    }
-
-    //note set_return_data destroys the data_block after moving the data out of it
-    switch (data_block.data_type) {
-        case UDA_TYPE_INT:
-            return set_return_data<int>(data_block, size, std::move(shape));
-        case UDA_TYPE_FLOAT:
-            return set_return_data<float>(data_block, size, std::move(shape));
-        case UDA_TYPE_DOUBLE:
-            return set_return_data<double>(data_block, size, std::move(shape));
-        case UDA_TYPE_STRING:
-            return set_return_data<char>(data_block, size, std::move(shape));
-        default:
-            throw std::runtime_error{"unknown data type"};
-    }
+    return array_builder.ownership(ArrayBuilder::OwnershipPolicy::VIEW)
+                        .data(data_block)
+                        .build();
 }
