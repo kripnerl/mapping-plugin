@@ -1,6 +1,7 @@
 #include "uda_plugin_helpers.hpp"
 
 #include <cstring>
+#include <libtokamap.hpp>
 #include <typeindex>
 #include <typeinfo>
 #include <unordered_map>
@@ -11,8 +12,6 @@
 #include <clientserver/initStructs.h>
 #include <clientserver/udaStructs.h>
 #include <clientserver/udaTypes.h>
-
-#include "map_types/map_arguments.hpp"
 
 std::unordered_map<std::string, UDA_TYPE> json_plugin::uda_type_map()
 {
