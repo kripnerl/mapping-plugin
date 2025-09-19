@@ -243,20 +243,52 @@ namespace
             return *this;
         }
 
+        private:
+        template<typename T>
+        libtokamap::TypedDataArray _array_factory()
+        {
+            return libtokamap::TypedDataArray(reinterpret_cast<T*>(const_cast<char*>(m_data)), 
+                    m_size, std::move(m_shape), m_owning);
+        }
+        template<>
+        libtokamap::TypedDataArray _array_factory<char>()
+        {
+            return libtokamap::TypedDataArray(const_cast<char*>(m_data), m_size, std::move(m_shape), m_owning);
+        }
+
+        public:
         libtokamap::TypedDataArray build()
         {
             switch (m_data_type) {
+                case UDA_TYPE_SHORT:
+                    return _array_factory<short>();
                 case UDA_TYPE_INT:
-                    return libtokamap::TypedDataArray(reinterpret_cast<int*>(const_cast<char*>(m_data)), 
-                            m_size, std::move(m_shape), m_owning);
+                    return _array_factory<int>();
+                case UDA_TYPE_UNSIGNED_INT:
+                    return _array_factory<short>();
+                case UDA_TYPE_LONG:
+                    return _array_factory<long>();
+                case UDA_TYPE_LONG64:
+                    return _array_factory<int64_t>();
                 case UDA_TYPE_FLOAT:
-                    return libtokamap::TypedDataArray(reinterpret_cast<float*>(const_cast<char*>(m_data)), 
-                            m_size, std::move(m_shape), m_owning);
+                    return _array_factory<float>();
                 case UDA_TYPE_DOUBLE:
-                    return libtokamap::TypedDataArray(reinterpret_cast<double*>(const_cast<char*>(m_data)), 
-                            m_size, std::move(m_shape), m_owning);
+                    return _array_factory<double>();
+                case UDA_TYPE_UNSIGNED_CHAR:
+                    return _array_factory<unsigned char>();
+                case UDA_TYPE_UNSIGNED_SHORT:
+                    return _array_factory<unsigned short>();
+                case UDA_TYPE_UNSIGNED_LONG:
+                    return _array_factory<unsigned long>();
+                case UDA_TYPE_UNSIGNED_LONG64:
+                    return _array_factory<uint64_t>();
+                case UDA_TYPE_CHAR:
                 case UDA_TYPE_STRING:
-                    return libtokamap::TypedDataArray(const_cast<char*>(m_data), m_size, std::move(m_shape), m_owning);
+                    return _array_factory<char>();
+                case UDA_TYPE_COMPLEX:
+                    return _array_factory<COMPLEX>();
+                case UDA_TYPE_DCOMPLEX:
+                    return _array_factory<DCOMPLEX>();
                 default:
                     throw std::runtime_error{"unknown data type"};
             }
@@ -276,13 +308,12 @@ libtokamap::TypedDataArray json_plugin::UDADataSource::get(const libtokamap::Dat
         return {};
     }
 
-    ArrayBuilder array_builder;
     if (data_source_args.count("time") != 0 && data_source_args.at("time").get<bool>()){
-        return array_builder.ownership(ArrayBuilder::OwnershipPolicy::VIEW)
-                            .time(data_block)
-                            .build();
+        return ArrayBuilder().ownership(ArrayBuilder::OwnershipPolicy::COPY)
+                             .time(data_block)
+                             .build();
     }
-    return array_builder.ownership(ArrayBuilder::OwnershipPolicy::COPY)
-                        .data(data_block)
-                        .build();
+    return ArrayBuilder().ownership(ArrayBuilder::OwnershipPolicy::COPY)
+                         .data(data_block)
+                         .build();
 }
