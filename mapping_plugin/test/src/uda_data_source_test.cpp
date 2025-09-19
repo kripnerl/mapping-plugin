@@ -20,6 +20,7 @@
 // LibTokaMap includes
 #include <map_types/data_source_mapping.hpp>
 #include <map_types/map_arguments.hpp>
+#include <handlers/mapping_handler.hpp>
 #include <utils/ram_cache.hpp>
 
 // UDA includes
@@ -42,7 +43,7 @@ make_map_arguments(const std::type_index data_type, const int rank)
     static std::unordered_map<std::string, std::unique_ptr<Mapping>> empty_entries;
     static nlohmann::json empty_global_data = nlohmann::json::object();
 
-    return MapArguments(empty_entries, empty_global_data, data_type, rank);
+    return MapArguments(empty_entries, empty_global_data, data_type, rank, false, false, nullptr);
 }
 
 int plugin_return_scalar(IDAM_PLUGIN_INTERFACE* interface)
@@ -91,7 +92,9 @@ TEST_CASE("PluginMapping calls UDA data source", "[plugin_mapping][uda_data_sour
     std::strcpy(plugin.format, "UDA");
 
     auto test_source = std::make_unique<UDADataSource>("UDA", "get", &plugin_list, false);
-    DataSourceMapping::register_data_source("UDA", std::move(test_source));
+    auto* data_source_ptr = test_source.get();
+    MappingHandler mapping_handler;
+    mapping_handler.register_data_source("UDA", std::move(test_source));
 
     SECTION("Integer values are correctly returned")
     {
@@ -101,7 +104,7 @@ TEST_CASE("PluginMapping calls UDA data source", "[plugin_mapping][uda_data_sour
         std::optional<std::string> slice = {};
         std::shared_ptr<RamCache> ram_cache = nullptr;
 
-        auto mapping = std::make_unique<DataSourceMapping>("UDA", request_args, offset, scale, slice, ram_cache);
+        auto mapping = std::make_unique<DataSourceMapping>("UDA", data_source_ptr, request_args, offset, scale, slice);
         REQUIRE(mapping != nullptr);
 
         MapArguments map_args = make_map_arguments(std::type_index{typeid(int)}, 1);
@@ -126,7 +129,9 @@ TEST_CASE("Slicing and offsetting returned data", "[plugin_mapping][uda_data_sou
     std::strcpy(plugin.format, "UDA");
 
     auto test_source = std::make_unique<UDADataSource>("UDA", "get", &plugin_list, false);
-    DataSourceMapping::register_data_source("UDA", std::move(test_source));
+    auto* data_source_ptr = test_source.get();
+    MappingHandler mapping_handler;
+    mapping_handler.register_data_source("UDA", std::move(test_source));
 
     SECTION("Float values are correctly returned")
     {
@@ -136,7 +141,7 @@ TEST_CASE("Slicing and offsetting returned data", "[plugin_mapping][uda_data_sou
         std::optional<std::string> slice = {};
         std::shared_ptr<RamCache> ram_cache = nullptr;
 
-        auto mapping = std::make_unique<DataSourceMapping>("UDA", request_args, offset, scale, slice, ram_cache);
+        auto mapping = std::make_unique<DataSourceMapping>("UDA", data_source_ptr, request_args, offset, scale, slice);
         REQUIRE(mapping != nullptr);
 
         MapArguments map_args = make_map_arguments(std::type_index{typeid(int)}, 1);
@@ -161,7 +166,7 @@ TEST_CASE("Slicing and offsetting returned data", "[plugin_mapping][uda_data_sou
         std::string slice = "[0:" + std::to_string(range_len) + "]";
         std::shared_ptr<RamCache> ram_cache = nullptr;
 
-        auto mapping = std::make_unique<DataSourceMapping>("UDA", request_args, offset, scale, slice, ram_cache);
+        auto mapping = std::make_unique<DataSourceMapping>("UDA", data_source_ptr, request_args, offset, scale, slice);
         REQUIRE(mapping != nullptr);
 
         MapArguments map_args = make_map_arguments(std::type_index{typeid(int)}, 1);
