@@ -235,6 +235,9 @@ int JSONMappingPlugin::get(IDAM_PLUGIN_INTERFACE* plugin_interface)
 
     auto type_index = std::type_index{typeid(void)};
     switch (datatype) {
+        case UDA_TYPE_SHORT:
+            type_index = std::type_index{typeid(short)};
+            break;
         case UDA_TYPE_INT:
             type_index = std::type_index{typeid(int)};
             break;
@@ -249,6 +252,31 @@ int JSONMappingPlugin::get(IDAM_PLUGIN_INTERFACE* plugin_interface)
             break;
         case UDA_TYPE_UNSIGNED_LONG64:
             type_index = std::type_index{typeid(uint64_t)};
+            break;
+        case UDA_TYPE_UNSIGNED_INT:
+            type_index = std::type_index{typeid(unsigned int)};
+            break;
+        case UDA_TYPE_LONG:
+            type_index = std::type_index{typeid(long)};
+            break;
+        case UDA_TYPE_UNSIGNED_CHAR:
+            type_index = std::type_index{typeid(unsigned char)};
+            break;
+        case UDA_TYPE_UNSIGNED_SHORT:
+            type_index = std::type_index{typeid(unsigned short)};
+            break;
+        case UDA_TYPE_UNSIGNED_LONG:
+            type_index = std::type_index{typeid(unsigned long)};
+            break;
+        case UDA_TYPE_LONG64:
+            type_index = std::type_index{typeid(int64_t)};
+            break;
+        case UDA_TYPE_COMPLEX:
+            type_index = std::type_index{typeid(COMPLEX)};
+            break;
+        case UDA_TYPE_DCOMPLEX:
+            type_index = std::type_index{typeid(DCOMPLEX)};
+            break;
         default:
             break;
     }
