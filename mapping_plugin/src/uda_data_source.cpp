@@ -189,7 +189,7 @@ namespace
             m_size = db.data_n;
             m_shape.reserve(db.rank);
             for (int i = 0; i < db.rank; ++i) {
-                m_shape[i] = db.dims[i].dim_n;
+                m_shape.push_back(db.dims[i].dim_n);
             }
             m_data_type = db.data_type;
             m_buildable = true;
@@ -282,7 +282,7 @@ libtokamap::TypedDataArray json_plugin::UDADataSource::get(const libtokamap::Dat
                             .time(data_block)
                             .build();
     }
-    return array_builder.ownership(ArrayBuilder::OwnershipPolicy::VIEW)
+    return array_builder.ownership(ArrayBuilder::OwnershipPolicy::COPY)
                         .data(data_block)
                         .build();
 }
