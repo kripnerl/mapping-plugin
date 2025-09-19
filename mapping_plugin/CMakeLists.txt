@@ -8,11 +8,6 @@
 find_package( UDA 2.7.0 REQUIRED )
 find_package( Boost REQUIRED )
 
-# Specify C++ standard for all targets
-set( CMAKE_CXX_STANDARD 17 )
-set( CMAKE_CXX_STANDARD_REQUIRED ON )
-set( CMAKE_CXX_EXTENSIONS OFF )
-
 set( SOURCES
     src/uda_data_source.cpp
     src/uda_ram_cache.cpp
@@ -34,6 +29,7 @@ target_include_directories( libtokamap_uda_extension PRIVATE
     ${CMAKE_SOURCE_DIR}/libtokamap/src
 )
 target_link_libraries( libtokamap_uda_extension PRIVATE Boost::boost LibTokaMap::libtokamap )
+target_compile_features(libtokamap_uda_extension PUBLIC cxx_std_17)
 
 find_package( Boost REQUIRED )
 

@@ -8,7 +8,7 @@
 #include <clientserver/udaStructs.h>
 #include <clientserver/udaTypes.h>
 
-#include "map_types/map_arguments.hpp"
+#include "utils/typed_data_array.hpp"
 
 namespace json_plugin
 {

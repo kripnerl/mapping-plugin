@@ -27,8 +27,9 @@
 
 #include "map_types/data_source_mapping.hpp"
 #include "map_types/map_arguments.hpp"
-#include "uda_ram_cache.hpp"
-#include "utils/ram_cache.hpp"
+// #include "uda_ram_cache.hpp"
+// #include "utils/ram_cache.hpp"
+#include "utils/typed_data_array.hpp"
 
 // TODO:
 //  - handle compressed dims

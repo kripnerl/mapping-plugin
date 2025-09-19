@@ -15,7 +15,7 @@ list(
 )
 
 # Specify C++ standard for all targets
-set( CMAKE_CXX_STANDARD 17 )
+set( CMAKE_CXX_STANDARD 20 )
 set( CMAKE_CXX_STANDARD_REQUIRED ON )
 set( CMAKE_CXX_EXTENSIONS OFF )
 
@@ -55,11 +55,15 @@ endif()
 include( FetchContent )
 FetchContent_Declare(
     libtokamap
-    GIT_REPOSITORY git@github.com:jholloc/libtokamap.git
-    GIT_TAG main
+    GIT_REPOSITORY https://github.com/ukaea/libtokamap.git
+    GIT_TAG develop
+    CMAKE_ARGS -DENABLE_TESTS=OFF
 )
 
 FetchContent_MakeAvailable( libtokamap )
 
+
 find_package( UDA REQUIRED )
 add_subdirectory( mapping_plugin )
+# add_subdirectory( geometry_map_plugin )
+# add_subdirectory( CUSTOM_MASTU_plugin )

@@ -19,6 +19,7 @@ std::unordered_map<std::string, UDA_TYPE> json_plugin::uda_type_map()
     static std::unordered_map<std::string, UDA_TYPE> type_map;
     if (type_map.empty()) {
         type_map = {{typeid(unsigned int).name(), UDA_TYPE_UNSIGNED_INT},
+                    {typeid(uint64_t).name(), UDA_TYPE_UNSIGNED_LONG64},
                     {typeid(int).name(), UDA_TYPE_INT},
                     {typeid(float).name(), UDA_TYPE_FLOAT},
                     {typeid(double).name(), UDA_TYPE_DOUBLE},
@@ -33,6 +34,7 @@ std::unordered_map<std::type_index, UDA_TYPE> json_plugin::uda_type_index_map()
     static std::unordered_map<std::type_index, UDA_TYPE> type_map;
     if (type_map.empty()) {
         type_map = {{std::type_index{ typeid(unsigned int) }, UDA_TYPE_UNSIGNED_INT},
+                    {std::type_index{ typeid(uint64_t) }, UDA_TYPE_UNSIGNED_LONG64},
                     {std::type_index{ typeid(int) }, UDA_TYPE_INT},
                     {std::type_index{ typeid(float) }, UDA_TYPE_FLOAT},
                     {std::type_index{ typeid(double) }, UDA_TYPE_DOUBLE},
