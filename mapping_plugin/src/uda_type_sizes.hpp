@@ -5,8 +5,8 @@
 #include <stdexcept>
 #include <string>
 
-#include <clientserver/udaTypes.h>
 #include <clientserver/udaStructs.h>
+#include <clientserver/udaTypes.h>
 
 namespace json_plugin
 {

@@ -143,10 +143,12 @@ int JSONMappingPlugin::init(IDAM_PLUGIN_INTERFACE* plugin_interface)
     auto data_source = std::make_unique<json_plugin::UDADataSource>("UDA", "get", plugin_interface->pluginList, false);
     m_mapping_handler.register_data_source("UDA", std::move(data_source));
 
-    auto mastu_data_source = std::make_unique<json_plugin::UDADataSource>("CUSTOM_MASTU", "get", plugin_interface->pluginList, false);
+    auto mastu_data_source =
+        std::make_unique<json_plugin::UDADataSource>("CUSTOM_MASTU", "get", plugin_interface->pluginList, false);
     m_mapping_handler.register_data_source("CUSTOM_MASTU", std::move(mastu_data_source));
 
-    auto geom_data_source = std::make_unique<json_plugin::UDADataSource>("GEOMETRY", "get", plugin_interface->pluginList, false);
+    auto geom_data_source =
+        std::make_unique<json_plugin::UDADataSource>("GEOMETRY", "get", plugin_interface->pluginList, false);
     m_mapping_handler.register_data_source("GEOMETRY", std::move(geom_data_source));
 
     m_init = true;

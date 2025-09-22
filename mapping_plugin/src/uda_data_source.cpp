@@ -13,6 +13,7 @@
 
 // UDA includes
 #include <client/getEnvironment.h>
+#include <clientserver/compressDim.h>
 #include <clientserver/errorLog.h>
 #include <clientserver/initStructs.h>
 #include <clientserver/makeRequestBlock.h>
@@ -23,7 +24,6 @@
 #include <plugins/pluginStructs.h>
 #include <plugins/udaPlugin.h>
 #include <structures/struct.h>
-#include <clientserver/compressDim.h>
 
 #include "map_types/data_source_mapping.hpp"
 #include "map_types/map_arguments.hpp"
@@ -53,7 +53,7 @@ std::string json_plugin::UDADataSource::get_request_str(const libtokamap::DataSo
     // string_stream << m_plugin_name << "::" << m_function.value_or("get") << "(";
     string_stream << m_plugin_name << "::";
 
-    if ( data_source_args.count("function") != 0 ) {
+    if (data_source_args.count("function") != 0) {
         string_stream << data_source_args.at("function").get<std::string>();
     } else {
         string_stream << m_function.value_or("get");
@@ -137,164 +137,157 @@ int json_plugin::UDADataSource::call_plugins(DATA_BLOCK* data_block, const libto
 
 namespace
 {
-    class ArrayBuilder
+class ArrayBuilder
+{
+  private:
+    const char* m_data = nullptr;
+    size_t m_size = {};
+    std::vector<size_t> m_shape;
+    int m_data_type = UDA_TYPE_UNKNOWN;
+    bool m_owning = true;
+    bool m_ownership_locked = false;
+    bool m_buildable = false;
+    bool m_free_data_required = false;
+
+  public:
+    ArrayBuilder() = default;
+    ~ArrayBuilder()
     {
-        private:
-        const char* m_data = nullptr;
-        size_t m_size = {};
-        std::vector<size_t> m_shape;
-        int m_data_type = UDA_TYPE_UNKNOWN;
-        bool m_owning = true;
-        bool m_ownership_locked = false;
-        bool m_buildable = false;
-        bool m_free_data_required = false;
+        if (m_free_data_required and m_data != nullptr) {
+            free(const_cast<char*>(m_data));
+        }
+    }
 
-        public:
-        ArrayBuilder() = default;
-        ~ArrayBuilder() 
-        {
-            if (m_free_data_required and m_data != nullptr) {
-                free(const_cast<char*>(m_data));
-            }
-        }
+    ArrayBuilder(const ArrayBuilder&) = delete;
+    ArrayBuilder& operator=(const ArrayBuilder&) = delete;
+    ArrayBuilder(ArrayBuilder&& other) = delete;
+    ArrayBuilder& operator=(ArrayBuilder&& other) = delete;
 
-        ArrayBuilder(const ArrayBuilder&) = delete;
-        ArrayBuilder& operator=(const ArrayBuilder&) = delete;
-        ArrayBuilder(ArrayBuilder&& other) = delete;
-        ArrayBuilder& operator=(ArrayBuilder&& other) = delete;
-        
-        enum class OwnershipPolicy 
-        {
-            VIEW,
-            COPY
-        };
-         
-        void set_ownership(OwnershipPolicy policy)
-        {
-            bool is_owning = (policy == OwnershipPolicy::COPY);
-            if (m_ownership_locked and m_owning != is_owning) {
-                throw std::runtime_error("Ownership policy already enforced by a previous option");
-            }
-            m_owning = is_owning;
-        }
-        ArrayBuilder& ownership(OwnershipPolicy policy) 
-        {
-            set_ownership(policy);
-            return *this;
-        }
+    enum class OwnershipPolicy { VIEW, COPY };
 
-        void set_data(const DATA_BLOCK& db)
-        {
-            m_data = db.data;
-            m_size = db.data_n;
-            m_shape.reserve(db.rank);
-            for (int i = 0; i < db.rank; ++i) {
-                m_shape.push_back(db.dims[i].dim_n);
-            }
-            m_data_type = db.data_type;
-            m_buildable = true;
+    void set_ownership(OwnershipPolicy policy)
+    {
+        bool is_owning = (policy == OwnershipPolicy::COPY);
+        if (m_ownership_locked and m_owning != is_owning) {
+            throw std::runtime_error("Ownership policy already enforced by a previous option");
         }
-        ArrayBuilder& data(const DATA_BLOCK& db)
-        {
-            set_data(db);
-            return *this;
-        }
-        
-        void set_dimension_data(const DIMS& dim)
-        {
-            if (dim.compressed > 0) {
-                DIMS tmp_dim = dim;
+        m_owning = is_owning;
+    }
+    ArrayBuilder& ownership(OwnershipPolicy policy)
+    {
+        set_ownership(policy);
+        return *this;
+    }
 
-                uncompressDim(&tmp_dim);
-                tmp_dim.compressed = 0;
-                tmp_dim.method = 0;
+    void set_data(const DATA_BLOCK& db)
+    {
+        m_data = db.data;
+        m_size = db.data_n;
+        m_shape.reserve(db.rank);
+        for (int i = 0; i < db.rank; ++i) {
+            m_shape.push_back(db.dims[i].dim_n);
+        }
+        m_data_type = db.data_type;
+        m_buildable = true;
+    }
+    ArrayBuilder& data(const DATA_BLOCK& db)
+    {
+        set_data(db);
+        return *this;
+    }
 
-                m_data = tmp_dim.dim;
-                tmp_dim.dim = nullptr;
-                m_free_data_required = true;
+    void set_dimension_data(const DIMS& dim)
+    {
+        if (dim.compressed > 0) {
+            DIMS tmp_dim = dim;
 
-                m_owning = true;
-                m_ownership_locked = true; // cannot guarantee sufficient object lifetime?
-            } else {
-                m_data = dim.dim;
-            }
-            m_size = dim.dim_n;
-            m_shape = {m_size};
-            m_data_type = dim.data_type;
-            m_buildable = true;
-        }
-        ArrayBuilder& dimension(const DIMS& dim)
-        {
-            set_dimension_data(dim);
-            return *this;
-        }
+            uncompressDim(&tmp_dim);
+            tmp_dim.compressed = 0;
+            tmp_dim.method = 0;
 
-        void set_time_data(const DATA_BLOCK& db)
-        {
-            auto index = db.order;
-            if (index < 0 or index > db.rank or db.rank < 1) {
-                throw std::runtime_error("No time data available for this signal");
-            }
-            set_dimension_data(db.dims[index]);
-        }
-        ArrayBuilder& time(const DATA_BLOCK& db)
-        {
-            set_time_data(db);
-            return *this;
-        }
+            m_data = tmp_dim.dim;
+            tmp_dim.dim = nullptr;
+            m_free_data_required = true;
 
-        private:
-        template<typename T>
-        libtokamap::TypedDataArray _array_factory()
-        {
-            return libtokamap::TypedDataArray(reinterpret_cast<T*>(const_cast<char*>(m_data)), 
-                    m_size, std::move(m_shape), m_owning);
+            m_owning = true;
+            m_ownership_locked = true; // cannot guarantee sufficient object lifetime?
+        } else {
+            m_data = dim.dim;
         }
-        template<>
-        libtokamap::TypedDataArray _array_factory<char>()
-        {
-            return libtokamap::TypedDataArray(const_cast<char*>(m_data), m_size, std::move(m_shape), m_owning);
-        }
+        m_size = dim.dim_n;
+        m_shape = {m_size};
+        m_data_type = dim.data_type;
+        m_buildable = true;
+    }
+    ArrayBuilder& dimension(const DIMS& dim)
+    {
+        set_dimension_data(dim);
+        return *this;
+    }
 
-        public:
-        libtokamap::TypedDataArray build()
-        {
-            switch (m_data_type) {
-                case UDA_TYPE_SHORT:
-                    return _array_factory<short>();
-                case UDA_TYPE_INT:
-                    return _array_factory<int>();
-                case UDA_TYPE_UNSIGNED_INT:
-                    return _array_factory<short>();
-                case UDA_TYPE_LONG:
-                    return _array_factory<long>();
-                case UDA_TYPE_LONG64:
-                    return _array_factory<int64_t>();
-                case UDA_TYPE_FLOAT:
-                    return _array_factory<float>();
-                case UDA_TYPE_DOUBLE:
-                    return _array_factory<double>();
-                case UDA_TYPE_UNSIGNED_CHAR:
-                    return _array_factory<unsigned char>();
-                case UDA_TYPE_UNSIGNED_SHORT:
-                    return _array_factory<unsigned short>();
-                case UDA_TYPE_UNSIGNED_LONG:
-                    return _array_factory<unsigned long>();
-                case UDA_TYPE_UNSIGNED_LONG64:
-                    return _array_factory<uint64_t>();
-                case UDA_TYPE_CHAR:
-                case UDA_TYPE_STRING:
-                    return _array_factory<char>();
-                case UDA_TYPE_COMPLEX:
-                    return _array_factory<COMPLEX>();
-                case UDA_TYPE_DCOMPLEX:
-                    return _array_factory<DCOMPLEX>();
-                default:
-                    throw std::runtime_error{"unknown data type"};
-            }
+    void set_time_data(const DATA_BLOCK& db)
+    {
+        auto index = db.order;
+        if (index < 0 or index > db.rank or db.rank < 1) {
+            throw std::runtime_error("No time data available for this signal");
         }
+        set_dimension_data(db.dims[index]);
+    }
+    ArrayBuilder& time(const DATA_BLOCK& db)
+    {
+        set_time_data(db);
+        return *this;
+    }
 
-    };
+  private:
+    template <typename T> libtokamap::TypedDataArray _array_factory()
+    {
+        return libtokamap::TypedDataArray(reinterpret_cast<T*>(const_cast<char*>(m_data)), m_size, std::move(m_shape),
+                                          m_owning);
+    }
+    template <> libtokamap::TypedDataArray _array_factory<char>()
+    {
+        return libtokamap::TypedDataArray(const_cast<char*>(m_data), m_size, std::move(m_shape), m_owning);
+    }
+
+  public:
+    libtokamap::TypedDataArray build()
+    {
+        switch (m_data_type) {
+            case UDA_TYPE_SHORT:
+                return _array_factory<short>();
+            case UDA_TYPE_INT:
+                return _array_factory<int>();
+            case UDA_TYPE_UNSIGNED_INT:
+                return _array_factory<short>();
+            case UDA_TYPE_LONG:
+                return _array_factory<long>();
+            case UDA_TYPE_LONG64:
+                return _array_factory<int64_t>();
+            case UDA_TYPE_FLOAT:
+                return _array_factory<float>();
+            case UDA_TYPE_DOUBLE:
+                return _array_factory<double>();
+            case UDA_TYPE_UNSIGNED_CHAR:
+                return _array_factory<unsigned char>();
+            case UDA_TYPE_UNSIGNED_SHORT:
+                return _array_factory<unsigned short>();
+            case UDA_TYPE_UNSIGNED_LONG:
+                return _array_factory<unsigned long>();
+            case UDA_TYPE_UNSIGNED_LONG64:
+                return _array_factory<uint64_t>();
+            case UDA_TYPE_CHAR:
+            case UDA_TYPE_STRING:
+                return _array_factory<char>();
+            case UDA_TYPE_COMPLEX:
+                return _array_factory<COMPLEX>();
+            case UDA_TYPE_DCOMPLEX:
+                return _array_factory<DCOMPLEX>();
+            default:
+                throw std::runtime_error{"unknown data type"};
+        }
+    }
+};
 } // namespace
 
 libtokamap::TypedDataArray json_plugin::UDADataSource::get(const libtokamap::DataSourceArgs& data_source_args,
@@ -308,12 +301,8 @@ libtokamap::TypedDataArray json_plugin::UDADataSource::get(const libtokamap::Dat
         return {};
     }
 
-    if (data_source_args.count("time") != 0 && data_source_args.at("time").get<bool>()){
-        return ArrayBuilder().ownership(ArrayBuilder::OwnershipPolicy::COPY)
-                             .time(data_block)
-                             .build();
+    if (data_source_args.count("time") != 0 && data_source_args.at("time").get<bool>()) {
+        return ArrayBuilder().ownership(ArrayBuilder::OwnershipPolicy::COPY).time(data_block).build();
     }
-    return ArrayBuilder().ownership(ArrayBuilder::OwnershipPolicy::COPY)
-                         .data(data_block)
-                         .build();
+    return ArrayBuilder().ownership(ArrayBuilder::OwnershipPolicy::COPY).data(data_block).build();
 }
