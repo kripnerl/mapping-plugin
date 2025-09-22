@@ -29,7 +29,6 @@ target_include_directories( libtokamap_uda_extension PRIVATE
     ${CMAKE_SOURCE_DIR}/libtokamap/src
 )
 target_link_libraries( libtokamap_uda_extension PRIVATE Boost::boost LibTokaMap::libtokamap )
-target_compile_features(libtokamap_uda_extension PUBLIC cxx_std_17)
 
 find_package( Boost REQUIRED )
 

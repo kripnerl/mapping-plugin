@@ -22,7 +22,6 @@ FetchContent_MakeAvailable( Catch2 )
 
 # Create test executable
 add_executable( mapping_plugin_tests ${TEST_SOURCES} )
-target_compile_features(mapping_plugin_tests PUBLIC cxx_std_17)
 
 # INCLUDE
 target_include_directories( mapping_plugin_tests PRIVATE

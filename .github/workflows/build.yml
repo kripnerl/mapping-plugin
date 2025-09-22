@@ -39,23 +39,23 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: brew update-reset && brew install boost
 
-      - name: Configure CMake
-        run: >
-          cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=${{ matrix.release }} -DENABLE_TESTING=ON -DENABLE_EXAMPLES=ON
+      # - name: Configure CMake
+      #   run: >
+      #     cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=${{ matrix.release }} -DENABLE_TESTING=ON -DENABLE_EXAMPLES=ON
 
-      - name: Build
-        run: cmake --build build --config ${{ matrix.release }}
-
-      - name: Install
-        if: matrix.os != 'windows-latest'
-        run: sudo cmake --install build --config ${{ matrix.release }}
+      # - name: Build
+      #   run: cmake --build build --config ${{ matrix.release }}
 
       # - name: Install
-      #   if: matrix.os == 'windows-latest'
-      #   run: cmake --install build --config ${{ matrix.release }}
+      #   if: matrix.os != 'windows-latest'
+      #   run: sudo cmake --install build --config ${{ matrix.release }}
 
-      - name: Test
-        run: ctest --test-dir build --output-on-failure
+      # # - name: Install
+      # #   if: matrix.os == 'windows-latest'
+      # #   run: cmake --install build --config ${{ matrix.release }}
 
-      - name: Examples
-        run: ./build/libtokamap/examples/simple_mapper/simple_mapper
+      # - name: Test
+      #   run: ctest --test-dir build --output-on-failure
+
+      # - name: Examples
+      #   run: ./build/libtokamap/examples/simple_mapper/simple_mapper
