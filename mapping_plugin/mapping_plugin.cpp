@@ -17,8 +17,7 @@
 #include <utility>
 
 // LibTokaMap includes
-#include <handlers/mapping_handler.hpp>
-#include <map_types/data_source_mapping.hpp>
+#include <libtokamap.hpp>
 
 // UDA includes
 #include <clientserver/errorLog.h>
@@ -33,6 +32,7 @@
 
 #include "uda_data_source.hpp"
 #include "uda_plugin_helpers.hpp"
+#include "utils/profiler.hpp"
 
 namespace
 {
@@ -99,6 +99,13 @@ class JSONMappingPlugin
   public:
     int entry_handle(IDAM_PLUGIN_INTERFACE* plugin_interface);
 
+    ~JSONMappingPlugin()
+    {
+        if (m_init) {
+            reset(nullptr);
+        }
+    }
+
   private:
     int execute(IDAM_PLUGIN_INTERFACE* plugin_interface);
     int init(IDAM_PLUGIN_INTERFACE* plugin_interface);
@@ -133,6 +140,10 @@ int JSONMappingPlugin::init(IDAM_PLUGIN_INTERFACE* plugin_interface)
         return 0;
     }
 
+#if ENABLE_PROFILING
+    libtokamap::Profiler::init();
+#endif
+
     const char* config_path = getenv("UDA_MAPPING_CONFIG_PATH");
     if (config_path != nullptr) {
         m_mapping_handler.init(std::filesystem::path{config_path});
@@ -166,6 +177,13 @@ int JSONMappingPlugin::init(IDAM_PLUGIN_INTERFACE* plugin_interface)
 int JSONMappingPlugin::reset(IDAM_PLUGIN_INTERFACE* /*plugin_interface*/) // silence unused warning
 {
     if (m_init) {
+#if ENABLE_PROFILING
+        const char* profile_file = getenv("UDA_MAPPING_PROFILE_FILE");
+        if (profile_file != nullptr) {
+            libtokamap::Profiler::write(profile_file);
+        }
+#endif
+
         // Free Heap & reset counters if initialised
         m_mapping_handler.unregister_data_source("UDA");
         m_mapping_handler.unregister_data_source("CUSTOM_MASTU");

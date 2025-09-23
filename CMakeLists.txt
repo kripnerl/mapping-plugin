@@ -42,9 +42,11 @@ if( POLICY CMP0167 )
 endif()
 
 # Set project options
-include( StandardSettings )
 include( StaticAnalyzers )
 include( Utils )
+
+option( ENABLE_TESTING "Enable unit tests for the project (from the `test` subfolder)." OFF )
+option( ENABLE_PROFILING "Enable profiling for the project." OFF )
 
 # add_clang_format_target()
 
@@ -57,11 +59,10 @@ FetchContent_Declare(
     libtokamap
     GIT_REPOSITORY https://github.com/ukaea/libtokamap.git
     GIT_TAG develop
-    CMAKE_ARGS -DENABLE_TESTS=OFF
+    CMAKE_ARGS -DENABLE_TESTS=OFF -DENABLE_PROFILING=${ENABLE_PROFILING}
 )
 
 FetchContent_MakeAvailable( libtokamap )
-
 
 find_package( UDA REQUIRED )
 add_subdirectory( mapping_plugin )

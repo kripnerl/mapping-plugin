@@ -32,6 +32,11 @@ target_link_libraries( libtokamap_uda_extension PRIVATE Boost::boost LibTokaMap:
 
 find_package( Boost REQUIRED )
 
+set( EXTRA_DEFINITIONS )
+if( ENABLE_PROFILING )
+    list( APPEND EXTRA_DEFINITIONS -DENABLE_PROFILING )
+endif()
+
 include( plugins )
 uda_plugin(
     NAME IMAS_JSON_MAP
@@ -53,6 +58,8 @@ uda_plugin(
         LibTokaMap::libtokamap
         libtokamap_uda_extension
         uda_client
+    EXTRA_DEFINITIONS
+        ${EXTRA_DEFINITIONS}
 )
 
 # Unit testing setup
