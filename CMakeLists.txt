@@ -65,6 +65,8 @@ if( FETCH_LIBTOKAMAP )
     )
 
     FetchContent_MakeAvailable( libtokamap )
+else()
+    add_clang_format_target()
 endif()
 
 find_package( UDA REQUIRED )

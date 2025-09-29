@@ -7,6 +7,7 @@
 
 find_package( UDA 2.7.0 REQUIRED )
 find_package( Boost REQUIRED )
+find_package( libtokamap REQUIRED )
 
 set( SOURCES
     src/uda_data_source.cpp
@@ -26,11 +27,8 @@ add_library( libtokamap_uda_extension ${SOURCES} )
 target_include_directories( libtokamap_uda_extension PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/src
     ${CMAKE_CURRENT_LIST_DIR}/ext_include
-    ${CMAKE_SOURCE_DIR}/libtokamap/src
 )
 target_link_libraries( libtokamap_uda_extension PRIVATE Boost::boost LibTokaMap::libtokamap )
-
-find_package( Boost REQUIRED )
 
 set( EXTRA_DEFINITIONS )
 if( ENABLE_PROFILING )
