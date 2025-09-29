@@ -47,6 +47,7 @@ include( Utils )
 
 option( ENABLE_TESTING "Enable unit tests for the project (from the `test` subfolder)." OFF )
 option( ENABLE_PROFILING "Enable profiling for the project." OFF )
+option( FETCH_LIBTOKAMAP "Fetch libtokamap as a dependency." OFF )
 
 # add_clang_format_target()
 
@@ -54,15 +55,17 @@ if( ENABLE_TESTING )
     enable_testing()
 endif()
 
-include( FetchContent )
-FetchContent_Declare(
-    libtokamap
-    GIT_REPOSITORY https://github.com/ukaea/libtokamap.git
-    GIT_TAG develop
-    CMAKE_ARGS -DENABLE_TESTS=OFF -DENABLE_PROFILING=${ENABLE_PROFILING}
-)
+if( FETCH_LIBTOKAMAP )
+    include( FetchContent )
+    FetchContent_Declare(
+        libtokamap
+        GIT_REPOSITORY https://github.com/ukaea/libtokamap.git
+        GIT_TAG develop
+        CMAKE_ARGS -DENABLE_TESTS=OFF -DENABLE_PROFILING=${ENABLE_PROFILING}
+    )
 
-FetchContent_MakeAvailable( libtokamap )
+    FetchContent_MakeAvailable( libtokamap )
+endif()
 
 find_package( UDA REQUIRED )
 add_subdirectory( mapping_plugin )
