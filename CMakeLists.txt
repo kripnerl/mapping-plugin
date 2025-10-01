@@ -71,5 +71,3 @@ endif()
 
 find_package( UDA REQUIRED )
 add_subdirectory( mapping_plugin )
-# add_subdirectory( geometry_map_plugin )
-# add_subdirectory( CUSTOM_MASTU_plugin )
