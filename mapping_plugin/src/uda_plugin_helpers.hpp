@@ -1,14 +1,13 @@
 #pragma once
 
 #include <cstring>
+#include <libtokamap.hpp>
 #include <string>
 #include <typeindex>
 #include <unordered_map>
 
 #include <clientserver/udaStructs.h>
 #include <clientserver/udaTypes.h>
-
-#include "map_types/map_arguments.hpp"
 
 namespace json_plugin
 {

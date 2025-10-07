@@ -15,7 +15,7 @@ list(
 )
 
 # Specify C++ standard for all targets
-set( CMAKE_CXX_STANDARD 17 )
+set( CMAKE_CXX_STANDARD 20 )
 set( CMAKE_CXX_STANDARD_REQUIRED ON )
 set( CMAKE_CXX_EXTENSIONS OFF )
 
@@ -42,9 +42,12 @@ if( POLICY CMP0167 )
 endif()
 
 # Set project options
-include( StandardSettings )
 include( StaticAnalyzers )
 include( Utils )
+
+option( ENABLE_TESTING "Enable unit tests for the project (from the `test` subfolder)." OFF )
+option( ENABLE_PROFILING "Enable profiling for the project." OFF )
+option( FETCH_LIBTOKAMAP "Fetch libtokamap as a dependency." OFF )
 
 # add_clang_format_target()
 
@@ -52,14 +55,19 @@ if( ENABLE_TESTING )
     enable_testing()
 endif()
 
-include( FetchContent )
-FetchContent_Declare(
-    libtokamap
-    GIT_REPOSITORY git@github.com:jholloc/libtokamap.git
-    GIT_TAG main
-)
+if( FETCH_LIBTOKAMAP )
+    include( FetchContent )
+    FetchContent_Declare(
+        libtokamap
+        GIT_REPOSITORY https://github.com/ukaea/libtokamap.git
+        GIT_TAG develop
+        CMAKE_ARGS -DENABLE_TESTS=OFF -DENABLE_PROFILING=${ENABLE_PROFILING}
+    )
 
-FetchContent_MakeAvailable( libtokamap )
+    FetchContent_MakeAvailable( libtokamap )
+else()
+    add_clang_format_target()
+endif()
 
 find_package( UDA REQUIRED )
 add_subdirectory( mapping_plugin )

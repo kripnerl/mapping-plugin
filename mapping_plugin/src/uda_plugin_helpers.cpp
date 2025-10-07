@@ -1,28 +1,35 @@
 #include "uda_plugin_helpers.hpp"
 
 #include <cstring>
+#include <gsl/gsl-lite.hpp>
+#include <libtokamap.hpp>
+#include <string>
 #include <typeindex>
 #include <typeinfo>
 #include <unordered_map>
 #include <vector>
-#include <string>
-#include <gsl/gsl-lite.hpp>
 
 #include <clientserver/initStructs.h>
 #include <clientserver/udaStructs.h>
 #include <clientserver/udaTypes.h>
-
-#include "map_types/map_arguments.hpp"
 
 std::unordered_map<std::string, UDA_TYPE> json_plugin::uda_type_map()
 {
     static std::unordered_map<std::string, UDA_TYPE> type_map;
     if (type_map.empty()) {
         type_map = {{typeid(unsigned int).name(), UDA_TYPE_UNSIGNED_INT},
+                    {typeid(unsigned char).name(), UDA_TYPE_UNSIGNED_CHAR},
+                    {typeid(unsigned short).name(), UDA_TYPE_UNSIGNED_SHORT},
+                    {typeid(unsigned long).name(), UDA_TYPE_UNSIGNED_LONG},
+                    {typeid(uint64_t).name(), UDA_TYPE_UNSIGNED_LONG64},
+                    {typeid(short).name(), UDA_TYPE_SHORT},
                     {typeid(int).name(), UDA_TYPE_INT},
+                    {typeid(long).name(), UDA_TYPE_LONG},
                     {typeid(float).name(), UDA_TYPE_FLOAT},
                     {typeid(double).name(), UDA_TYPE_DOUBLE},
                     {typeid(char).name(), UDA_TYPE_STRING},
+                    {typeid(COMPLEX).name(), UDA_TYPE_COMPLEX},
+                    {typeid(DCOMPLEX).name(), UDA_TYPE_DCOMPLEX},
                     {typeid(void).name(), UDA_TYPE_UNKNOWN}};
     }
     return type_map;
@@ -32,12 +39,18 @@ std::unordered_map<std::type_index, UDA_TYPE> json_plugin::uda_type_index_map()
 {
     static std::unordered_map<std::type_index, UDA_TYPE> type_map;
     if (type_map.empty()) {
-        type_map = {{std::type_index{ typeid(unsigned int) }, UDA_TYPE_UNSIGNED_INT},
-                    {std::type_index{ typeid(int) }, UDA_TYPE_INT},
-                    {std::type_index{ typeid(float) }, UDA_TYPE_FLOAT},
-                    {std::type_index{ typeid(double) }, UDA_TYPE_DOUBLE},
-                    {std::type_index{ typeid(char) }, UDA_TYPE_STRING},
-                    {std::type_index{ typeid(void) }, UDA_TYPE_UNKNOWN}};
+        type_map = {{std::type_index{typeid(unsigned int)}, UDA_TYPE_UNSIGNED_INT},
+                    {std::type_index{typeid(unsigned short)}, UDA_TYPE_UNSIGNED_SHORT},
+                    {std::type_index{typeid(unsigned long)}, UDA_TYPE_UNSIGNED_LONG},
+                    {std::type_index{typeid(uint64_t)}, UDA_TYPE_UNSIGNED_LONG64},
+                    {std::type_index{typeid(int)}, UDA_TYPE_INT},
+                    {std::type_index{typeid(short)}, UDA_TYPE_SHORT},
+                    {std::type_index{typeid(float)}, UDA_TYPE_FLOAT},
+                    {std::type_index{typeid(double)}, UDA_TYPE_DOUBLE},
+                    {std::type_index{typeid(char)}, UDA_TYPE_STRING},
+                    {std::type_index{typeid(COMPLEX)}, UDA_TYPE_COMPLEX},
+                    {std::type_index{typeid(DCOMPLEX)}, UDA_TYPE_DCOMPLEX},
+                    {std::type_index{typeid(void)}, UDA_TYPE_UNKNOWN}};
     }
     return type_map;
 }

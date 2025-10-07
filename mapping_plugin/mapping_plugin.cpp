@@ -17,8 +17,7 @@
 #include <utility>
 
 // LibTokaMap includes
-#include <handlers/mapping_handler.hpp>
-#include <map_types/data_source_mapping.hpp>
+#include <libtokamap.hpp>
 
 // UDA includes
 #include <clientserver/errorLog.h>
@@ -33,6 +32,7 @@
 
 #include "uda_data_source.hpp"
 #include "uda_plugin_helpers.hpp"
+#include "utils/profiler.hpp"
 
 namespace
 {
@@ -99,6 +99,13 @@ class JSONMappingPlugin
   public:
     int entry_handle(IDAM_PLUGIN_INTERFACE* plugin_interface);
 
+    ~JSONMappingPlugin()
+    {
+        if (m_init) {
+            reset(nullptr);
+        }
+    }
+
   private:
     int execute(IDAM_PLUGIN_INTERFACE* plugin_interface);
     int init(IDAM_PLUGIN_INTERFACE* plugin_interface);
@@ -133,6 +140,10 @@ int JSONMappingPlugin::init(IDAM_PLUGIN_INTERFACE* plugin_interface)
         return 0;
     }
 
+#if ENABLE_PROFILING
+    libtokamap::Profiler::init();
+#endif
+
     const char* config_path = getenv("UDA_MAPPING_CONFIG_PATH");
     if (config_path != nullptr) {
         m_mapping_handler.init(std::filesystem::path{config_path});
@@ -143,10 +154,12 @@ int JSONMappingPlugin::init(IDAM_PLUGIN_INTERFACE* plugin_interface)
     auto data_source = std::make_unique<json_plugin::UDADataSource>("UDA", "get", plugin_interface->pluginList, false);
     m_mapping_handler.register_data_source("UDA", std::move(data_source));
 
-    auto mastu_data_source = std::make_unique<json_plugin::UDADataSource>("CUSTOM_MASTU", "get", plugin_interface->pluginList, false);
+    auto mastu_data_source =
+        std::make_unique<json_plugin::UDADataSource>("CUSTOM_MASTU", "get", plugin_interface->pluginList, false);
     m_mapping_handler.register_data_source("CUSTOM_MASTU", std::move(mastu_data_source));
 
-    auto geom_data_source = std::make_unique<json_plugin::UDADataSource>("GEOMETRY", "get", plugin_interface->pluginList, false);
+    auto geom_data_source =
+        std::make_unique<json_plugin::UDADataSource>("GEOMETRY", "get", plugin_interface->pluginList, false);
     m_mapping_handler.register_data_source("GEOMETRY", std::move(geom_data_source));
 
     m_init = true;
@@ -164,6 +177,13 @@ int JSONMappingPlugin::init(IDAM_PLUGIN_INTERFACE* plugin_interface)
 int JSONMappingPlugin::reset(IDAM_PLUGIN_INTERFACE* /*plugin_interface*/) // silence unused warning
 {
     if (m_init) {
+#if ENABLE_PROFILING
+        const char* profile_file = getenv("UDA_MAPPING_PROFILE_FILE");
+        if (profile_file != nullptr) {
+            libtokamap::Profiler::write(profile_file);
+        }
+#endif
+
         // Free Heap & reset counters if initialised
         m_mapping_handler.unregister_data_source("UDA");
         m_mapping_handler.unregister_data_source("CUSTOM_MASTU");
@@ -235,6 +255,9 @@ int JSONMappingPlugin::get(IDAM_PLUGIN_INTERFACE* plugin_interface)
 
     auto type_index = std::type_index{typeid(void)};
     switch (datatype) {
+        case UDA_TYPE_SHORT:
+            type_index = std::type_index{typeid(short)};
+            break;
         case UDA_TYPE_INT:
             type_index = std::type_index{typeid(int)};
             break;
@@ -246,6 +269,33 @@ int JSONMappingPlugin::get(IDAM_PLUGIN_INTERFACE* plugin_interface)
             break;
         case UDA_TYPE_STRING:
             type_index = std::type_index{typeid(char)};
+            break;
+        case UDA_TYPE_UNSIGNED_LONG64:
+            type_index = std::type_index{typeid(uint64_t)};
+            break;
+        case UDA_TYPE_UNSIGNED_INT:
+            type_index = std::type_index{typeid(unsigned int)};
+            break;
+        case UDA_TYPE_LONG:
+            type_index = std::type_index{typeid(long)};
+            break;
+        case UDA_TYPE_UNSIGNED_CHAR:
+            type_index = std::type_index{typeid(unsigned char)};
+            break;
+        case UDA_TYPE_UNSIGNED_SHORT:
+            type_index = std::type_index{typeid(unsigned short)};
+            break;
+        case UDA_TYPE_UNSIGNED_LONG:
+            type_index = std::type_index{typeid(unsigned long)};
+            break;
+        case UDA_TYPE_LONG64:
+            type_index = std::type_index{typeid(int64_t)};
+            break;
+        case UDA_TYPE_COMPLEX:
+            type_index = std::type_index{typeid(COMPLEX)};
+            break;
+        case UDA_TYPE_DCOMPLEX:
+            type_index = std::type_index{typeid(DCOMPLEX)};
             break;
         default:
             break;

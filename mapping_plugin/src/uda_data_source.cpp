@@ -13,6 +13,7 @@
 
 // UDA includes
 #include <client/getEnvironment.h>
+#include <clientserver/compressDim.h>
 #include <clientserver/errorLog.h>
 #include <clientserver/initStructs.h>
 #include <clientserver/makeRequestBlock.h>
@@ -26,8 +27,9 @@
 
 #include "map_types/data_source_mapping.hpp"
 #include "map_types/map_arguments.hpp"
-#include "uda_ram_cache.hpp"
-#include "utils/ram_cache.hpp"
+// #include "uda_ram_cache.hpp"
+// #include "utils/ram_cache.hpp"
+#include "utils/typed_data_array.hpp"
 
 // TODO:
 //  - handle compressed dims
@@ -48,7 +50,15 @@ std::string json_plugin::UDADataSource::get_request_str(const libtokamap::DataSo
                                                         const libtokamap::MapArguments& arguments) const
 {
     std::stringstream string_stream;
-    string_stream << m_plugin_name << "::" << m_function.value_or("get") << "(";
+    // string_stream << m_plugin_name << "::" << m_function.value_or("get") << "(";
+    string_stream << m_plugin_name << "::";
+
+    if (data_source_args.count("function") != 0) {
+        string_stream << data_source_args.at("function").get<std::string>();
+    } else {
+        string_stream << m_function.value_or("get");
+    }
+    string_stream << "(";
 
     // m_map_args 'field' currently nlohmann json
     // parse to string/bool
@@ -89,94 +99,195 @@ int json_plugin::UDADataSource::call_plugins(DATA_BLOCK* data_block, const libto
         return err;
     } // Return 1 if no request receieved
 
-    /*
-     *
-     * generate subset info then remove subset syntax from
-     *  request string
-     *
-     */
-
     REQUEST_DATA request = {0};
     strcpy(request.signal, request_str.c_str());
 
     ENVIRONMENT* environment = getIdamClientEnvironment();
     makeRequestData(&request, *m_plugin_list, environment);
 
-    // if (m_cache_enabled) {
-    //     std::string key_found = ram_cache->has_entry(request_str) ? "True" : "False";
-    //     ram_cache->log(libtokamap:LogLevel::DEBUG, "key, \"" + request_str + "\" in cache? " + key_found);
-    // }
+    IDAM_PLUGIN_INTERFACE interface = {0};
+    CLIENT_BLOCK client_block;
+    DATA_SOURCE data_source;
+    SIGNAL_DESC signal_desc;
+    initClientBlock(&client_block, 0, "");
+    initDataSource(&data_source);
+    initSignalDesc(&signal_desc);
 
-    /*
-     *
-     * CACHING GOES HERE
-     *
-     */
+    interface.request_data = &request;
+    interface.pluginList = m_plugin_list;
+    interface.data_block = data_block;
+    interface.environment = environment;
+    interface.client_block = &client_block;
+    interface.data_source = &data_source;
+    interface.signal_desc = &signal_desc;
 
-    // check cache for request string and only get data if it's not already there
-    // currently copies whole datablock (data, error, and dims)
-    // if (m_cache_enabled) {
-    //     ram_cache->log(libtokamap::LogLevel::DEBUG, "caching disabled");
-    // }
+    err = callPlugin(m_plugin_list, request_str.c_str(), &interface);
 
-    bool cache_hit = false;
-    if (m_cache_enabled && ram_cache != nullptr) {
-        cache_hit = json_plugin::copy_from_cache(*ram_cache, request_str, data_block);
-    }
-    if (cache_hit) {
-        // ram_cache->log(libtokamap:LogLevel::INFO, "Adding cached datablock onto plugin_interface");
-        // ram_cache->log(libtokamap:LogLevel::INFO,
-        //                  "data on plugin_interface (data_n): " + std::to_string(data_block->data_n));
-        err = 0;
-    } else {
-        IDAM_PLUGIN_INTERFACE interface = {0};
-        CLIENT_BLOCK client_block;
-        DATA_SOURCE data_source;
-        SIGNAL_DESC signal_desc;
-        initClientBlock(&client_block, 0, "");
-        initDataSource(&data_source);
-        initSignalDesc(&signal_desc);
-
-        interface.request_data = &request;
-        interface.pluginList = m_plugin_list;
-        interface.data_block = data_block;
-        interface.environment = environment;
-        interface.client_block = &client_block;
-        interface.data_source = &data_source;
-        interface.signal_desc = &signal_desc;
-
-        err = callPlugin(m_plugin_list, request_str.c_str(), &interface);
-
-        if (err != 0) {
-            // add check of int udaNumErrors() and if more than one, don't wipe
-            // 220 situation when UDA tries to get data and cannot find it
-            if (err == 220) {
-                closeUdaError();
-            }
-            return err;
-        } // return code if failure, no need to proceed
-
-        // Add retrieved datablock to cache. data is copied from datablock into a new libtokamap:data_entry. original
-        // data remains on block (on plugin_interface structure) for return.
-        if (m_cache_enabled && ram_cache != nullptr) {
-            json_plugin::copy_to_cache(*ram_cache, request_str, data_block);
+    if (err != 0) {
+        // add check of int udaNumErrors() and if more than one, don't wipe
+        // 220 situation when UDA tries to get data and cannot find it
+        if (err == 220) {
+            closeUdaError();
         }
-    }
+        return err;
+    } // return code if failure, no need to proceed
 
     return err;
 }
 
 namespace
 {
-template <typename T>
-libtokamap::TypedDataArray set_return_data(DataBlock& data_block, size_t size, std::vector<size_t>&& shape, bool is_time)
+class ArrayBuilder
 {
-    auto ptr = is_time ? data_block.dims[data_block.order].dim : data_block.data;
-    auto array = libtokamap::TypedDataArray{reinterpret_cast<T*>(ptr), size, std::move(shape), false};
-    // we set the data_block.data to nullptr to avoid double deletion
-    data_block.data = nullptr;
-    return array;
-}
+  private:
+    const char* m_data = nullptr;
+    size_t m_size = {};
+    std::vector<size_t> m_shape;
+    int m_data_type = UDA_TYPE_UNKNOWN;
+    bool m_owning = true;
+    bool m_ownership_locked = false;
+    bool m_buildable = false;
+    bool m_free_data_required = false;
+
+  public:
+    ArrayBuilder() = default;
+    ~ArrayBuilder()
+    {
+        if (m_free_data_required and m_data != nullptr) {
+            free(const_cast<char*>(m_data));
+        }
+    }
+
+    ArrayBuilder(const ArrayBuilder&) = delete;
+    ArrayBuilder& operator=(const ArrayBuilder&) = delete;
+    ArrayBuilder(ArrayBuilder&& other) = delete;
+    ArrayBuilder& operator=(ArrayBuilder&& other) = delete;
+
+    enum class OwnershipPolicy { VIEW, COPY };
+
+    void set_ownership(OwnershipPolicy policy)
+    {
+        bool is_owning = (policy == OwnershipPolicy::COPY);
+        if (m_ownership_locked and m_owning != is_owning) {
+            throw std::runtime_error("Ownership policy already enforced by a previous option");
+        }
+        m_owning = is_owning;
+    }
+    ArrayBuilder& ownership(OwnershipPolicy policy)
+    {
+        set_ownership(policy);
+        return *this;
+    }
+
+    void set_data(const DATA_BLOCK& db)
+    {
+        m_data = db.data;
+        m_size = db.data_n;
+        m_shape.reserve(db.rank);
+        for (int i = 0; i < db.rank; ++i) {
+            m_shape.push_back(db.dims[i].dim_n);
+        }
+        m_data_type = db.data_type;
+        m_buildable = true;
+    }
+    ArrayBuilder& data(const DATA_BLOCK& db)
+    {
+        set_data(db);
+        return *this;
+    }
+
+    void set_dimension_data(const DIMS& dim)
+    {
+        if (dim.compressed > 0) {
+            DIMS tmp_dim = dim;
+
+            uncompressDim(&tmp_dim);
+            tmp_dim.compressed = 0;
+            tmp_dim.method = 0;
+
+            m_data = tmp_dim.dim;
+            tmp_dim.dim = nullptr;
+            m_free_data_required = true;
+
+            m_owning = true;
+            m_ownership_locked = true; // cannot guarantee sufficient object lifetime?
+        } else {
+            m_data = dim.dim;
+        }
+        m_size = dim.dim_n;
+        m_shape = {m_size};
+        m_data_type = dim.data_type;
+        m_buildable = true;
+    }
+    ArrayBuilder& dimension(const DIMS& dim)
+    {
+        set_dimension_data(dim);
+        return *this;
+    }
+
+    void set_time_data(const DATA_BLOCK& db)
+    {
+        auto index = db.order;
+        if (index < 0 or index > db.rank or db.rank < 1) {
+            throw std::runtime_error("No time data available for this signal");
+        }
+        set_dimension_data(db.dims[index]);
+    }
+    ArrayBuilder& time(const DATA_BLOCK& db)
+    {
+        set_time_data(db);
+        return *this;
+    }
+
+  private:
+    template <typename T> libtokamap::TypedDataArray _array_factory()
+    {
+        return libtokamap::TypedDataArray(reinterpret_cast<T*>(const_cast<char*>(m_data)), m_size, std::move(m_shape),
+                                          m_owning);
+    }
+    template <> libtokamap::TypedDataArray _array_factory<char>()
+    {
+        return libtokamap::TypedDataArray(const_cast<char*>(m_data), m_size, std::move(m_shape), m_owning);
+    }
+
+  public:
+    libtokamap::TypedDataArray build()
+    {
+        switch (m_data_type) {
+            case UDA_TYPE_SHORT:
+                return _array_factory<short>();
+            case UDA_TYPE_INT:
+                return _array_factory<int>();
+            case UDA_TYPE_UNSIGNED_INT:
+                return _array_factory<short>();
+            case UDA_TYPE_LONG:
+                return _array_factory<long>();
+            case UDA_TYPE_LONG64:
+                return _array_factory<int64_t>();
+            case UDA_TYPE_FLOAT:
+                return _array_factory<float>();
+            case UDA_TYPE_DOUBLE:
+                return _array_factory<double>();
+            case UDA_TYPE_UNSIGNED_CHAR:
+                return _array_factory<unsigned char>();
+            case UDA_TYPE_UNSIGNED_SHORT:
+                return _array_factory<unsigned short>();
+            case UDA_TYPE_UNSIGNED_LONG:
+                return _array_factory<unsigned long>();
+            case UDA_TYPE_UNSIGNED_LONG64:
+                return _array_factory<uint64_t>();
+            case UDA_TYPE_CHAR:
+            case UDA_TYPE_STRING:
+                return _array_factory<char>();
+            case UDA_TYPE_COMPLEX:
+                return _array_factory<COMPLEX>();
+            case UDA_TYPE_DCOMPLEX:
+                return _array_factory<DCOMPLEX>();
+            default:
+                throw std::runtime_error{"unknown data type"};
+        }
+    }
+};
 } // namespace
 
 libtokamap::TypedDataArray json_plugin::UDADataSource::get(const libtokamap::DataSourceArgs& data_source_args,
@@ -190,28 +301,8 @@ libtokamap::TypedDataArray json_plugin::UDADataSource::get(const libtokamap::Dat
         return {};
     }
 
-    // temporary solution to the slice functionality returning arrays of 1 element
-    if (data_block.rank == 1 && data_block.data_n == 1) {
-        data_block.rank = 0;
+    if (data_source_args.count("time") != 0 && data_source_args.at("time").get<bool>()) {
+        return ArrayBuilder().ownership(ArrayBuilder::OwnershipPolicy::COPY).time(data_block).build();
     }
-
-    size_t size = data_block.data_n;
-    std::vector<size_t> shape(data_block.rank);
-    for (int i = 0; i < data_block.rank; ++i) {
-        shape[i] = data_block.dims[i].dim_n;
-    }
-    bool is_time = data_source_args.count("time") != 0 && data_source_args.at("time").get<bool>();
-
-    switch (data_block.data_type) {
-        case UDA_TYPE_INT:
-            return set_return_data<int>(data_block, size, std::move(shape), is_time);
-        case UDA_TYPE_FLOAT:
-            return set_return_data<float>(data_block, size, std::move(shape), is_time);
-        case UDA_TYPE_DOUBLE:
-            return set_return_data<double>(data_block, size, std::move(shape), is_time);
-        case UDA_TYPE_STRING:
-            return set_return_data<char>(data_block, size, std::move(shape), is_time);
-        default:
-            throw std::runtime_error{"unknown data type"};
-    }
+    return ArrayBuilder().ownership(ArrayBuilder::OwnershipPolicy::COPY).data(data_block).build();
 }

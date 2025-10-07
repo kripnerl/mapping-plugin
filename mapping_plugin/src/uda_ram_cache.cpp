@@ -13,8 +13,8 @@
 #include <memory>
 #include <string>
 #include <string_view>
-#include <vector>
 #include <utility>
+#include <vector>
 
 // LibTokaMap includes
 #include <utils/ram_cache.hpp>
@@ -148,7 +148,8 @@ std::unique_ptr<json_plugin::UDACacheEntry> make_data_entry(DATA_BLOCK* data_blo
 
 } // namespace
 
-void json_plugin::copy_to_cache(libtokamap::RamCache& ram_cache, const std::string& key, const DATA_BLOCK* data_block) {
+void json_plugin::copy_to_cache(libtokamap::RamCache& ram_cache, const std::string& key, const DATA_BLOCK* data_block)
+{
     auto entry = std::make_unique<UDACacheEntry>();
 
     size_t data_size = data_block->data_n * size_of_uda_type(data_block->data_type);

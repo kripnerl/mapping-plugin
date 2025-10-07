@@ -7,11 +7,7 @@
 
 find_package( UDA 2.7.0 REQUIRED )
 find_package( Boost REQUIRED )
-
-# Specify C++ standard for all targets
-set( CMAKE_CXX_STANDARD 17 )
-set( CMAKE_CXX_STANDARD_REQUIRED ON )
-set( CMAKE_CXX_EXTENSIONS OFF )
+find_package( libtokamap REQUIRED )
 
 set( SOURCES
     src/uda_data_source.cpp
@@ -31,11 +27,13 @@ add_library( libtokamap_uda_extension ${SOURCES} )
 target_include_directories( libtokamap_uda_extension PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/src
     ${CMAKE_CURRENT_LIST_DIR}/ext_include
-    ${CMAKE_SOURCE_DIR}/libtokamap/src
 )
 target_link_libraries( libtokamap_uda_extension PRIVATE Boost::boost LibTokaMap::libtokamap )
 
-find_package( Boost REQUIRED )
+set( EXTRA_DEFINITIONS )
+if( ENABLE_PROFILING )
+    list( APPEND EXTRA_DEFINITIONS -DENABLE_PROFILING )
+endif()
 
 include( plugins )
 uda_plugin(
@@ -58,6 +56,8 @@ uda_plugin(
         LibTokaMap::libtokamap
         libtokamap_uda_extension
         uda_client
+    EXTRA_DEFINITIONS
+        ${EXTRA_DEFINITIONS}
 )
 
 # Unit testing setup
@@ -98,6 +98,7 @@ install(
 )
 
 # Generate scripts
+list( GET UDA_DIR 0 UDA_HOME )
 string( REGEX REPLACE ";" " " PLUGINS "${BUILT_PLUGINS}" )
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/scripts/activate-plugins.sh.in
