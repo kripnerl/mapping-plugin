@@ -7,7 +7,7 @@
 
 find_package( UDA 2.7.0 REQUIRED )
 find_package( Boost REQUIRED )
-find_package( libtokamap REQUIRED )
+find_package( LibTokaMap REQUIRED )
 
 set( SOURCES
     src/uda_data_source.cpp
