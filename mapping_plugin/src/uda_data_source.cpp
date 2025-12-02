@@ -60,6 +60,10 @@ std::string json_plugin::UDADataSource::get_request_str(const libtokamap::DataSo
     }
     string_stream << "(";
 
+    if ( data_source_args.at("signal") == "void" || data_source_args.at("signal").empty() ) { // temporary ugliness
+        return {};
+    }
+
     // m_map_args 'field' currently nlohmann json
     // parse to string/bool
     // TODO: change, however std::any/std::variant functionality for free
@@ -240,14 +244,15 @@ class ArrayBuilder
     }
 
   private:
-    template <typename T> libtokamap::TypedDataArray _array_factory()
+    template<typename T>
+    libtokamap::TypedDataArray _array_factory()
     {
-        return libtokamap::TypedDataArray(reinterpret_cast<T*>(const_cast<char*>(m_data)), m_size, std::move(m_shape),
-                                          m_owning);
-    }
-    template <> libtokamap::TypedDataArray _array_factory<char>()
-    {
-        return libtokamap::TypedDataArray(const_cast<char*>(m_data), m_size, std::move(m_shape), m_owning);
+        if constexpr (std::is_same_v<T, char>) {
+            return libtokamap::TypedDataArray(const_cast<char*>(m_data), m_size, std::move(m_shape), m_owning);
+        } else {
+            return libtokamap::TypedDataArray(reinterpret_cast<T*>(const_cast<char*>(m_data)),
+                                                m_size, std::move(m_shape), m_owning);
+        }
     }
 
   public:
