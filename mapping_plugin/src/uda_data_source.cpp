@@ -188,7 +188,7 @@ class ArrayBuilder
         m_data = db.data;
         m_size = db.data_n;
         m_shape.reserve(db.rank);
-        for (int i = 0; i < db.rank; ++i) {
+        for (unsigned int i = db.rank - 1; i >= 0; --i) {
             m_shape.push_back(db.dims[i].dim_n);
         }
         m_data_type = db.data_type;
