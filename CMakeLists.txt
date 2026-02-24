@@ -1,96 +1,73 @@
 cmake_minimum_required( VERSION 3.15 )
 
-#
 # Project details
-#
 project(
     JSONMappingPlugin
-    VERSION 0.1.0
+    VERSION 0.2.0.0
     LANGUAGES CXX
 )
 
-#
 # Extra cmake modules to find libraries
-#
-set( CMAKE_MODULE_PATH
-     ${CMAKE_MODULE_PATH}
-     ${CMAKE_SOURCE_DIR}/cmake
-     ${CMAKE_SOURCE_DIR}/cmake/Modules
+list(
+    APPEND CMAKE_MODULE_PATH
+    ${CMAKE_SOURCE_DIR}/cmake
+    ${CMAKE_SOURCE_DIR}/cmake/Modules
 )
 
-find_package( Boost CONFIG )
-find_package( UDA 2.7.0 REQUIRED )
+# Specify C++ standard for all targets
+set( CMAKE_CXX_STANDARD 20 )
+set( CMAKE_CXX_STANDARD_REQUIRED ON )
+set( CMAKE_CXX_EXTENSIONS OFF )
 
-#
+# Export compile commands for tools like clang-tidy
+set( CMAKE_EXPORT_COMPILE_COMMANDS ON )
+
+# Set default build type if not specified
+if( NOT CMAKE_BUILD_TYPE)
+    set( CMAKE_BUILD_TYPE "Debug" )
+endif()
+
+message( STATUS "Started CMake for ${PROJECT_NAME} v${PROJECT_VERSION}...\n" )
+
+# Prevent building in the source directory
+if (PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR )
+    message( FATAL_ERROR "In-source builds not allowed.
+            Please make a new directory (called a build directory)
+            and run CMake from there.\n" )
+endif()
+
+# Find dependencies using modern approach
+if( POLICY CMP0167 )
+    cmake_policy( SET CMP0167 NEW )
+endif()
+
 # Set project options
-#
-include( StandardSettings )
 include( StaticAnalyzers )
 include( Utils )
 
-add_clang_format_target()
+option( ENABLE_TESTING "Enable unit tests for the project (from the `test` subfolder)." OFF )
+option( ENABLE_PROFILING "Enable profiling for the project." OFF )
+option( FETCH_LIBTOKAMAP "Fetch libtokamap as a dependency." OFF )
 
-message( STATUS "CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}" )
+# add_clang_format_target()
 
-if( NOT CMAKE_BUILD_TYPE )
-  set( CMAKE_BUILD_TYPE "Debug" )
-endif()
-message( STATUS "Started CMake for ${PROJECT_NAME} v${PROJECT_VERSION}...\n" )
-
-#
-# Prevent building in the source directory
-#
-if( PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR )
-  message( FATAL_ERROR "In-source builds not allowed.
-    Please make a new directory (called a build directory)
-    and run CMake from there.\n" )
+if( ENABLE_TESTING )
+    enable_testing()
 endif()
 
-set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -pthread" )
-set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -pthread" )
+if( FETCH_LIBTOKAMAP )
+    include( FetchContent )
+    FetchContent_Declare(
+        libtokamap
+        GIT_REPOSITORY https://github.com/ukaea/libtokamap.git
+        GIT_TAG develop
+        CMAKE_ARGS -DENABLE_TESTS=OFF -DENABLE_PROFILING=${ENABLE_PROFILING}
+    )
 
-#
-# Create module
-#
-configure_file(
-    ${CMAKE_SOURCE_DIR}/JSON_mapping_plugin/etc/module.in
-    ${CMAKE_BINARY_DIR}/etc/JSON_mapping_plugin/${PROJECT_VERSION}
-    @ONLY
-)
+    FetchContent_MakeAvailable( libtokamap )
+else()
+    add_clang_format_target()
+endif()
 
-set( MODULE_PATH "modulefiles/JSON_mapping_plugin" CACHE PATH "location to install module files to" )
-set( MODULE_NAME "${PROJECT_VERSION}" CACHE STRING "name of the module file" )
-string( CONFIGURE "${MODULE_PATH}" MODULE_PATH_EXPANDED @ONLY )
-
-get_filename_component(
-    MODULE_PATH_EXPANDED ${MODULE_PATH_EXPANDED}
-    REALPATH BASE_DIR "${CMAKE_INSTALL_PREFIX}"
-)
-
-install(
-    FILES ${CMAKE_BINARY_DIR}/etc/JSON_mapping_plugin/${PROJECT_VERSION}
-    DESTINATION ${MODULE_PATH_EXPANDED}
-    RENAME ${MODULE_NAME}
-)
-
-# Add JSON_mapping_plugin add_subdirectory
-add_subdirectory( JSON_mapping_plugin )
-
-# This list is appended to by the uda_plugin macro
-set( BUILT_PLUGINS "${PLUGINS}" )
-message( STATUS "PLUGINS: ${PLUGINS}" )
-
-#
-# Generate scripts
-#
-string( REGEX REPLACE ";" " " PLUGINS "${BUILT_PLUGINS}" )
-configure_file(
-    ${CMAKE_SOURCE_DIR}/scripts/activate-plugins.sh.in
-    ${CMAKE_BINARY_DIR}/scripts/activate-plugins.sh
-    @ONLY
-)
-configure_file(
-    ${CMAKE_SOURCE_DIR}/scripts/remove-plugins.sh.in
-    ${CMAKE_BINARY_DIR}/scripts/remove-plugins.sh
-    @ONLY
-)
+find_package( UDA REQUIRED )
+add_subdirectory( mapping_plugin )

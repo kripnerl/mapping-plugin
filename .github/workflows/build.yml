@@ -1,0 +1,61 @@
+name: Build & Test
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - "feature/**"
+      - "release/**"
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        # os: [ubuntu-22.04, windows-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest]
+        release: [Debug, Release]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Install linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt update && sudo apt install -y libboost-dev
+
+      - name: Install macos dependencies
+        if: matrix.os == 'macos-latest'
+        run: brew update-reset && brew install boost
+
+      # - name: Configure CMake
+      #   run: >
+      #     cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=${{ matrix.release }} -DENABLE_TESTING=ON -DENABLE_EXAMPLES=ON
+
+      # - name: Build
+      #   run: cmake --build build --config ${{ matrix.release }}
+
+      # - name: Install
+      #   if: matrix.os != 'windows-latest'
+      #   run: sudo cmake --install build --config ${{ matrix.release }}
+
+      # # - name: Install
+      # #   if: matrix.os == 'windows-latest'
+      # #   run: cmake --install build --config ${{ matrix.release }}
+
+      # - name: Test
+      #   run: ctest --test-dir build --output-on-failure
+
+      # - name: Examples
+      #   run: ./build/libtokamap/examples/simple_mapper/simple_mapper
