@@ -1,6 +1,0 @@
-{
-    "mapping_directory": "@CMAKE_INSTALL_PREFIX@/etc/JSON_mappings",
-    "schemas_directory": "@CMAKE_BINARY_DIR@/_deps/libtokamap-src/schemas",
-    "cache_enabled": false,
-    "cache_size": 100
-}

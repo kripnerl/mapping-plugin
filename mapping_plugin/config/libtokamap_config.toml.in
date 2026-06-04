@@ -1,0 +1,20 @@
+mapping_directory = "@CMAKE_INSTALL_PREFIX@/../mappings"
+schemas_directory = "@CMAKE_INSTALL_PREFIX@/../tokamap/src/tokamap/schemas"
+trace_enabled = false
+cache_enabled = false
+custom_function_libraries = []
+
+[data_source_factories]
+uda_factory = "@CMAKE_INSTALL_PREFIX@/lib/libuda_data_source_debug.so" 
+
+[data_sources.UDA]
+factory = "uda_factory"
+args.host = "uda2.hpc.l"
+args.port = 56565
+args.plugin_name = "UDA"
+
+[data_sources.GEOMETRY]
+factory = "uda_factory"
+args.host = "uda2.hpc.l"
+args.port = 56565
+args.plugin_name = "GEOMETRY"

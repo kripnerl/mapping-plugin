@@ -1,5 +1,5 @@
-#ifndef UDA_PLUGIN_JSON_MAP_H
-#define UDA_PLUGIN_JSON_MAP_H
+#ifndef UDA_PLUGIN_MAP_H
+#define UDA_PLUGIN_MAP_H
 
 #include <clientserver/export.h>
 #include <plugins/pluginStructs.h>
@@ -12,10 +12,10 @@ extern "C" {
 #define THISPLUGIN_MAX_INTERFACE_VERSION 1 // Interface versions higher than this will not be understood!
 #define THISPLUGIN_DEFAULT_METHOD "help"
 
-LIBRARY_API [[maybe_unused]] int jsonMappingPlugin(IDAM_PLUGIN_INTERFACE* idam_plugin_interface);
+LIBRARY_API [[maybe_unused]] int mappingPlugin(IDAM_PLUGIN_INTERFACE* idam_plugin_interface);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // UDA_PLUGIN_JSON_MAP_H
+#endif // UDA_PLUGIN_MAP_H

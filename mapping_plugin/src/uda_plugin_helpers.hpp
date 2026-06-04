@@ -9,11 +9,11 @@
 #include <clientserver/udaStructs.h>
 #include <clientserver/udaTypes.h>
 
-namespace json_plugin
+namespace mapping_plugin
 {
 
-std::unordered_map<std::string, UDA_TYPE> uda_type_map();
-std::unordered_map<std::type_index, UDA_TYPE> uda_type_index_map();
+libtokamap::DataType uda_to_libtokamap_map(UDA_TYPE datatype);
+UDA_TYPE libtokamap_to_uda_map(libtokamap::DataType datatype);
 void set_data_block(DATA_BLOCK* data_block, libtokamap::TypedDataArray& array);
 
-} // namespace json_plugin
+} // namespace mapping_plugin

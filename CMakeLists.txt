@@ -2,8 +2,8 @@ cmake_minimum_required( VERSION 3.15 )
 
 # Project details
 project(
-    JSONMappingPlugin
-    VERSION 0.2.0.0
+    MappingPlugin
+    VERSION 0.3.0.0
     LANGUAGES CXX
 )
 
@@ -41,32 +41,18 @@ if( POLICY CMP0167 )
     cmake_policy( SET CMP0167 NEW )
 endif()
 
-# Set project options
-include( StaticAnalyzers )
-include( Utils )
-
-option( ENABLE_TESTING "Enable unit tests for the project (from the `test` subfolder)." OFF )
-option( ENABLE_PROFILING "Enable profiling for the project." OFF )
 option( FETCH_LIBTOKAMAP "Fetch libtokamap as a dependency." OFF )
-
-# add_clang_format_target()
-
-if( ENABLE_TESTING )
-    enable_testing()
-endif()
 
 if( FETCH_LIBTOKAMAP )
     include( FetchContent )
     FetchContent_Declare(
         libtokamap
         GIT_REPOSITORY https://github.com/ukaea/libtokamap.git
-        GIT_TAG develop
-        CMAKE_ARGS -DENABLE_TESTS=OFF -DENABLE_PROFILING=${ENABLE_PROFILING}
+        GIT_TAG main
+        CMAKE_ARGS -DENABLE_TESTS=OFF -DENABLE_PROFILING=OFF -DENABLE_EXAMPLES=OFF
     )
 
     FetchContent_MakeAvailable( libtokamap )
-else()
-    add_clang_format_target()
 endif()
 
 find_package( UDA REQUIRED )

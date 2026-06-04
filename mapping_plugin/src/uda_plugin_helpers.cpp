@@ -1,66 +1,108 @@
 #include "uda_plugin_helpers.hpp"
 
-#include <cstring>
 #include <gsl/gsl-lite.hpp>
 #include <libtokamap.hpp>
 #include <string>
 #include <typeindex>
 #include <typeinfo>
-#include <unordered_map>
 #include <vector>
 
 #include <clientserver/initStructs.h>
 #include <clientserver/udaStructs.h>
 #include <clientserver/udaTypes.h>
 
-std::unordered_map<std::string, UDA_TYPE> json_plugin::uda_type_map()
-{
-    static std::unordered_map<std::string, UDA_TYPE> type_map;
-    if (type_map.empty()) {
-        type_map = {{typeid(unsigned int).name(), UDA_TYPE_UNSIGNED_INT},
-                    {typeid(unsigned char).name(), UDA_TYPE_UNSIGNED_CHAR},
-                    {typeid(unsigned short).name(), UDA_TYPE_UNSIGNED_SHORT},
-                    {typeid(unsigned long).name(), UDA_TYPE_UNSIGNED_LONG},
-                    {typeid(uint64_t).name(), UDA_TYPE_UNSIGNED_LONG64},
-                    {typeid(short).name(), UDA_TYPE_SHORT},
-                    {typeid(int).name(), UDA_TYPE_INT},
-                    {typeid(long).name(), UDA_TYPE_LONG},
-                    {typeid(float).name(), UDA_TYPE_FLOAT},
-                    {typeid(double).name(), UDA_TYPE_DOUBLE},
-                    {typeid(char).name(), UDA_TYPE_STRING},
-                    {typeid(COMPLEX).name(), UDA_TYPE_COMPLEX},
-                    {typeid(DCOMPLEX).name(), UDA_TYPE_DCOMPLEX},
-                    {typeid(void).name(), UDA_TYPE_UNKNOWN}};
+libtokamap::DataType mapping_plugin::uda_to_libtokamap_map(UDA_TYPE datatype) {
+
+    auto libtokamap_type = libtokamap::DataType::Unknown;
+    switch (datatype) {
+        case UDA_TYPE_CHAR:
+            libtokamap_type = libtokamap::DataType::Int8;
+            break;
+        case UDA_TYPE_SHORT:
+            libtokamap_type = libtokamap::DataType::Int16;
+            break;
+        case UDA_TYPE_INT:
+            libtokamap_type = libtokamap::DataType::Int32;
+            break;
+        case UDA_TYPE_UNSIGNED_INT:
+            libtokamap_type = libtokamap::DataType::UInt32;
+            break;
+        case UDA_TYPE_LONG:
+            libtokamap_type = libtokamap::DataType::Int64;
+            break;
+        case UDA_TYPE_FLOAT:
+            libtokamap_type = libtokamap::DataType::Float;
+            break;
+        case UDA_TYPE_DOUBLE:
+            libtokamap_type = libtokamap::DataType::Double;
+            break;
+        case UDA_TYPE_UNSIGNED_CHAR:
+            libtokamap_type = libtokamap::DataType::UInt8;
+            break;
+        case UDA_TYPE_UNSIGNED_SHORT:
+            libtokamap_type = libtokamap::DataType::UInt16;
+            break;
+        case UDA_TYPE_UNSIGNED_LONG:
+            libtokamap_type = libtokamap::DataType::UInt64;
+            break;
+        case UDA_TYPE_LONG64:
+            libtokamap_type = libtokamap::DataType::Int64;
+            break;
+        case UDA_TYPE_UNSIGNED_LONG64:
+            libtokamap_type = libtokamap::DataType::UInt64;
+            break;
+        default:
+            break;
     }
-    return type_map;
+    return libtokamap_type;
 }
 
-std::unordered_map<std::type_index, UDA_TYPE> json_plugin::uda_type_index_map()
-{
-    static std::unordered_map<std::type_index, UDA_TYPE> type_map;
-    if (type_map.empty()) {
-        type_map = {{std::type_index{typeid(unsigned int)}, UDA_TYPE_UNSIGNED_INT},
-                    {std::type_index{typeid(unsigned short)}, UDA_TYPE_UNSIGNED_SHORT},
-                    {std::type_index{typeid(unsigned long)}, UDA_TYPE_UNSIGNED_LONG},
-                    {std::type_index{typeid(uint64_t)}, UDA_TYPE_UNSIGNED_LONG64},
-                    {std::type_index{typeid(int)}, UDA_TYPE_INT},
-                    {std::type_index{typeid(short)}, UDA_TYPE_SHORT},
-                    {std::type_index{typeid(float)}, UDA_TYPE_FLOAT},
-                    {std::type_index{typeid(double)}, UDA_TYPE_DOUBLE},
-                    {std::type_index{typeid(char)}, UDA_TYPE_STRING},
-                    {std::type_index{typeid(COMPLEX)}, UDA_TYPE_COMPLEX},
-                    {std::type_index{typeid(DCOMPLEX)}, UDA_TYPE_DCOMPLEX},
-                    {std::type_index{typeid(void)}, UDA_TYPE_UNKNOWN}};
+UDA_TYPE mapping_plugin::libtokamap_to_uda_map(libtokamap::DataType libtokamap_type) {
+
+    auto uda_type = UDA_TYPE_UNKNOWN;
+    switch (libtokamap_type) {
+        case libtokamap::DataType::Int8:
+            uda_type = UDA_TYPE_CHAR;
+            break;
+        case libtokamap::DataType::Int16:
+            uda_type = UDA_TYPE_SHORT;
+            break;
+        case libtokamap::DataType::Int32:
+            uda_type = UDA_TYPE_INT;
+            break;
+        case libtokamap::DataType::Int64:
+            uda_type = UDA_TYPE_LONG64;
+            break;
+        case libtokamap::DataType::UInt8:
+            uda_type = UDA_TYPE_UNSIGNED_CHAR;
+            break;
+        case libtokamap::DataType::UInt16:
+            uda_type = UDA_TYPE_UNSIGNED_SHORT;
+            break;
+        case libtokamap::DataType::UInt32:
+            uda_type = UDA_TYPE_UNSIGNED_INT;
+            break;
+        case libtokamap::DataType::UInt64:
+            uda_type = UDA_TYPE_UNSIGNED_LONG64;
+            break;
+        case libtokamap::DataType::Float:
+            uda_type = UDA_TYPE_FLOAT;
+            break;
+        case libtokamap::DataType::Double:
+            uda_type = UDA_TYPE_DOUBLE;
+            break;
+        default:
+            break;
     }
-    return type_map;
+    return uda_type;
 }
 
-void json_plugin::set_data_block(DATA_BLOCK* data_block, libtokamap::TypedDataArray& array)
+void mapping_plugin::set_data_block(DATA_BLOCK* data_block, libtokamap::TypedDataArray& array)
 {
     initDataBlock(data_block);
 
     data_block->rank = array.rank();
-    data_block->data_type = uda_type_index_map().at(array.type_index());
+    data_block->data_type = libtokamap_to_uda_map(array.data_type());
     data_block->data = array.release();
     data_block->data_n = static_cast<int>(array.size());
 
