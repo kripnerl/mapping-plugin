@@ -55,5 +55,8 @@ if( FETCH_LIBTOKAMAP )
     FetchContent_MakeAvailable( libtokamap )
 endif()
 
+# This list is appended to by the uda_plugin macro
+set( BUILT_PLUGINS "" )
+
 find_package( UDA REQUIRED )
 add_subdirectory( mapping_plugin )
