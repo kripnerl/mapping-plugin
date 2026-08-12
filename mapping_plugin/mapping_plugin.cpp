@@ -31,6 +31,7 @@
 #include <server/getServerEnvironment.h>
 
 #include "uda_plugin_helpers.hpp"
+#include "python_data_source.hpp"
 
 namespace
 {
@@ -113,6 +114,11 @@ int MappingPlugin::init(IDAM_PLUGIN_INTERFACE* plugin_interface)
     const char* config_path = getenv("UDA_MAPPING_CONFIG_PATH");
     if (config_path != nullptr) {
         m_mapping_handler.init(std::filesystem::path{config_path});
+        // Register any Python data sources / custom functions declared in the
+        // MAPPING_PLUGIN_PYTHON_CONFIG file. Starts the embedded interpreter
+        // only when such a config exists; no-op otherwise (and a compile-time
+        // no-op when built without MAPPING_PLUGIN_PYTHON).
+        mapping_plugin::init_python_data_sources_if_configured(m_mapping_handler);
     } else {
         throw std::runtime_error{"UDA_MAPPING_CONFIG_PATH not specified"};
     }
