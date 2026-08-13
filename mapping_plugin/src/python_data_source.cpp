@@ -18,13 +18,12 @@
 
 #include <numpy/arrayobject.h>
 
+#include <fstream>
 #include <mutex>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <vector>
-
-#include <toml.hpp>
 
 namespace mapping_plugin
 {
@@ -589,86 +588,66 @@ struct PythonCustomFunctionSpec
     std::vector<std::string> functions;
 };
 
-// TOML -> JSON for constructor arguments. Dispatches on the node type rather
-// than probing with value<T>(), which would silently coerce between numeric
-// types. Tables and arrays are carried through, so a data source can be
-// configured with nested arguments; only dates/times have no JSON (and no
-// json_to_pyobject) representation and are reported as an error.
-bool toml_node_to_json(const toml::node& node, const std::string& path, nlohmann::json& out, std::string& error)
+// Reads a required non-empty string member. Returns false with `error` set when
+// it is missing, not a string, or empty.
+bool required_string(const nlohmann::json& object, const std::string& path, const char* key, std::string& out,
+                     std::string& error)
 {
-    switch (node.type()) {
-        case toml::node_type::table: {
-            out = nlohmann::json::object();
-            for (const auto& [key, sub] : *node.as_table()) {
-                nlohmann::json value;
-                if (!toml_node_to_json(sub, path + "." + std::string{key.str()}, value, error)) {
-                    return false;
-                }
-                out[std::string{key.str()}] = std::move(value);
-            }
-            return true;
-        }
-        case toml::node_type::array: {
-            out = nlohmann::json::array();
-            size_t index = 0;
-            for (const auto& element : *node.as_array()) {
-                nlohmann::json value;
-                if (!toml_node_to_json(element, path + "[" + std::to_string(index++) + "]", value, error)) {
-                    return false;
-                }
-                out.push_back(std::move(value));
-            }
-            return true;
-        }
-        case toml::node_type::string:
-            out = node.as_string()->get();
-            return true;
-        case toml::node_type::boolean:
-            out = node.as_boolean()->get();
-            return true;
-        case toml::node_type::integer:
-            out = node.as_integer()->get();
-            return true;
-        case toml::node_type::floating_point:
-            out = node.as_floating_point()->get();
-            return true;
-        default:
-            error = path + " has a type that cannot be passed to Python (dates and times are not supported)";
-            return false;
+    const auto member = object.find(key);
+    if (member == object.end() || !member->is_string() || member->get<std::string>().empty()) {
+        error = path + " requires a non-empty '" + key + "' string";
+        return false;
     }
+    out = member->get<std::string>();
+    return true;
 }
 
-bool parse_python_data_sources(const toml::table& config, std::vector<PythonDataSourceSpec>& specs, std::string& error)
+bool parse_python_data_sources(const nlohmann::json& config, std::vector<PythonDataSourceSpec>& specs,
+                               std::string& error)
 {
-    auto* table = config["python_data_sources"].as_table();
-    if (table == nullptr) {
+    const auto table = config.find("python_data_sources");
+    if (table == config.end()) {
         return true; // nothing configured
     }
+    if (!table->is_object()) {
+        error = "python_data_sources must be an object";
+        return false;
+    }
 
-    for (const auto& [key, node] : *table) {
-        auto* sub = node.as_table();
-        if (sub == nullptr) {
-            error = "python_data_sources." + std::string{key.str()} + " must be a table";
+    for (const auto& [key, node] : table->items()) {
+        const std::string path = "python_data_sources." + key;
+        if (!node.is_object()) {
+            error = path + " must be an object";
             return false;
         }
         PythonDataSourceSpec spec;
-        spec.name = std::string{key.str()};
-        auto module = (*sub)["module"].value<std::string>();
-        if (!module.has_value() || module->empty()) {
-            error = "python_data_sources." + spec.name + " requires a 'module' key";
+        spec.name = key;
+        if (!required_string(node, path, "module", spec.module, error)) {
             return false;
         }
-        spec.module = *module;
-        spec.class_name = (*sub)["class_name"].value_or((*sub)["class"].value_or(spec.name + "DataSource"));
-        if (auto* args = (*sub)["args"].as_table()) {
-            for (const auto& [akey, anode] : *args) {
-                const std::string arg_name{akey.str()};
-                nlohmann::json value;
-                if (!toml_node_to_json(anode, "python_data_sources." + spec.name + ".args." + arg_name, value,
-                                       error)) {
-                    return false;
-                }
-                spec.args[arg_name] = std::move(value);
+        // 'class_name', or the shorter 'class', defaulting to <name>DataSource.
+        spec.class_name = spec.name + "DataSource";
+        for (const char* alias : {"class", "class_name"}) { // class_name wins: checked last
+            const auto member = node.find(alias);
+            if (member == node.end()) {
+                continue;
+            }
+            if (!member->is_string() || member->get<std::string>().empty()) {
+                error = path + "." + alias + " must be a non-empty string";
+                return false;
+            }
+            spec.class_name = member->get<std::string>();
+        }
+        const auto args = node.find("args");
+        if (args != node.end()) {
+            if (!args->is_object()) {
+                error = path + ".args must be an object";
+                return false;
+            }
+            // Any JSON value goes through: json_to_pyobject renders nested
+            // objects and arrays as dicts and lists.
+            for (const auto& [arg_name, value] : args->items()) {
+                spec.args[arg_name] = value;
             }
         }
         specs.push_back(std::move(spec));
@@ -676,40 +655,40 @@ bool parse_python_data_sources(const toml::table& config, std::vector<PythonData
     return true;
 }
 
-bool parse_python_custom_functions(const toml::table& config, std::vector<PythonCustomFunctionSpec>& specs,
+bool parse_python_custom_functions(const nlohmann::json& config, std::vector<PythonCustomFunctionSpec>& specs,
                                    std::string& error)
 {
-    auto* table = config["python_custom_functions"].as_table();
-    if (table == nullptr) {
+    const auto table = config.find("python_custom_functions");
+    if (table == config.end()) {
         return true; // nothing configured
     }
+    if (!table->is_object()) {
+        error = "python_custom_functions must be an object";
+        return false;
+    }
 
-    for (const auto& [key, node] : *table) {
-        auto* sub = node.as_table();
-        if (sub == nullptr) {
-            error = "python_custom_functions." + std::string{key.str()} + " must be a table";
+    for (const auto& [key, node] : table->items()) {
+        const std::string path = "python_custom_functions." + key;
+        if (!node.is_object()) {
+            error = path + " must be an object";
             return false;
         }
         PythonCustomFunctionSpec spec;
-        spec.library = std::string{key.str()};
-        auto module = (*sub)["module"].value<std::string>();
-        if (!module.has_value() || module->empty()) {
-            error = "python_custom_functions." + spec.library + " requires a 'module' key";
+        spec.library = key;
+        if (!required_string(node, path, "module", spec.module, error)) {
             return false;
         }
-        spec.module = *module;
-        auto* functions = (*sub)["functions"].as_array();
-        if (functions == nullptr) {
-            error = "python_custom_functions." + spec.library + " requires a 'functions' array";
+        const auto functions = node.find("functions");
+        if (functions == node.end() || !functions->is_array()) {
+            error = path + " requires a 'functions' array";
             return false;
         }
-        for (const auto& fname : *functions) {
-            auto name = fname.value<std::string>();
-            if (!name.has_value()) {
-                error = "python_custom_functions." + spec.library + ".functions must be strings";
+        for (const auto& name : *functions) {
+            if (!name.is_string() || name.get<std::string>().empty()) {
+                error = path + ".functions must be non-empty strings";
                 return false;
             }
-            spec.functions.push_back(*name);
+            spec.functions.push_back(name.get<std::string>());
         }
         specs.push_back(std::move(spec));
     }
@@ -729,11 +708,23 @@ void init_python_data_sources_if_configured(libtokamap::MappingHandler& mapping_
         throw std::runtime_error{"MAPPING_PLUGIN_PYTHON_CONFIG points to a missing file: " + config_path.string()};
     }
 
-    toml::table config;
+    std::ifstream stream{config_path};
+    if (!stream) {
+        throw std::runtime_error{"failed to open MAPPING_PLUGIN_PYTHON_CONFIG: " + config_path.string()};
+    }
+    nlohmann::json config;
     try {
-        config = toml::parse_file(config_path.string());
-    } catch (const toml::parse_error& e) {
-        throw std::runtime_error{"failed to parse " + config_path.string() + ": " + e.what()};
+        // ignore_comments: the deployed configs carry explanatory // comments.
+        config = nlohmann::json::parse(stream, nullptr, true, true);
+    } catch (const nlohmann::json::parse_error& e) {
+        std::string hint;
+        if (config_path.extension() == ".toml") {
+            hint = " — this file must be JSON; the plugin no longer parses TOML (see python_data_source.hpp)";
+        }
+        throw std::runtime_error{"failed to parse " + config_path.string() + " as JSON: " + e.what() + hint};
+    }
+    if (!config.is_object()) {
+        throw std::runtime_error{config_path.string() + " must contain a JSON object at the top level"};
     }
 
     std::vector<PythonDataSourceSpec> source_specs;
