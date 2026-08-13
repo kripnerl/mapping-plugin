@@ -76,10 +76,23 @@ PyObject* wrap_array_copy(const libtokamap::TypedDataArray& data)
     int ndim = static_cast<int>(shape.size());
     std::vector<npy_intp> dims(shape.begin(), shape.end());
 
-    void* copied = std::malloc(data.size() * sizeof(T));
-    std::memcpy(copied, data.data<T>(), data.size() * sizeof(T));
+    const size_t bytes = data.size() * sizeof(T);
+    // malloc(0) may legitimately return nullptr, so never ask for zero bytes —
+    // that keeps "nullptr means allocation failure" true for empty arrays too.
+    void* copied = std::malloc(bytes != 0 ? bytes : 1);
+    if (copied == nullptr) {
+        PyErr_NoMemory();
+        return nullptr;
+    }
+    if (bytes != 0) {
+        std::memcpy(copied, data.data<T>(), bytes);
+    }
 
     PyArray_Descr* descr = PyArray_DescrFromType(NPY_TYPE);
+    if (descr == nullptr) {
+        std::free(copied);
+        return nullptr;
+    }
     PyObject* array = PyArray_NewFromDescr(&PyArray_Type, descr, ndim, dims.data(), nullptr, copied,
                                            NPY_ARRAY_CARRAY, nullptr);
     if (array == nullptr) {
@@ -131,9 +144,84 @@ PyObject* typed_data_array_to_numpy(const libtokamap::TypedDataArray& data)
 
 std::once_flag g_python_once;
 
+// The thread state Py_Initialize() leaves current on the initialising thread,
+// kept only so that the hand-off of the GIL is explicit and greppable.
+PyThreadState* g_main_thread_state = nullptr;
+
+// RAII for the GIL. Re-entrant by design: on the thread that has just run
+// Py_Initialize() the GIL is already held, so Ensure()/Release() are no-ops.
+class GilLock
+{
+  public:
+    GilLock() : m_state{PyGILState_Ensure()} {}
+    ~GilLock() { PyGILState_Release(m_state); }
+
+    GilLock(const GilLock&) = delete;
+    GilLock& operator=(const GilLock&) = delete;
+    GilLock(GilLock&&) = delete;
+    GilLock& operator=(GilLock&&) = delete;
+
+  private:
+    PyGILState_STATE m_state;
+};
+
+// Py_Initialize() returns with the GIL held by the calling thread. Drop it on
+// the way out of the initialisation — including via an exception — otherwise no
+// Python thread can ever run while the plugin sits idle between requests, and a
+// second thread calling PyGILState_Ensure() would block forever.
+class MainThreadGilRelease
+{
+  public:
+    explicit MainThreadGilRelease(bool armed) : m_armed{armed} {}
+    ~MainThreadGilRelease()
+    {
+        if (m_armed) {
+            g_main_thread_state = PyEval_SaveThread();
+        }
+    }
+
+    MainThreadGilRelease(const MainThreadGilRelease&) = delete;
+    MainThreadGilRelease& operator=(const MainThreadGilRelease&) = delete;
+    MainThreadGilRelease(MainThreadGilRelease&&) = delete;
+    MainThreadGilRelease& operator=(MainThreadGilRelease&&) = delete;
+
+  private:
+    bool m_armed;
+};
+
+// Prepends a colon-separated search path to sys.path, keeping the order of its
+// entries the way CPython does it — leftmost entry wins.
+void prepend_search_path(PyObject* sys_path, const char* search_path)
+{
+    if (search_path == nullptr || *search_path == '\0') {
+        return;
+    }
+    const std::string paths{search_path};
+    Py_ssize_t index = 0;
+    size_t pos = 0;
+    while (pos <= paths.size()) {
+        const size_t sep = paths.find(':', pos);
+        const std::string entry = paths.substr(pos, sep == std::string::npos ? sep : sep - pos);
+        if (!entry.empty()) {
+            PyObject* pyentry = PyUnicode_FromString(entry.c_str());
+            if (pyentry != nullptr) {
+                if (PyList_Insert(sys_path, index, pyentry) == 0) {
+                    ++index;
+                }
+                Py_DECREF(pyentry);
+            }
+        }
+        if (sep == std::string::npos) {
+            break;
+        }
+        pos = sep + 1;
+    }
+}
+
 void ensure_python_interpreter()
 {
     std::call_once(g_python_once, [] {
+        bool initialised_here = false;
         if (Py_IsInitialized() == 0) {
             // Default the libpython path from the compile-time Python, but
             // allow the deployment to override it.
@@ -146,41 +234,32 @@ void ensure_python_interpreter()
                     throw std::runtime_error{std::string{"failed to load libpython: "} + dlerror()};
                 }
             }
-            Py_Initialize();
+            Py_Initialize(); // returns with the GIL held by this thread
             if (Py_IsInitialized() == 0) {
                 throw std::runtime_error{"Py_Initialize failed"};
             }
+            initialised_here = true;
+        }
 
-            // An embedded interpreter sees neither the caller's PYTHONPATH
-            // nor the venv paths, so fold both into sys.path explicitly.
-            {
-                PyObject* sys_path = PySys_GetObject("path"); // borrowed ref
-                const char* pythonpath = std::getenv("PYTHONPATH");
-                if (pythonpath != nullptr && *pythonpath != '\0') {
-                    std::string paths{pythonpath};
-                    size_t pos = 0;
-                    while (pos <= paths.size()) {
-                        size_t sep = paths.find(':', pos);
-                        std::string entry = paths.substr(pos, sep == std::string::npos ? sep : sep - pos);
-                        if (!entry.empty()) {
-                            PyObject* pyentry = PyUnicode_FromString(entry.c_str());
-                            PyList_Insert(sys_path, 0, pyentry);
-                            Py_DECREF(pyentry);
-                        }
-                        if (sep == std::string::npos) {
-                            break;
-                        }
-                        pos = sep + 1;
-                    }
-                }
-                const char* extra = std::getenv("MAPPING_PLUGIN_PYTHONPATH");
-                if (extra != nullptr && *extra != '\0') {
-                    PyObject* pyextra = PyUnicode_FromString(extra);
-                    PyList_Insert(sys_path, 0, pyextra);
-                    Py_DECREF(pyextra);
-                }
+        // Declared first so it is destroyed last: the GIL taken by
+        // Py_Initialize() is handed back only once everything below is done.
+        MainThreadGilRelease main_thread_gil{initialised_here};
+        // Everything below touches interpreter state, so it needs the GIL held.
+        // That includes the path where somebody else (the host process, another
+        // UDA plugin) initialised CPython and this thread holds nothing.
+        GilLock gil;
+
+        if (initialised_here) {
+            // An embedded interpreter sees neither the caller's PYTHONPATH nor
+            // the venv paths, so fold both into sys.path explicitly.
+            PyObject* sys_path = PySys_GetObject("path"); // borrowed ref
+            if (sys_path != nullptr) {
+                prepend_search_path(sys_path, std::getenv("PYTHONPATH"));
+                // Applied second, so it takes precedence over PYTHONPATH.
+                prepend_search_path(sys_path, std::getenv("MAPPING_PLUGIN_PYTHONPATH"));
             }
         }
+
         if (_import_array() != 0) {
             throw std::runtime_error{"NumPy C API initialisation failed: " + fetch_python_error()};
         }
@@ -191,21 +270,41 @@ void ensure_python_interpreter()
 // Python/C++ value conversions (mirrors clibtokamap)
 // ---------------------------------------------------------------------------
 
+// Returns a new reference, or nullptr with the Python error indicator set.
 PyObject* json_to_pyobject(const nlohmann::json& value)
 {
     if (value.is_object()) {
         PyObject* dict = PyDict_New();
+        if (dict == nullptr) {
+            return nullptr;
+        }
         for (auto& [key, sub] : value.items()) {
             PyObject* py_sub = json_to_pyobject(sub);
-            PyDict_SetItemString(dict, key.c_str(), py_sub);
+            if (py_sub == nullptr) {
+                Py_DECREF(dict);
+                return nullptr;
+            }
+            const int rc = PyDict_SetItemString(dict, key.c_str(), py_sub);
             Py_DECREF(py_sub);
+            if (rc != 0) {
+                Py_DECREF(dict);
+                return nullptr;
+            }
         }
         return dict;
     }
     if (value.is_array()) {
         PyObject* list = PyList_New(static_cast<Py_ssize_t>(value.size()));
+        if (list == nullptr) {
+            return nullptr;
+        }
         for (size_t i = 0; i < value.size(); ++i) {
-            PyList_SET_ITEM(list, static_cast<Py_ssize_t>(i), json_to_pyobject(value[i]));
+            PyObject* item = json_to_pyobject(value[i]);
+            if (item == nullptr) {
+                Py_DECREF(list); // list dealloc copes with the unfilled slots
+                return nullptr;
+            }
+            PyList_SET_ITEM(list, static_cast<Py_ssize_t>(i), item); // steals
         }
         return list;
     }
@@ -227,6 +326,32 @@ PyObject* json_to_pyobject(const nlohmann::json& value)
     return PyUnicode_FromString(value.dump().c_str());
 }
 
+// Builds a Python dict out of any map of string -> nlohmann::json (the mapping
+// arguments, a data source's constructor kwargs). Returns a new reference, or
+// nullptr with the Python error indicator set.
+template <typename JsonMap>
+PyObject* json_map_to_pydict(const JsonMap& values)
+{
+    PyObject* dict = PyDict_New();
+    if (dict == nullptr) {
+        return nullptr;
+    }
+    for (const auto& [key, value] : values) {
+        PyObject* py_value = json_to_pyobject(value);
+        if (py_value == nullptr) {
+            Py_DECREF(dict);
+            return nullptr;
+        }
+        const int rc = PyDict_SetItemString(dict, key.c_str(), py_value);
+        Py_DECREF(py_value);
+        if (rc != 0) {
+            Py_DECREF(dict);
+            return nullptr;
+        }
+    }
+    return dict;
+}
+
 bool numpy_to_typed_data_array(PyObject* object, libtokamap::TypedDataArray& out, std::string& error)
 {
     if (PyUnicode_Check(object)) {
@@ -243,8 +368,13 @@ bool numpy_to_typed_data_array(PyObject* object, libtokamap::TypedDataArray& out
         return false;
     }
     auto* array = reinterpret_cast<PyArrayObject*>(object);
-    if (PyArray_ISCARRAY(array) == 0) {
-        error = "Python data source returned a non-C-contiguous NumPy array";
+    // ISCARRAY_RO, not ISCARRAY: the data is copied below, so a read-only array
+    // (np.broadcast_to, an mmap view, a cache deliberately marked read-only) is
+    // perfectly usable and must not be rejected for not being writeable.
+    if (PyArray_ISCARRAY_RO(array) == 0) {
+        error = PyArray_IS_C_CONTIGUOUS(array) == 0
+                    ? "Python data source returned a non-C-contiguous NumPy array"
+                    : "Python data source returned a misaligned NumPy array";
         return false;
     }
     void* data = PyArray_DATA(array);
@@ -330,23 +460,22 @@ class PythonDataSource final : public libtokamap::DataSource
     {
         PyGILState_STATE gil = PyGILState_Ensure();
 
-        PyObject* args_dict = PyDict_New();
-        for (const auto& [key, value] : map_args) {
-            PyObject* py_value = json_to_pyobject(value);
-            PyDict_SetItemString(args_dict, key.c_str(), py_value);
-            Py_DECREF(py_value);
-        }
-
-        PyObject* result = PyObject_CallMethod(m_instance, "get", "O", args_dict);
-        Py_DECREF(args_dict);
-
         libtokamap::TypedDataArray array;
         std::string error;
-        if (result == nullptr) {
-            error = fetch_python_error();
+
+        PyObject* args_dict = json_map_to_pydict(map_args);
+        if (args_dict == nullptr) {
+            error = "failed to build the arguments dict: " + fetch_python_error();
         } else {
-            numpy_to_typed_data_array(result, array, error);
-            Py_DECREF(result);
+            PyObject* result = PyObject_CallMethod(m_instance, "get", "O", args_dict);
+            Py_DECREF(args_dict);
+
+            if (result == nullptr) {
+                error = fetch_python_error();
+            } else {
+                numpy_to_typed_data_array(result, array, error);
+                Py_DECREF(result);
+            }
         }
         PyGILState_Release(gil);
 
@@ -384,28 +513,51 @@ class PythonCustomFunction final : public libtokamap::LibraryFunctionWrapper
     {
         PyGILState_STATE gil = PyGILState_Ensure();
 
-        PyObject* inputs_dict = PyDict_New();
-        for (auto& [key, value] : inputs) {
-            PyObject* py_array = typed_data_array_to_numpy(value);
-            PyDict_SetItemString(inputs_dict, key.c_str(), py_array);
-            Py_DECREF(py_array);
-        }
-        PyObject* params_dict = json_to_pyobject(params);
-        PyObject* call_args = PyTuple_Pack(2, inputs_dict, params_dict);
-        Py_DECREF(inputs_dict);
-        Py_DECREF(params_dict);
-
-        PyObject* result = PyObject_CallObject(m_function, call_args);
-        Py_DECREF(call_args);
-
         libtokamap::TypedDataArray array;
         std::string error;
-        if (result == nullptr) {
-            error = fetch_python_error();
-        } else {
-            numpy_to_typed_data_array(result, array, error);
-            Py_DECREF(result);
+
+        PyObject* inputs_dict = PyDict_New();
+        if (inputs_dict == nullptr) {
+            error = "failed to allocate the inputs dict: " + fetch_python_error();
         }
+        for (auto& [key, value] : inputs) {
+            if (!error.empty()) {
+                break;
+            }
+            // A failed conversion returns nullptr; handing that to
+            // PyDict_SetItemString would dereference it.
+            PyObject* py_array = typed_data_array_to_numpy(value);
+            if (py_array == nullptr) {
+                error = "failed to convert input '" + key + "' to a NumPy array: " + fetch_python_error();
+                break;
+            }
+            const int rc = PyDict_SetItemString(inputs_dict, key.c_str(), py_array);
+            Py_DECREF(py_array);
+            if (rc != 0) {
+                error = "failed to add input '" + key + "' to the inputs dict: " + fetch_python_error();
+                break;
+            }
+        }
+
+        if (error.empty()) {
+            PyObject* params_dict = json_to_pyobject(params);
+            PyObject* call_args = params_dict == nullptr ? nullptr : PyTuple_Pack(2, inputs_dict, params_dict);
+            Py_XDECREF(params_dict);
+            if (call_args == nullptr) {
+                error = "failed to build the call arguments: " + fetch_python_error();
+            } else {
+                PyObject* result = PyObject_CallObject(m_function, call_args);
+                Py_DECREF(call_args);
+
+                if (result == nullptr) {
+                    error = fetch_python_error();
+                } else {
+                    numpy_to_typed_data_array(result, array, error);
+                    Py_DECREF(result);
+                }
+            }
+        }
+        Py_XDECREF(inputs_dict);
         PyGILState_Release(gil);
 
         if (!error.empty()) {
@@ -437,6 +589,55 @@ struct PythonCustomFunctionSpec
     std::vector<std::string> functions;
 };
 
+// TOML -> JSON for constructor arguments. Dispatches on the node type rather
+// than probing with value<T>(), which would silently coerce between numeric
+// types. Tables and arrays are carried through, so a data source can be
+// configured with nested arguments; only dates/times have no JSON (and no
+// json_to_pyobject) representation and are reported as an error.
+bool toml_node_to_json(const toml::node& node, const std::string& path, nlohmann::json& out, std::string& error)
+{
+    switch (node.type()) {
+        case toml::node_type::table: {
+            out = nlohmann::json::object();
+            for (const auto& [key, sub] : *node.as_table()) {
+                nlohmann::json value;
+                if (!toml_node_to_json(sub, path + "." + std::string{key.str()}, value, error)) {
+                    return false;
+                }
+                out[std::string{key.str()}] = std::move(value);
+            }
+            return true;
+        }
+        case toml::node_type::array: {
+            out = nlohmann::json::array();
+            size_t index = 0;
+            for (const auto& element : *node.as_array()) {
+                nlohmann::json value;
+                if (!toml_node_to_json(element, path + "[" + std::to_string(index++) + "]", value, error)) {
+                    return false;
+                }
+                out.push_back(std::move(value));
+            }
+            return true;
+        }
+        case toml::node_type::string:
+            out = node.as_string()->get();
+            return true;
+        case toml::node_type::boolean:
+            out = node.as_boolean()->get();
+            return true;
+        case toml::node_type::integer:
+            out = node.as_integer()->get();
+            return true;
+        case toml::node_type::floating_point:
+            out = node.as_floating_point()->get();
+            return true;
+        default:
+            error = path + " has a type that cannot be passed to Python (dates and times are not supported)";
+            return false;
+    }
+}
+
 bool parse_python_data_sources(const toml::table& config, std::vector<PythonDataSourceSpec>& specs, std::string& error)
 {
     auto* table = config["python_data_sources"].as_table();
@@ -462,15 +663,12 @@ bool parse_python_data_sources(const toml::table& config, std::vector<PythonData
         if (auto* args = (*sub)["args"].as_table()) {
             for (const auto& [akey, anode] : *args) {
                 const std::string arg_name{akey.str()};
-                if (auto v = anode.value<std::string>()) {
-                    spec.args[arg_name] = *v;
-                } else if (auto b = anode.value<bool>()) {
-                    spec.args[arg_name] = *b;
-                } else if (auto i = anode.value<int64_t>()) {
-                    spec.args[arg_name] = *i;
-                } else if (auto f = anode.value<double>()) {
-                    spec.args[arg_name] = *f;
+                nlohmann::json value;
+                if (!toml_node_to_json(anode, "python_data_sources." + spec.name + ".args." + arg_name, value,
+                                       error)) {
+                    return false;
                 }
+                spec.args[arg_name] = std::move(value);
             }
         }
         specs.push_back(std::move(spec));
@@ -559,13 +757,7 @@ void init_python_data_sources_if_configured(libtokamap::MappingHandler& mapping_
             PyGILState_Release(gil);
             throw std::runtime_error{"failed to import '" + spec.module + "': " + message};
         }
-        PyObject* cls = nullptr;
-        if (module == nullptr) {
-            std::string message = fetch_python_error();
-            PyGILState_Release(gil);
-            throw std::runtime_error{"failed to import '" + spec.module + "': " + message};
-        }
-        cls = PyObject_GetAttrString(module, spec.class_name.c_str());
+        PyObject* cls = PyObject_GetAttrString(module, spec.class_name.c_str());
         Py_DECREF(module);
         if (cls == nullptr) {
             std::string message = fetch_python_error();
@@ -573,15 +765,17 @@ void init_python_data_sources_if_configured(libtokamap::MappingHandler& mapping_
             throw std::runtime_error{"failed to find class '" + spec.class_name + "' in " + spec.module + ": " +
                                      message};
         }
-        PyObject* kwargs = PyDict_New();
-        for (const auto& [key, value] : spec.args) {
-            PyObject* py_value = json_to_pyobject(value);
-            PyDict_SetItemString(kwargs, key.c_str(), py_value);
-            Py_DECREF(py_value);
+        PyObject* kwargs = json_map_to_pydict(spec.args);
+        if (kwargs == nullptr) {
+            std::string message = fetch_python_error();
+            Py_DECREF(cls);
+            PyGILState_Release(gil);
+            throw std::runtime_error{"failed to build the arguments for " + spec.module + "." + spec.class_name + ": " +
+                                     message};
         }
         PyObject* empty_args = PyTuple_New(0);
-        PyObject* instance = PyObject_Call(cls, empty_args, kwargs);
-        Py_DECREF(empty_args);
+        PyObject* instance = empty_args == nullptr ? nullptr : PyObject_Call(cls, empty_args, kwargs);
+        Py_XDECREF(empty_args);
         Py_DECREF(kwargs);
         Py_DECREF(cls);
         if (instance == nullptr) {
@@ -591,6 +785,12 @@ void init_python_data_sources_if_configured(libtokamap::MappingHandler& mapping_
         }
         // The registry takes ownership; the Python object stays alive for the
         // process lifetime via the reference held in PythonDataSource.
+        //
+        // Drop any previous registration of this name first: register_data_source
+        // throws on a duplicate, and this function can legitimately run again in
+        // the same process (a retry after a partially failed init). erase() is a
+        // no-op when the name is absent.
+        mapping_handler.unregister_data_source(spec.name);
         mapping_handler.register_data_source(spec.name, std::make_unique<PythonDataSource>(instance));
     }
 
@@ -609,6 +809,13 @@ void init_python_data_sources_if_configured(libtokamap::MappingHandler& mapping_
                 PyGILState_Release(gil);
                 throw std::runtime_error{"failed to find function '" + function_name + "' in " + spec.module + ": " +
                                          message};
+            }
+            // As above: drop a previous registration so a repeated init replaces
+            // it instead of stacking a second entry that shadows the first.
+            // unregister_custom_function throws when there is nothing to drop.
+            try {
+                mapping_handler.unregister_custom_function(spec.library, function_name);
+            } catch (const std::exception&) { // not registered yet — nothing to drop
             }
             mapping_handler.register_custom_function(libtokamap::LibraryFunction{
                 spec.library, function_name, std::make_unique<PythonCustomFunction>(function)});

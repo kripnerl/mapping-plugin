@@ -22,8 +22,24 @@ set( MAPPING_PLUGIN_PYTHON_DEFINITIONS "" )
 set( MAPPING_PLUGIN_PYTHON_LIBS "" )
 if( MAPPING_PLUGIN_PYTHON )
   find_package( Python3 REQUIRED COMPONENTS Interpreter Development NumPy )
+  # Only a single dlopen-able libpython path is wanted here. Python3_LIBRARIES
+  # can be a multi-element list (and carries optimized;/debug; keywords on MSVC),
+  # which would split -DMAPPING_PLUGIN_DEFAULT_LIBPYTHON="..." across two
+  # compiler arguments and fail the compile on the unterminated quote.
+  set( MAPPING_PLUGIN_LIBPYTHON "" )
+  foreach( LIB IN LISTS Python3_LIBRARIES )
+      if( LIB MATCHES "python" AND EXISTS "${LIB}" )
+          set( MAPPING_PLUGIN_LIBPYTHON "${LIB}" )
+          break()
+      endif()
+  endforeach()
+  if( NOT MAPPING_PLUGIN_LIBPYTHON )
+      message( WARNING
+          "Could not pick a libpython path out of '${Python3_LIBRARIES}'; the plugin will need "
+          "MAPPING_PLUGIN_LIBPYTHON set in the environment to start the embedded interpreter." )
+  endif()
   set( MAPPING_PLUGIN_PYTHON_DEFINITIONS -DMAPPING_PLUGIN_PYTHON
-      -DMAPPING_PLUGIN_DEFAULT_LIBPYTHON="${Python3_LIBRARIES}" )
+      -DMAPPING_PLUGIN_DEFAULT_LIBPYTHON="${MAPPING_PLUGIN_LIBPYTHON}" )
   set( MAPPING_PLUGIN_PYTHON_INCLUDES ${Python3_INCLUDE_DIRS} ${Python3_NumPy_INCLUDE_DIRS} )
   set( MAPPING_PLUGIN_PYTHON_LIBS Python3::Python ${CMAKE_DL_LIBS} )
 endif()

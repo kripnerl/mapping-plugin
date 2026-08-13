@@ -89,6 +89,7 @@ class MappingPlugin
     static int max_interface_version(IDAM_PLUGIN_INTERFACE* plugin_interface);
 
     bool m_init = false;
+    bool m_python_init = false;
     std::string m_request_function;
     libtokamap::MappingHandler m_mapping_handler;
 };
@@ -118,7 +119,16 @@ int MappingPlugin::init(IDAM_PLUGIN_INTERFACE* plugin_interface)
         // MAPPING_PLUGIN_PYTHON_CONFIG file. Starts the embedded interpreter
         // only when such a config exists; no-op otherwise (and a compile-time
         // no-op when built without MAPPING_PLUGIN_PYTHON).
-        mapping_plugin::init_python_data_sources_if_configured(m_mapping_handler);
+        //
+        // Done at most once per process. reset() clears m_init, but the mapping
+        // handler keeps its registered data sources (just as it keeps its
+        // experiment register, which is why its own init() is a no-op on the
+        // second call), so re-running this would re-import the Python modules
+        // and reconnect the sources for nothing.
+        if (!m_python_init) {
+            mapping_plugin::init_python_data_sources_if_configured(m_mapping_handler);
+            m_python_init = true;
+        }
     } else {
         throw std::runtime_error{"UDA_MAPPING_CONFIG_PATH not specified"};
     }
