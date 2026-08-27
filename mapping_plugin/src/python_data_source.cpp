@@ -20,10 +20,13 @@
 
 #include <fstream>
 #include <mutex>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+#include <toml.hpp>
 
 namespace mapping_plugin
 {
@@ -588,6 +591,41 @@ struct PythonCustomFunctionSpec
     std::vector<std::string> functions;
 };
 
+nlohmann::json load_python_config(const std::filesystem::path& config_path)
+{
+    std::ifstream stream{config_path};
+    if (!stream) {
+        throw std::runtime_error{"failed to open MAPPING_PLUGIN_PYTHON_CONFIG: " + config_path.string()};
+    }
+
+    if (config_path.extension() == ".toml") {
+        try {
+            const auto toml_config = toml::parse(stream, config_path.string());
+            std::stringstream json_stream;
+            json_stream << toml::json_formatter{toml_config};
+            return nlohmann::json::parse(json_stream);
+        } catch (const toml::parse_error& e) {
+            throw std::runtime_error{"failed to parse " + config_path.string() + " as TOML: " + e.what()};
+        } catch (const nlohmann::json::parse_error& e) {
+            throw std::runtime_error{"failed to convert " + config_path.string() + " from TOML to JSON: " +
+                                     e.what()};
+        }
+    }
+
+    if (config_path.extension() == ".json") {
+        try {
+            // Keep JSONC compatibility for deployments that use explanatory
+            // comments in the plugin config.
+            return nlohmann::json::parse(stream, nullptr, true, true);
+        } catch (const nlohmann::json::parse_error& e) {
+            throw std::runtime_error{"failed to parse " + config_path.string() + " as JSON: " + e.what()};
+        }
+    }
+
+    throw std::runtime_error{"unsupported MAPPING_PLUGIN_PYTHON_CONFIG extension for " + config_path.string() +
+                             "; expected .toml or .json"};
+}
+
 // Reads a required non-empty string member. Returns false with `error` set when
 // it is missing, not a string, or empty.
 bool required_string(const nlohmann::json& object, const std::string& path, const char* key, std::string& out,
@@ -708,23 +746,9 @@ void init_python_data_sources_if_configured(libtokamap::MappingHandler& mapping_
         throw std::runtime_error{"MAPPING_PLUGIN_PYTHON_CONFIG points to a missing file: " + config_path.string()};
     }
 
-    std::ifstream stream{config_path};
-    if (!stream) {
-        throw std::runtime_error{"failed to open MAPPING_PLUGIN_PYTHON_CONFIG: " + config_path.string()};
-    }
-    nlohmann::json config;
-    try {
-        // ignore_comments: the deployed configs carry explanatory // comments.
-        config = nlohmann::json::parse(stream, nullptr, true, true);
-    } catch (const nlohmann::json::parse_error& e) {
-        std::string hint;
-        if (config_path.extension() == ".toml") {
-            hint = " — this file must be JSON; the plugin no longer parses TOML (see python_data_source.hpp)";
-        }
-        throw std::runtime_error{"failed to parse " + config_path.string() + " as JSON: " + e.what() + hint};
-    }
+    const nlohmann::json config = load_python_config(config_path);
     if (!config.is_object()) {
-        throw std::runtime_error{config_path.string() + " must contain a JSON object at the top level"};
+        throw std::runtime_error{config_path.string() + " must contain a configuration object at the top level"};
     }
 
     std::vector<PythonDataSourceSpec> source_specs;
