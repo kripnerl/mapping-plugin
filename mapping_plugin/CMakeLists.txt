@@ -70,6 +70,12 @@ uda_plugin(
         ${MAPPING_PLUGIN_PYTHON_LIBS}
 )
 
+if( MAPPING_PLUGIN_TESTS )
+    add_executable( array_order_test test/src/array_order_test.cpp )
+    target_include_directories( array_order_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src )
+    add_test( NAME array_order COMMAND array_order_test )
+endif()
+
 # Generate scripts
 list( GET UDA_DIR 0 UDA_HOME )
 string( REGEX REPLACE ";" " " PLUGINS "${BUILT_PLUGINS}" )

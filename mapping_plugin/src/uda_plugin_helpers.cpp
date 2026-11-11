@@ -1,5 +1,6 @@
 #include "uda_plugin_helpers.hpp"
 
+#include <cstdlib>
 #include <gsl/gsl-lite.hpp>
 #include <libtokamap.hpp>
 #include <string>
@@ -10,6 +11,8 @@
 #include <clientserver/initStructs.h>
 #include <clientserver/udaStructs.h>
 #include <clientserver/udaTypes.h>
+
+#include "array_order.hpp"
 
 libtokamap::DataType mapping_plugin::uda_to_libtokamap_map(UDA_TYPE datatype) {
 
@@ -103,8 +106,19 @@ void mapping_plugin::set_data_block(DATA_BLOCK* data_block, libtokamap::TypedDat
 
     data_block->rank = array.rank();
     data_block->data_type = libtokamap_to_uda_map(array.data_type());
-    data_block->data = array.release();
     data_block->data_n = static_cast<int>(array.size());
+
+    if (array.rank() < 2) {
+        data_block->data = array.release();
+    } else {
+        // libtokamap arrays are row-major, a UDA data block is read
+        // column-major: see array_order.hpp. Without this the client gets the
+        // right shape with the values in the wrong places.
+        const size_t n_bytes = array.size() * libtokamap::data_type_size(array.data_type());
+        auto* column_major = static_cast<char*>(malloc(n_bytes));
+        to_column_major(array.buffer(), array.shape(), libtokamap::data_type_size(array.data_type()), column_major);
+        data_block->data = column_major;
+    }
 
     data_block->dims = static_cast<DIMS*>(malloc(data_block->rank * sizeof(DIMS)));
 

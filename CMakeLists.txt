@@ -58,5 +58,12 @@ endif()
 # This list is appended to by the uda_plugin macro
 set( BUILT_PLUGINS "" )
 
+# Unit tests of the plugin's own helpers. They depend on nothing but the
+# standard library, so they are safe to build wherever the plugin builds.
+option( MAPPING_PLUGIN_TESTS "Build the plugin's dependency-free unit tests." OFF )
+if( MAPPING_PLUGIN_TESTS )
+    enable_testing()
+endif()
+
 find_package( UDA REQUIRED )
 add_subdirectory( mapping_plugin )
