@@ -433,6 +433,15 @@ bool numpy_to_typed_data_array(PyObject* object, libtokamap::TypedDataArray& out
 // ---------------------------------------------------------------------------
 // PythonDataSource — a libtokamap::DataSource whose get() calls a Python
 // object's .get(args) method. Mirrors libtokamap's own (clibtokamap) bridge.
+//
+// How the Python side reports "nothing to return" decides what the client
+// sees:
+//  - raising LookupError (or a subclass, e.g. KeyError) says the source holds
+//    no such data for these arguments — a diagnostic that did not record this
+//    pulse, say. The path is then answered as unmapped, exactly like a path
+//    with no mapping at all, and the rest of the IDS is still served;
+//  - any other exception is a failure of the source (database unreachable,
+//    file unreadable, bad arguments) and fails the request.
 // ---------------------------------------------------------------------------
 
 class PythonDataSource final : public libtokamap::DataSource
@@ -464,6 +473,7 @@ class PythonDataSource final : public libtokamap::DataSource
 
         libtokamap::TypedDataArray array;
         std::string error;
+        bool no_such_data = false;
 
         PyObject* args_dict = json_map_to_pydict(map_args);
         if (args_dict == nullptr) {
@@ -473,6 +483,8 @@ class PythonDataSource final : public libtokamap::DataSource
             Py_DECREF(args_dict);
 
             if (result == nullptr) {
+                // Must be asked before fetch_python_error() clears the error
+                no_such_data = PyErr_ExceptionMatches(PyExc_LookupError) != 0;
                 error = fetch_python_error();
             } else {
                 numpy_to_typed_data_array(result, array, error);
@@ -481,6 +493,11 @@ class PythonDataSource final : public libtokamap::DataSource
         }
         PyGILState_Release(gil);
 
+        if (no_such_data) {
+            // A MappingError makes the plugin answer "not found" for this path
+            // alone instead of failing the request
+            throw libtokamap::MissingMappingError{"python data source has no such data: " + error};
+        }
         if (!error.empty()) {
             throw libtokamap::DataSourceError{"python data source get failed: " + error};
         }
